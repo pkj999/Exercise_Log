@@ -34,6 +34,10 @@
     max-width: 480px;
     margin: 0 auto;
     padding: 1rem 1rem 0.5rem;
+    /* 디자인 방향(2026-09): Linear/Raycast식 미니멀 다크 — 색은 액센트(인디고) 하나만
+       아껴 쓰고, 구분은 색이 아니라 테두리·타이포(폰트 굵기/크기)로 한다. 선택 상태는
+       꽉 찬 배경(fill)이 아니라 테두리+옅은 배경(accent-soft)로 표현 — 이 톤을 벗어나는
+       새 색을 추가하지 말 것. 숫자는 JetBrains Mono(.wt-stat-value 등), 본문은 Pretendard. */
     --wt-bg: #F5F3EF;
     --wt-card: #FFFFFF;
     --wt-accent: #5E6AD2;
@@ -778,6 +782,10 @@
   })();
 
   // ---------- [공용] 아이콘 정의 및 렌더링 ----------
+  // 아래 8개(chest~other)는 부위별 장비/동작 픽토그램. 현재는 "부위 선택" 화면에서는
+  // 쓰지 않고(텍스트 칩으로만 표시 — [입력] 부위 선택 섹션 참고), 기록 리스트의 작은
+  // 아이콘(wt-row-icon)에서만 쓰인다. CAT_META의 color 필드도 현재 화면엔 쓰이지 않고
+  // 정의만 되어 있음 — 부위별 색 구분을 없앤 디자인 방향(2026-09 리디자인)이라서다.
   var PATHS = {
     chest: '<path d="M3 10v4M6.5 7.5v9M6.5 12h11M17.5 7.5v9M21 10v4"/>',
     back: '<path d="M5 7l7 4 7-4"/><path d="M12 11v8"/>',
@@ -858,6 +866,9 @@
     '유산소': ['러닝머신', '사이클', '로잉머신'],
     '기타': []
   };
+  // icon은 [공용] 아이콘 섹션의 PATHS 키(기록 리스트 아이콘용). color는 현재 화면 어디에도
+  // 안 쓰이지만, 예전 디자인(부위별 색 구분)의 흔적이자 나중에 되살릴 수 있어 남겨둠 —
+  // 지우지 말고 그대로 둘 것.
   var CAT_META = {
     '가슴': { icon: 'chest', color: '#FF9270' },
     '등': { icon: 'back', color: '#4E9AE8' },
@@ -1458,7 +1469,7 @@
   }
   function redrawCharts() {
     if ($('view-progress').style.display !== 'none') {
-      renderTotalVolumeChart();
+      renderCategoryVolumeChart();
       if ($('progress-stats').style.display !== 'none') renderProgress();
     }
   }
@@ -2894,6 +2905,9 @@
   }
 
   // ---------- [통계] 그래프 (볼륨/최고무게/1RM 추이) ----------
+  // drawLineChart()는 범용 단일선 그래프 함수로, 아래 두 군데에서 재사용된다:
+  //   1) renderCategoryVolumeChart() — 부위 하나를 선택해 그 부위의 볼륨 추이
+  //   2) renderProgress() — 종목 하나를 선택해 무게/볼륨/세트/1RM 추이
   var chartRetries = {};
   var chartAnimId = {};
   function drawLineChart(canvasId, points, valueKey, labelFn) {
@@ -3048,7 +3062,7 @@
   // 부위별 볼륨 추이 — 여러 부위를 한 그래프에 겹쳐 그리면 부위 간 볼륨 차이(하체 vs 어깨)
   // 때문에 뒤섞여 읽기 어려워지므로, 부위 하나를 선택해서 그 부위만 보는 방식으로 유지
   var volCatSelected = null;
-  function renderTotalVolumeChart() {
+  function renderCategoryVolumeChart() {
     var series = categoryVolumeSeries();
     var empty = $('total-empty');
     var canvas = $('total-canvas');
@@ -3074,7 +3088,7 @@
   }
   $('vol-cat-select').addEventListener('change', function () {
     volCatSelected = this.value;
-    renderTotalVolumeChart();
+    renderCategoryVolumeChart();
   });
 
   // 최근 14일 중 기록이 있는 날짜만 뽑아 차트로 표시 (기존 [통계] 볼륨 추이와 동일한 방식)
@@ -3648,7 +3662,7 @@
     if (tab === 'progress') {
       renderWeeklySummary();
       requestAnimationFrame(function () {
-        renderTotalVolumeChart();
+        renderCategoryVolumeChart();
         renderProteinStats();
         renderProgress();
       });
@@ -3701,7 +3715,7 @@
 
   window.addEventListener('resize', function () {
     if ($('view-progress').style.display !== 'none') {
-      renderTotalVolumeChart();
+      renderCategoryVolumeChart();
       renderProteinStats();
       if ($('progress-stats').style.display !== 'none') renderProgress();
     }
@@ -3722,7 +3736,7 @@
     renderHistory();
     renderProgressSelect();
     renderWeeklySummary();
-    renderTotalVolumeChart();
+    renderCategoryVolumeChart();
     renderProteinToday();
     renderProteinStats();
     renderCalendar();
