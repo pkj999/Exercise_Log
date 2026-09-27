@@ -48,7 +48,7 @@
   html, body { background: #0B0E13; }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  body { overscroll-behavior-y: none; }
+  body { overscroll-behavior-y: none; word-break: keep-all; overflow-wrap: break-word; }
   ::selection { background: rgba(232, 169, 59, 0.35); }
 
   ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -71,57 +71,25 @@
 
   textarea, input, select { font-family: inherit; }
   textarea:focus, input:focus, select:focus { outline: none; }
-  @media (max-width: 640px) { input, select, textarea { font-size: 16px !important; } }
+  @media (max-width: 640px) { input, textarea { font-size: 16px !important; } }
 </style>
 </head>
 <body class="font-sans">
 <script>
-  // 뒤로가기로는 앱이 절대 안 꺼지게 하는 가드 — 이 앱은 스크립트 전체를 브라우저에서 매번 Babel로
-  // 변환하는 구조라(4000줄 넘음), 그 변환이 끝나기 전에 안드로이드가 "이 화면에서 뒤로 갈 수 있는지"를
-  // 먼저 판단해버리면 아래 아무리 정확한 로직도 이미 늦을 수 있음. 그래서 이 부분만은 Babel 스크립트보다
-  // 앞서, 최대한 빨리(순수 JS로) 실행되도록 따로 떼어 맨 위에 둠. React 쪽(useBackButtonClose)은
-  // 여기서 만든 전역 값들을 그대로 이어받아 씀.
+  // 오버레이(모달/바텀시트) 스택 — 뒤로가기를 누르면 "가장 나중에 연 것 하나만" 닫히게 하기 위한 용도.
+  // Babel 변환이 끝나기 전에도 바로 동작해야 해서 이 부분만 순수 JS로 먼저 실행해둠.
+  // (참고: 예전엔 여기에 "홈 화면에서 뒤로가기로는 종료 안 되게 막는" 가드도 있었는데,
+  //  세 가지 다른 방식으로 시도해봐도 이 기기/환경에서는 전혀 효과가 없어서 걷어냈음.
+  //  대신 각 작성 화면의 임시저장 기능으로 "혹시 꺼져도 쓰던 내용은 안 날아가게" 보완함.)
   window.wjOverlayStack = []; // [{ id, onClose }] — 가장 나중에 연 오버레이가 배열 끝
   window.wjSuppressNextPop = 0; // 버튼으로 닫으면서 직접 history.back()을 부를 때, 그로 인한 popstate는 한 번 무시
   window.wjOverlayIdSeq = 0;
 
-  var WJ_HINT_TOAST_COOLDOWN_MS = 2000; // 안내 토스트가 너무 자주(연타 시) 뜨지 않게 하는 최소 간격일 뿐, 종료 여부와는 무관
-  var wjLastHomeBackHintAt = 0;
-
-  // 오버레이가 없을 때 종료 방지용 가드를 다시 쌓는 함수 — 여러 시점에서 공통으로 호출함.
-  // 이미 가드 위에 있으면(아직 안 소진됐으면) 중복으로 더 쌓지 않음.
-  function wjArmExitGuard() {
-    if (window.wjOverlayStack.length === 0 && !(window.history.state && window.history.state.wjHomeGuard)) {
-      window.history.pushState({ wjHomeGuard: true }, '');
-    }
-  }
-  wjArmExitGuard(); // 스크립트가 로드되는 즉시(=Babel 변환을 기다리지 않고) 가드를 한 번 쌓아둠
-
   window.addEventListener('popstate', function () {
     if (window.wjSuppressNextPop > 0) { window.wjSuppressNextPop--; return; }
     var top = window.wjOverlayStack.pop();
-    if (top) { top.onClose(); return; }
-    // 여기 도달했다는 건 닫을 오버레이가 없다는 뜻 — 홈 화면에서 뒤로가기를 누른 것.
-    // 몇 번을 누르든 항상 가드를 다시 쌓아서, 뒤로가기로는 앱이 절대 안 꺼지게 함
-    // (종료하려면 최근 앱 목록에서 지우거나 홈 버튼으로 나가면 됨).
-    wjArmExitGuard();
-    var now = Date.now();
-    if (now - wjLastHomeBackHintAt >= WJ_HINT_TOAST_COOLDOWN_MS) {
-      wjLastHomeBackHintAt = now;
-      window.dispatchEvent(new CustomEvent('wj-exit-hint')); // App(React)이 이 이벤트를 받아서 안내 토스트를 띄움
-    }
+    if (top) top.onClose();
   });
-
-  /* PWA를 껐다 켜거나 다른 앱 갔다 오면, 가드가 소진된 채로 남아있을 수 있어서 뒤로가기 한 번에
-     바로 꺼질 수 있음. 그래서 앱이 다시 활성화될 때(화면 보임/포커스/페이지 재표시) 뿐 아니라
-     백그라운드로 나가는 시점(pagehide/beforeunload)에도 미리 가드를 채워넣고,
-     혹시 그 신호들조차 못 잡는 경우를 대비해 화면이 보이는 동안 몇 초마다 한 번씩도 다시 확인함. */
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') wjArmExitGuard(); });
-  window.addEventListener('pageshow', function () { wjArmExitGuard(); });
-  window.addEventListener('focus', function () { wjArmExitGuard(); });
-  window.addEventListener('pagehide', function () { wjArmExitGuard(); });
-  window.addEventListener('beforeunload', function () { wjArmExitGuard(); });
-  setInterval(function () { if (document.visibilityState === 'visible') wjArmExitGuard(); }, 3000);
 </script>
 <div id="root"></div>
 
@@ -168,6 +136,7 @@ const { createRoot } = ReactDOM;
    아이콘 (lucide 경로 데이터를 인라인 SVG로 자체 내장)
 =========================================================== */
 const ICON_PATHS = {
+  slidersHorizontal: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
   copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   search: '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
@@ -235,6 +204,7 @@ const X = mkIcon('x');
 const Pencil = mkIcon('pencil');
 const Trash2 = mkIcon('trash-2');
 const TagIcon = mkIcon('tag');
+const SlidersHorizontal = mkIcon('slidersHorizontal');
 const Lightbulb = mkIcon('lightbulb');
 const Code2 = mkIcon('code-2');
 const Users = mkIcon('users');
@@ -278,7 +248,7 @@ const Upload = mkIcon('upload');
 =========================================================== */
 // 지금 보고 있는 화면이 최신 배포본인지 헷갈릴 때(캐시 문제 등) 설정 탭 맨 아래에서 확인하는 용도.
 // index.html/sw.js를 의미 있게 바꿀 때마다 이 값도 같이 올려주세요.
-const APP_VERSION = 'ver.16 · 2026-09-23';
+const APP_VERSION = 'ver.20 · 2026-09-23';
 const CONFIG_KEY = 'workjournal.ghconfig.v1';
 const THEME_KEY = 'workjournal.theme.v1';
 const PATH_ENTRIES = 'data/entries.json';
@@ -417,9 +387,9 @@ async function ghFetch(cfg, path, opts = {}) {
   // 네트워크가 불안정할 때 요청이 응답도 실패도 없이 무한정 걸려있는 걸 막기 위한 타임아웃
   // (이게 없으면 "저장 중…"이 화면에서 영원히 안 사라지는 버그가 생김)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs || 20000);
   try {
-    return await fetch(url, {
+    const res = await fetch(url, {
       method: opts.method || 'GET',
       headers: {
         Authorization: `Bearer ${cfg.token}`,
@@ -429,6 +399,11 @@ async function ghFetch(cfg, path, opts = {}) {
       body: opts.body ? JSON.stringify(opts.body) : undefined,
       signal: controller.signal,
     });
+    // 토큰이 만료·무효화되면 모든 요청이 401로 실패하는데, 그냥 두면 호출한 곳마다 제각각
+    // "저장 실패", "읽기 실패" 같은 뭉뚱그린 메시지만 뜨고 진짜 원인(토큰 문제)은 안 보임.
+    // 여기 한 곳에서 잡아서 모든 요청에 공통으로 명확한 안내가 뜨게 함.
+    if (res.status === 401) throw new Error('GitHub 토큰이 만료됐거나 더 이상 유효하지 않아요. 설정 탭 → 계정 연결에서 토큰을 다시 확인해주세요.');
+    return res;
   } catch (e) {
     if (e.name === 'AbortError') throw new Error('요청 시간이 초과됐어요. 네트워크 상태를 확인하고 다시 시도해주세요.');
     throw e;
@@ -445,8 +420,28 @@ async function ghGetJSON(cfg, path) {
     throw new Error(body.message || `GitHub 읽기 실패 (${res.status})`);
   }
   const json = await res.json();
-  let data = [];
-  try { data = JSON.parse(base64ToUtf8(json.content)); } catch (e) { data = []; }
+  let text;
+  if (json.content != null) {
+    // 보통 이 경로 — 1MB 이하 파일은 GitHub이 base64로 내용을 바로 담아서 돌려줌
+    text = base64ToUtf8(json.content);
+  } else if (json.size > 0) {
+    // 파일이 1MB를 넘으면 GitHub이 content를 비워서 돌려줌(공식 문서에 명시된 동작) —
+    // 이걸 그냥 빈 배열로 처리하면, 그 위에 새 기록을 저장하는 순간 기존 기록 전체가 사라짐.
+    // 그래서 크기가 있는데 content가 없으면 원본(raw) 형식으로 다시 요청해서 내용을 확실히 받아옴.
+    const rawRes = await ghFetch(cfg, path, { query: `?ref=${cfg.branch || 'main'}`, accept: 'application/vnd.github.raw' });
+    if (!rawRes.ok) throw new Error(`기록 파일이 커서(1MB 이상) 읽는 데 실패했어요 (${rawRes.status}). 안전을 위해 저장을 중단했어요.`);
+    text = await rawRes.text();
+  } else {
+    text = '[]';
+  }
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    // 파싱 실패를 조용히 빈 배열로 넘기지 않음 — 그렇게 하면 "읽기 실패 = 기록 0건"처럼 보여서
+    // 그 상태로 뭔가 저장하는 순간 기존 기록을 통째로 덮어쓰는 사고로 이어질 수 있음
+    throw new Error('기록 파일을 정상적으로 읽지 못했어요. 안전을 위해 저장을 중단했어요.');
+  }
   return { data: Array.isArray(data) ? data : [], sha: json.sha };
 }
 
@@ -470,7 +465,10 @@ async function ghPutJSON(cfg, path, dataArr, sha, message) {
 
 async function ghPutImage(cfg, path, base64Content, message) {
   const body = { message: message || `add ${path}`, content: base64Content, branch: cfg.branch || 'main' };
-  const res = await ghFetch(cfg, path, { method: 'PUT', body });
+  // 원본 화질 그대로 올리기로 했으니 파일이 꽤 클 수 있음(특히 느린 네트워크) — 20초로는 부족해서
+  // 용량 1MB당 30초씩, 최소 90초는 기다려주도록 여유 있게 잡음
+  const timeoutMs = Math.max(90000, Math.ceil(base64Content.length / (1024 * 1024)) * 30000);
+  const res = await ghFetch(cfg, path, { method: 'PUT', body, timeoutMs });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `이미지 업로드 실패 (${res.status})`);
@@ -644,9 +642,9 @@ function imgPaths(ref) {
      2) 모달 안에서 사진 확대(라이트박스)처럼 겹쳐 열렸을 때, 뒤로가기 한 번에 위/아래 모달이 같이 닫힘
    지금 방식은 열려있는 오버레이를 "스택"으로 관리해서, 열 때마다 히스토리를 하나씩 더 쌓고,
    뒤로가기 한 번은 정확히 "가장 최근에 연 오버레이 하나만" 닫는다.
-   (오버레이 스택 자체와 "홈 화면에서는 뒤로가기로 종료되지 않게 하는" 가드는 body 맨 위의 순수 JS
-   스크립트에서 미리 만들어둠 — Babel 변환이 끝나기 전에도 즉시 동작해야 해서 이 스크립트보다 먼저
-   실행되게 분리함. 여기서는 그때 만들어진 전역값(window.wjOverlayStack 등)을 그대로 이어받아 씀.)
+   (오버레이 스택 자체는 body 맨 위의 순수 JS 스크립트에서 미리 만들어둠 — Babel 변환이 끝나기 전에도
+   즉시 동작해야 해서 이 스크립트보다 먼저 실행되게 분리함. 여기서는 그때 만들어진 전역값
+   (window.wjOverlayStack 등)을 그대로 이어받아 씀.)
 =========================================================== */
 function useBackButtonClose(open, onClose) {
   const idRef = useRef(null);
@@ -1500,11 +1498,10 @@ function QuickNoteCard({ cfg, note, leaving, onEdit, onDelete, onPromote, onView
     <SwipeToDelete disabled={readonly} onDelete={onDelete}>
       <div className={`wj-enter rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3.5 hover:border-slate-300 dark:hover:border-slate-700 transition-colors ${leaving ? 'wj-item-leaving' : ''}`}>
         <div className="flex items-start justify-between gap-2">
-          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-            {fmtDateShort((note.createdAt ? new Date(note.createdAt) : new Date()).toISOString().slice(0, 10))} {fmtTime(note.createdAt)}
-            {note.updatedAt && (
-              <span title="마지막으로 수정된 시각">· 수정 {fmtDateShort(dateKeyFromDate(new Date(note.updatedAt)))} {fmtTime(note.updatedAt)}</span>
-            )}
+          <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1.5"
+            title={note.updatedAt ? `${fmtDateShort(dateKeyFromDate(new Date(note.updatedAt)))} ${fmtTime(note.updatedAt)}에 마지막으로 수정됨` : undefined}>
+            {fmtDateShort(dateKeyFromDate(note.createdAt ? new Date(note.createdAt) : new Date()))} {fmtTime(note.createdAt)}
+            {note.updatedAt && ' · 수정됨'}
             {readonly && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500" title={note._repoLabel ? `보관 레포: ${note._repoLabel}` : '보관 레포'}>
                 보관 레포
@@ -1573,11 +1570,20 @@ function NotePreviewModal({ open, note, cfg, onClose, onEdit, onDelete, onPromot
 }
 
 function QuickCaptureTab({ cfg, notes, phrases, editingNote, onEditNote, onAdd, onDelete, onRestore, onPermanentDelete, onEditSave, onPromote, onViewEntry, uploading, savingEdit, hasArchives, archivesLoaded, archiveLoading, onLoadArchives }) {
-  const [text, setText] = useState('');
+  // 빠른 기록 입력창 임시저장 — 사진 파일은 로컬 저장이 안 돼서 텍스트만 대상으로 함
+  const QUICK_DRAFT_KEY = 'wj-draft-quick-note';
+  const [text, setText] = useState(() => { try { return localStorage.getItem(QUICK_DRAFT_KEY) || ''; } catch (e) { return ''; } });
   const [files, setFiles] = useState([]);
   const [showTrash, setShowTrash] = useState(false);
   const [showProcessed, setShowProcessed] = useState(false);
   const [leavingNoteId, setLeavingNoteId] = useState(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try { if (text) localStorage.setItem(QUICK_DRAFT_KEY, text); else localStorage.removeItem(QUICK_DRAFT_KEY); } catch (e) {}
+    }, 800);
+    return () => clearTimeout(t);
+  }, [text]);
 
   const handleDeleteAnimated = note => {
     // 이미 업무일지로 옮겨간 기록은 실수로 지우면 아쉬우니 한 번 더 확인. 아직 정리 안 한 단발성 메모는 그냥 바로 삭제(빠르게 쓰고 치우는 용도라 확인창이 오히려 번거로움)
@@ -1598,6 +1604,7 @@ function QuickCaptureTab({ cfg, notes, phrases, editingNote, onEditNote, onAdd, 
     if (!text.trim() && files.length === 0) return;
     onAdd(text.trim(), files);
     setText(''); setFiles([]);
+    try { localStorage.removeItem(QUICK_DRAFT_KEY); } catch (e) {}
   };
   const insertPhrase = t => setText(prev => {
     if (!prev) return t;
@@ -1617,7 +1624,7 @@ function QuickCaptureTab({ cfg, notes, phrases, editingNote, onEditNote, onAdd, 
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3 shadow-sm focus-within:border-slate-400 dark:focus-within:border-slate-500 transition-all">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3 focus-within:border-slate-400 dark:focus-within:border-slate-500 transition-all">
         {phrases && phrases.length > 0 && (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
             {phrases.map(p => (
@@ -1638,7 +1645,7 @@ function QuickCaptureTab({ cfg, notes, phrases, editingNote, onEditNote, onAdd, 
         {files.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap mt-1 mb-2 px-1">
             {files.map((f, i) => (
-              <div key={i} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div key={i} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
                 <img src={URL.createObjectURL(f)} className="w-full h-full object-cover" />
                 <button onClick={() => removeFile(i)} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center active:scale-90 transition-transform">
                   <X size={10} />
@@ -1692,7 +1699,7 @@ function QuickCaptureTab({ cfg, notes, phrases, editingNote, onEditNote, onAdd, 
               <div key={note.id} className="wj-enter rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3.5 opacity-80">
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                    삭제됨 · {fmtDateShort((note.deletedAt ? new Date(note.deletedAt) : new Date()).toISOString().slice(0, 10))}
+                    삭제됨 · {fmtDateShort(dateKeyFromDate(note.deletedAt ? new Date(note.deletedAt) : new Date()))}
                     {readonly && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">보관 레포</span>}
                   </span>
                   <div className="flex items-center gap-1">
@@ -1950,7 +1957,7 @@ function StatsStrip({ entries, hasFilters, monthFilter, importanceFilter, onSele
       {items.map((s, i) => (
         <button key={s.key} onClick={s.onClick}
           className={`flex-1 min-w-0 px-2 sm:px-3 py-3 text-left transition-colors active:scale-[0.98] ${i !== 0 ? 'border-l border-slate-200 dark:border-slate-800' : ''} ${s.active ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}>
-          <div className="font-mono text-lg font-semibold text-slate-800 dark:text-slate-100 tabular-nums leading-none">{s.value}</div>
+          <div className="text-lg font-semibold text-slate-800 dark:text-slate-100 tabular-nums leading-none">{s.value}</div>
           <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5 whitespace-nowrap">{s.label}</div>
         </button>
       ))}
@@ -2046,7 +2053,7 @@ function SelectPill({ value, onChange, options, placeholder, icon: Ico }) {
   return (
     <div className="relative w-full">
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full appearance-none pl-8 pr-7 py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer transition-colors sm:max-w-[150px] truncate">
+        className="w-full appearance-none pl-8 pr-7 py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer transition-colors">
         <option value="">{placeholder}</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -2129,14 +2136,12 @@ function EntryCard({ cfg, entry, query, onEdit, onDelete, onToggleFavorite, onVi
             <div className="flex items-center gap-2 flex-wrap mb-1.5">
               <CategoryBadge category={entry.category} categoryMap={catMap} />
               <ImportanceMeter level={entry.importance} />
-              <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+              <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1"
+                title={entry.updatedAt && entry.createdAt && entry.updatedAt !== entry.createdAt
+                  ? `${fmtDateShort(dateKeyFromDate(new Date(entry.updatedAt)))} ${fmtTime(entry.updatedAt)}에 마지막으로 수정됨` : undefined}>
                 <Calendar size={11} /> {fmtDateShort(entry.date)}
+                {entry.updatedAt && entry.createdAt && entry.updatedAt !== entry.createdAt && ' · 수정됨'}
               </span>
-              {entry.updatedAt && entry.createdAt && entry.updatedAt !== entry.createdAt && (
-                <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500" title="마지막으로 수정된 시각">
-                  · 수정 {fmtDateShort(dateKeyFromDate(new Date(entry.updatedAt)))} {fmtTime(entry.updatedAt)}
-                </span>
-              )}
               {readonly && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500" title={entry._repoLabel ? `보관 레포: ${entry._repoLabel}` : '보관 레포'}>
                   보관 레포
@@ -2377,10 +2382,8 @@ function EntryFormModal({ open, initial, prefillNote, cfg, existingProjects, exi
     e.preventDefault();
     if (!canSave || saving) return; // 저장 중 연타 방지
     setSaving(true);
-    // 저장을 시도하는 시점에 임시저장은 지움 — 실패해도 "다시 시도" 버튼이 지금 이 내용을 그대로 들고 재시도하므로 안전함
-    if (draftKeyRef.current) { try { localStorage.removeItem(draftKeyRef.current); } catch (err) {} }
     try {
-      await onSave({
+      const ok = await onSave({
         date: form.date, title: form.title.trim(), category: form.category, importance: form.importance,
         bullets: form.bullets.map(b => b.trim()).filter(Boolean),
         overview: form.overview.trim(),
@@ -2390,6 +2393,9 @@ function EntryFormModal({ open, initial, prefillNote, cfg, existingProjects, exi
         dataPath: form.dataPath.trim(),
         keepImages, newFiles,
       });
+      // 실제로 저장에 성공했을 때만 임시저장을 지움 — "저장 실패, 다시 시도" 토스트가 뜬 채로
+      // 앱이 꺼지면, 재시도 버튼이 들고 있던 내용도 같이 사라지므로 임시저장이 마지막 안전망이 됨
+      if (ok && draftKeyRef.current) { try { localStorage.removeItem(draftKeyRef.current); } catch (err) {} }
     } finally {
       setSaving(false); // onSave가 실패해도 다시 시도할 수 있게 풀어줌 (성공 시엔 모달이 닫히므로 어차피 무관)
     }
@@ -2753,6 +2759,7 @@ function EntriesTab({ cfg, entries, notes, categories, categoryMap, onOpenNew, o
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const [monthFilter, setMonthFilter] = useState(false); // 상단 통계의 "이번 달" 클릭 시 켜지는 필터
   const [showSummary, setShowSummary] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [view, setView] = useState('list'); // 'list' | 'calendar' | 'project' | 'highlights'
   const [calDate, setCalDate] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
@@ -2856,6 +2863,8 @@ function EntriesTab({ cfg, entries, notes, categories, categoryMap, onOpenNew, o
 
   const hasFilters = !!(query || projectFilter || categoryFilter || importanceFilter || tagFilter || favoriteOnly || monthFilter);
   const resetFilters = () => { setQuery(''); setProjectFilter(''); setCategoryFilter(''); setImportanceFilter(''); setTagFilter(''); setFavoriteOnly(false); setMonthFilter(false); };
+  // "필터" 버튼에 표시할 개수 — 검색어는 별도로 항상 보이는 칸이라 여기 안 셈
+  const pillFilterCount = [projectFilter, categoryFilter, importanceFilter, tagFilter].filter(Boolean).length + (favoriteOnly ? 1 : 0) + (monthFilter ? 1 : 0);
   // 상단 통계(전체 기록/이번 달/중요도별) 클릭 시 — 다른 필터는 다 지우고 그 조건 하나만 적용해서 목록 보기로 바로 이동
   const jumpToStat = setup => { resetFilters(); setup(); setView('list'); setShowTrash(false); };
 
@@ -2895,7 +2904,7 @@ function EntriesTab({ cfg, entries, notes, categories, categoryMap, onOpenNew, o
               <div key={entry.id} className="wj-enter rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 p-3.5 opacity-80">
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
-                    삭제됨 · {fmtDateShort((entry.deletedAt ? new Date(entry.deletedAt) : new Date()).toISOString().slice(0, 10))}
+                    삭제됨 · {fmtDateShort(dateKeyFromDate(entry.deletedAt ? new Date(entry.deletedAt) : new Date()))}
                     {entry._readonly && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">보관 레포</span>}
                   </span>
                   <div className="flex items-center gap-1">
@@ -2921,26 +2930,38 @@ function EntriesTab({ cfg, entries, notes, categories, categoryMap, onOpenNew, o
         {showSummary && <div className="mt-2.5"><SummaryPanel entries={activeEntries} categories={categories} /></div>}
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-[180px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="업무명, 내용, 문제해결, 태그 검색…"
             className="w-full pl-9 pr-3 py-2 rounded-lg text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-700 dark:text-slate-200 focus:border-slate-400 dark:focus:border-slate-500 transition-colors" />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 items-stretch gap-2">
+        <button onClick={() => setShowFilterPanel(v => !v)}
+          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+            pillFilterCount > 0 ? 'border-slate-900 dark:border-slate-100 text-slate-900 dark:text-slate-100' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+          } ${showFilterPanel ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}>
+          <SlidersHorizontal size={13} /> 필터{pillFilterCount > 0 ? ` ${pillFilterCount}` : ''}
+        </button>
+      </div>
+
+      {showFilterPanel && (
+        <div className="grid items-stretch gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
           <SelectPill value={projectFilter} onChange={setProjectFilter} options={projects} placeholder="전체 프로젝트" icon={FolderKanban} />
           <SelectPill value={categoryFilter} onChange={setCategoryFilter} options={categories.map(c => c.id)} placeholder="전체 카테고리" icon={Code2} />
           <SelectPill value={importanceFilter} onChange={setImportanceFilter} options={IMPORTANCE_LEVELS.map(i => i.id)} placeholder="전체 중요도" icon={AlertTriangle} />
           <SelectPill value={tagFilter} onChange={setTagFilter} options={allTags} placeholder="전체 태그" icon={TagIcon} />
           <button onClick={() => setFavoriteOnly(v => !v)}
-            className={`col-span-2 sm:col-auto inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors ${favoriteOnly ? 'border-[#E8A93B]/50 bg-[#E8A93B]/10 text-[#E8A93B]' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'}`}>
+            className={`inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium border whitespace-nowrap transition-colors ${favoriteOnly ? 'border-[#E8A93B]/50 bg-[#E8A93B]/10 text-[#E8A93B]' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'}`}>
             <Star size={13} fill={favoriteOnly ? '#E8A93B' : 'none'} /> 즐겨찾기
           </button>
         </div>
-        <button onClick={onOpenNew} className="sm:ml-auto shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-slate-300 active:scale-[0.97] transition-all">
-          <Plus size={14} strokeWidth={2.5} /> 새 일지 작성
-        </button>
-      </div>
+      )}
+
+      <button onClick={onOpenNew} title="새 일지 작성"
+        className="fixed right-4 sm:right-8 z-40 w-12 h-12 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-lg flex items-center justify-center active:scale-90 transition-all"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)' }}>
+        <Plus size={22} strokeWidth={2.5} />
+      </button>
 
       <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-1 w-fit max-w-full overflow-x-auto">
         <button onClick={() => setView('list')}
@@ -3080,13 +3101,22 @@ function EntriesTab({ cfg, entries, notes, categories, categoryMap, onOpenNew, o
       )}
 
       {filtered.length === 0 ? (
-        <div className="wj-enter flex flex-col items-center justify-center text-center py-20 px-6 rounded-lg border border-dashed border-slate-300 dark:border-slate-700/70">
-          <div className="w-11 h-11 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/70 mb-4">
-            <Inbox size={20} className="text-slate-400 dark:text-slate-500" />
-          </div>
+        <div className="wj-enter flex flex-col items-center justify-center text-center py-16 px-6">
+          <Inbox size={22} className="text-slate-300 dark:text-slate-600 mb-3" />
           <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{hasFilters ? '조건에 맞는 일지가 없습니다' : '아직 작성된 업무일지가 없습니다'}</p>
+          {hasFilters && hasArchives && !archivesLoaded && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">보관된 저장소는 아직 안 불러왔어요 — 거기 있는 기록일 수도 있어요.</p>
+          )}
           {hasFilters ? (
-            <button onClick={resetFilters} className="mt-4 text-xs font-medium px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-transform">필터 초기화</button>
+            <div className="flex items-center gap-2 mt-4">
+              <button onClick={resetFilters} className="text-xs font-medium px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-transform">필터 초기화</button>
+              {hasArchives && !archivesLoaded && (
+                <button onClick={onLoadArchives} disabled={archiveLoading}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-slate-300 disabled:opacity-50 active:scale-95 transition-all">
+                  {archiveLoading ? <LoaderCircle size={12} className="wj-spin" /> : <DatabaseIcon size={12} />} 보관 저장소도 검색하기
+                </button>
+              )}
+            </div>
           ) : (
             <button onClick={onOpenNew} className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-md bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-slate-300 active:scale-[0.97] whitespace-nowrap transition-all"><Plus size={14} strokeWidth={2.5} /> 첫 일지 작성하기</button>
           )}
@@ -3249,13 +3279,6 @@ function App() {
   }, []);
 
   /* ---------- 3. 테마 적용 ---------- */
-  useEffect(() => {
-    // 홈 화면에서 뒤로가기를 눌렀을 때(오버레이 없는 상태) 전역 popstate 핸들러가 쏘는 신호를 받아 안내 토스트를 띄움
-    const onExitHint = () => showToast('뒤로가기로는 종료되지 않아요. 최근 앱 목록에서 지워서 종료해주세요.');
-    window.addEventListener('wj-exit-hint', onExitHint);
-    return () => window.removeEventListener('wj-exit-hint', onExitHint);
-  }, [showToast]);
-
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('light', theme !== 'dark');
@@ -4136,7 +4159,7 @@ function App() {
         await mutateEntry(editingEntry, e => ({ ...e, ...fields, images: [...keepImages, ...uploadedRefs], updatedAt: Date.now() }), '일지 수정');
         closeModal();
         showToast(editingEntry._readonly ? '보관 레포에 저장했습니다.' : '저장했습니다.');
-        return;
+        return true;
       }
       // 새 일지 작성 — 빠른 기록에서 정리하는 거라면 그 기록이 속한 레포에 그대로 작성 (기존 사진이 그 레포에 있으므로), 아니면 활성 레포에 작성
       const now = Date.now();
@@ -4168,8 +4191,10 @@ function App() {
       closeModal();
       vibrate(20);
       showToast('저장했습니다.');
+      return true;
     } catch (err) {
       showToast('저장 실패: ' + err.message, () => handleSaveEntry(data));
+      return false;
     }
   };
 
@@ -4236,11 +4261,11 @@ function App() {
             <Logo />
             <div className="flex items-center gap-1.5">
               <button onClick={loadAll} disabled={loading} title="새로고침"
-                className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all disabled:opacity-50">
+                className="p-2.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all disabled:opacity-50">
                 <RefreshCw size={17} className={loading ? 'wj-spin' : ''} />
               </button>
               <button onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-                className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all">
+                className="p-2.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all">
                 {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
               </button>
             </div>
@@ -4255,14 +4280,15 @@ function App() {
           {offline && (
             <div className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[12px] text-amber-500">
               <span className="break-words">
-                오프라인이에요{offlineCachedAt ? ` · ${fmtDateShort(new Date(offlineCachedAt).toISOString().slice(0, 10))} ${fmtTime(offlineCachedAt)} 기준 저장된 내용을 보여주고 있어요` : ''}. 이 상태에서 한 변경사항은 저장되지 않을 수 있어요.
+                오프라인이에요{offlineCachedAt ? ` · ${fmtDateShort(dateKeyFromDate(new Date(offlineCachedAt)))} ${fmtTime(offlineCachedAt)} 기준 저장된 내용을 보여주고 있어요` : ''}. 이 상태에서 한 변경사항은 저장되지 않을 수 있어요.
               </span>
               <button onClick={loadAll} className="shrink-0 underline whitespace-nowrap active:scale-90 transition-transform">다시 연결</button>
             </div>
           )}
           {!syncError && !offline && lastSynced && (
-            <div className="mb-4 text-[11px] text-slate-400 dark:text-slate-600 font-mono">
-              마지막 동기화 {fmtTime(lastSynced)} · 이 기기에서 새로고침해야 최신 상태가 반영돼요
+            <div className="mb-4 text-[11px] text-slate-400 dark:text-slate-600"
+              title="다른 기기에서 저장한 내용은 이 화면을 새로고침해야 반영돼요">
+              {fmtTime(lastSynced)} 동기화
             </div>
           )}
 
