@@ -226,10 +226,7 @@
   #wt-root .wt-chip.wt-chip-new { border: 1px dashed var(--wt-accent); color: var(--wt-accent); background: transparent; }
   #wt-root .wt-ex-none { font-size: 12px; color: var(--wt-text-muted); margin: 8px 0 0; }
 
-  /* ===== 루틴 관리 ===== */
-  #wt-root .wt-rm-row { display: flex; align-items: center; gap: 8px; background: var(--wt-bg); border-radius: 8px; padding: 7px 8px 7px 12px; font-size: 13px; font-weight: 600; color: var(--wt-text); }
-  #wt-root .wt-rm-row .wt-rm-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #wt-root .wt-rm-cat { font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-right: 6px; }
+  /* ===== 오늘 추가할 기록의 순서 바꾸기 버튼(위/아래) ===== */
   #wt-root .wt-rm-ord { width: 26px; height: 26px; border-radius: 8px; border: none; background: var(--wt-card); color: var(--wt-text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: transform .08s ease, filter .12s ease; }
   #wt-root .wt-rm-ord:active { transform: scale(.88); filter: brightness(.9); }
   #wt-root .wt-rm-ord:disabled { opacity: .3; cursor: default; }
@@ -266,7 +263,7 @@
   }
   #wt-root #unsaved-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ===== 루틴 자동 입력 표시 ===== */
+  /* ===== 회색 보조 뱃지 (종목 변형 등) ===== */
   #wt-root .wt-plan-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: #E7EBF1; color: #57606E; }
   html[data-theme="dark"] #wt-root .wt-plan-badge { background: #2A2E36; color: #A7AFBC; }
   #wt-root .wt-pr-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: #FFF1C2; color: #8A5A12; }
@@ -2333,7 +2330,7 @@
     unlockAudio();
     var src = currentQE.sets[currentQE.sets.length - 1];
     var copy = {};
-    Object.keys(src).forEach(function (k) { if (k !== 'planned') copy[k] = src[k]; });
+    Object.keys(src).forEach(function (k) { copy[k] = src[k]; });
     if (Array.isArray(src.tags)) copy.tags = src.tags.slice();
     currentQE.sets.push(copy);
     commitStaging();
@@ -2365,7 +2362,7 @@
       label.style.cssText = 'flex:1; min-width:0; cursor:pointer;';
       label.innerHTML = '<span>' + (i + 1) + '. ' + setLabel(s) + tailInfo +
         prBadgeHtml(s.pr) +
-        (s.planned ? '<span class="wt-plan-badge">예정</span>' : '') + rpeBadge(s) + tagMini(s) + '</span>' +
+        rpeBadge(s) + tagMini(s) + '</span>' +
         (s.note ? '<span style="display:block;font-size:11px;font-weight:400;color:var(--wt-text-muted);margin-top:2px;">' + escapeHtml(s.note) + '</span>' : '');
       label.addEventListener('click', function () { beginEditSet(i); });
 
@@ -2838,10 +2835,10 @@
     valid.forEach(function (item) {
       var cleaned = item.sets.map(function (st) {
         var c = {};
-        Object.keys(st).forEach(function (k) { if (k !== 'planned') c[k] = st[k]; });
+        Object.keys(st).forEach(function (k) { c[k] = st[k]; });
         return c;
       });
-      day.exercises.push({ name: item.name, category: item.category, sets: cleaned });
+      day.exercises.push({ name: item.name, category: item.category, variant: item.variant || '', sets: cleaned });
     });
     day.exercises = mergeDupExercises(day.exercises);
     commitSessionDuration(day);
