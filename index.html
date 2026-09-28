@@ -365,6 +365,7 @@
           <p style="font-size: 15px; font-weight: 700; margin: 0; color: var(--wt-text);" id="qe-name"></p>
           <button id="qe-close" aria-label="닫기" class="wt-icon-btn-sm"><span data-icon="x" data-size="14"></span></button>
         </div>
+        <input type="text" id="qe-variant" class="wt-input" placeholder="변형 (선택 — 그립·기구 등. 예: 로프, 와이드그립, 머신)" maxlength="16" autocomplete="off" style="width: 100%; font-size: 12px; padding: 8px 10px; margin-bottom: 10px;" />
         <div id="qe-last" class="wt-last-empty"></div>
         <div id="qe-bw-row" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
           <button id="qe-bw-toggle" class="wt-btn-ghost-sm" type="button">맨몸운동</button>
@@ -1205,11 +1206,14 @@
     return w * (1 + r / 30);
   }
   // 저장된 기록(+선택적으로 현재 세션에서 이미 추가된 세트) 중 해당 종목의 역대 최고 1RM
-  function bestOneRMSoFar(name, extraSets) {
+  // variant를 넘기면 같은 이름이라도 그립/기구가 다른 기록은 비교 대상에서 제외한다
+  // (안 넘기면 이름이 같은 모든 기록을 합쳐서 봄 — 통계 화면의 "전체" 조회용)
+  function bestOneRMSoFar(name, extraSets, variant) {
     var best = 0;
     data.days.forEach(function (day) {
       day.exercises.forEach(function (ex) {
         if (ex.name !== name) return;
+        if (variant !== undefined && (ex.variant || '') !== variant) return;
         ex.sets.forEach(function (s) { best = Math.max(best, estOneRM(s)); });
       });
     });
@@ -1218,8 +1222,8 @@
   }
   // 세트(entry) 하나가 PR인지 판정하고, PR이면 entry.pr = true로 표시한다.
   // baselineSets: 이번 세트를 제외한 비교 기준 세트 목록(수정 중이면 수정 대상 제외하고 전달)
-  function judgeAndMarkPR(name, entry, baselineSets) {
-    var prevBest = bestOneRMSoFar(name, baselineSets);
+  function judgeAndMarkPR(name, entry, baselineSets, variant) {
+    var prevBest = bestOneRMSoFar(name, baselineSets, variant);
     var newOneRM = estOneRM(entry);
     var isPR = prevBest > 0 && newOneRM > prevBest;
     if (isPR) entry.pr = true;
@@ -1261,11 +1265,12 @@
     return Math.round((today - d) / 86400000);
   }
   // 종목의 날짜별 최고 1RM 이력(오름차순). 하루에 여러 세트가 있으면 그날의 최고값 하나만 사용.
-  function exerciseOneRMHistory(name) {
+  function exerciseOneRMHistory(name, variant) {
     var byDate = {};
     data.days.forEach(function (day) {
       day.exercises.forEach(function (ex) {
         if (ex.name !== name) return;
+        if (variant !== undefined && (ex.variant || '') !== variant) return;
         var best = 0;
         ex.sets.forEach(function (s) { best = Math.max(best, estOneRM(s)); });
         if (best > 0) byDate[day.date] = Math.max(byDate[day.date] || 0, best);
@@ -1274,8 +1279,8 @@
     return Object.keys(byDate).sort().map(function (d) { return { date: d, oneRM: byDate[d] }; });
   }
   // 정체 상태가 아니면 null, 정체면 { sessionsSincePR, daysSincePR, bestOneRM }를 반환
-  function detectPlateau(name) {
-    var history = exerciseOneRMHistory(name);
+  function detectPlateau(name, variant) {
+    var history = exerciseOneRMHistory(name, variant);
     if (history.length < PLATEAU_MIN_TOTAL_SESSIONS) return null;
 
     var bestSoFar = 0, lastPRIdx = 0;
@@ -1509,7 +1514,7 @@
   function mergeDupExercises(list) {
     var out = [], idx = {};
     (list || []).forEach(function (ex) {
-      var key = (ex.category || '기타') + '\u0000' + ex.name;
+      var key = (ex.category || '기타') + '\u0000' + ex.name + '\u0000' + (ex.variant || '');
       if (idx[key] === undefined) { idx[key] = out.length; out.push(ex); }
       else { out[idx[key]].sets = (out[idx[key]].sets || []).concat(ex.sets || []); }
     });
@@ -1527,6 +1532,7 @@
           return {
             name: ex.name,
             category: ex.category || '기타',
+            variant: (typeof ex.variant === 'string') ? ex.variant.trim().slice(0, 16) : '',
             sets: (ex.sets || []).map(function (s) {
               var out = {
                 weight: Number(s.weight) || 0,
@@ -1619,7 +1625,7 @@
       if (!d || !Array.isArray(d.staging) || !d.staging.length) return;
       staging = d.staging.map(function (item) {
         return {
-          category: item.category, name: item.name,
+          category: item.category, name: item.name, variant: item.variant || '',
           sets: (item.sets || []).map(function (x) { return x; })
         };
       });
@@ -1788,17 +1794,29 @@
       .filter(function (n) { return hidden.indexOf(n) === -1; });
   }
 
-  function lastPerformance(name, beforeDate) {
+  // variant를 넘기면 그 그립/기구로 한 기록만(없으면 "무변형"만) 찾는다 — 안 넘기면 이름이 같은 걸 전부 봄
+  function lastPerformance(name, beforeDate, variant) {
     var days = data.days.filter(function (d) { return !beforeDate || d.date < beforeDate; })
       .slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
     for (var i = 0; i < days.length; i++) {
-      var matches = days[i].exercises.filter(function (ex) { return ex.name === name; });
+      var matches = days[i].exercises.filter(function (ex) {
+        return ex.name === name && (variant === undefined || (ex.variant || '') === variant);
+      });
       if (matches.length) {
         var all = [].concat.apply([], matches.map(function (m) { return m.sets; }));
         return { date: days[i].date, sets: all, maxWeight: maxWeight(all) };
       }
     }
     return null;
+  }
+  // 이 종목을 가장 최근에 기록할 때 썼던 변형(그립/기구) 문구 — 새로 입력 시작할 때 기본값으로 씀
+  function lastVariantFor(name) {
+    var days = data.days.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+    for (var i = 0; i < days.length; i++) {
+      var matches = days[i].exercises.filter(function (ex) { return ex.name === name; });
+      if (matches.length) return matches[matches.length - 1].variant || '';
+    }
+    return '';
   }
 
   function renderCategoryChips() {
@@ -2156,7 +2174,8 @@
   function openQuickEntry(category, name) {
     var dateVal = $('entry-date').value;
     var existing = staging.find(function (s) { return s.name === name && s.category === category; });
-    currentQE = existing || { category: category, name: name, sets: [] };
+    currentQE = existing || { category: category, name: name, variant: lastVariantFor(name), sets: [] };
+    if (currentQE.variant === undefined) currentQE.variant = '';
 
     editingSetIndex = -1;
     setWarmup(false);
@@ -2165,12 +2184,13 @@
     applyModeFields(category, name);
     $('quick-entry').style.display = '';
     $('qe-name').textContent = name;
+    $('qe-variant').value = currentQE.variant || '';
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
 
     var cardio = isCardio(category);
-    var last = lastPerformance(name, dateVal);
+    var last = lastPerformance(name, dateVal, currentQE.variant);
     var repeatBtn = $('qe-repeat-last');
 
     if (last) {
@@ -2228,6 +2248,7 @@
     currentQE = {
       category: ex.category,
       name: ex.name,
+      variant: ex.variant || '',
       sets: ex.sets.map(function (s) {
         var copy = {};
         Object.keys(s).forEach(function (k) { copy[k] = s[k]; });
@@ -2242,6 +2263,7 @@
     applyModeFields(ex.category, ex.name);
     $('quick-entry').style.display = '';
     $('qe-name').textContent = ex.name + ' — 기록 수정';
+    $('qe-variant').value = currentQE.variant || '';
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(ex.category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
@@ -2368,6 +2390,7 @@
       if (!day.exercises.length) data.days = data.days.filter(function (d) { return d !== day; });
     } else {
       day.exercises[exIdx].sets = currentQE.sets;
+      day.exercises[exIdx].variant = currentQE.variant || '';
     }
     closeQuickEntry();
     selectedCategory = null;
@@ -2401,6 +2424,17 @@
   });
   $('qe-weight').addEventListener('input', updateOneRMHint);
   $('qe-reps').addEventListener('input', updateOneRMHint);
+  // 변형(그립·기구)을 바꿔 입력하면, "지난 기록" 카드를 그 변형 기준으로 다시 찾아 보여줌
+  // (무게/횟수 입력칸은 그대로 둠 — 이미 타이핑 중인 값을 지우지 않기 위해)
+  $('qe-variant').addEventListener('input', function () {
+    if (!currentQE) return;
+    currentQE.variant = this.value.trim().slice(0, 16);
+    var last = lastPerformance(currentQE.name, $('entry-date').value, currentQE.variant);
+    renderLastRecord(last);
+    // "지난 세트 그대로" 버튼은 열 때 계산한 지난 기록을 기준으로 동작하므로,
+    // 변형을 바꾸면 그 기준이 달라져 숨겨둔다(다시 열면 새 변형 기준으로 정상 표시됨)
+    $('qe-repeat-last').style.display = 'none';
+  });
   $('qe-min-minus').addEventListener('click', function () {
     var el = $('qe-minutes'); el.value = Math.max(0, (parseInt(el.value, 10) || 0) - 5);
   });
@@ -2454,7 +2488,7 @@
     var baselineSets = editingSetIndex >= 0
       ? currentQE.sets.filter(function (_, idx) { return idx !== editingSetIndex; })
       : currentQE.sets;
-    var prResult = judgeAndMarkPR(currentQE.name, entry, baselineSets);
+    var prResult = judgeAndMarkPR(currentQE.name, entry, baselineSets, currentQE.variant);
     var isPR = prResult.isPR, newOneRM = prResult.oneRM;
 
     if (editingSetIndex >= 0) {
@@ -2544,7 +2578,7 @@
       row.className = 'wt-row-card';
 
       var todayMax = maxWeight(item.sets);
-      var last = lastPerformance(item.name, dateVal);
+      var last = lastPerformance(item.name, dateVal, item.variant);
       var trend = '';
       if (!isCardio(item.category) && last && last.maxWeight > 0 && todayMax > 0) {
         var d = Math.round((todayMax - last.maxWeight) * 100) / 100;
@@ -2569,9 +2603,10 @@
         summary = item.sets.map(function (s) { return setLabel(s).replace(' × ', '×') + (s.warmup ? 'W' : ''); }).join(', ') +
           ' · ' + fmtVol(setVolume(item.sets)) + (warmCount ? ' · 워밍업 ' + warmCount : '');
       }
+      var variantBadge = item.variant ? '<span class="wt-plan-badge">' + escapeHtml(item.variant) + '</span>' : '';
       var mid = document.createElement('div');
       mid.style.cssText = 'flex:1;cursor:pointer;min-width:0;';
-      mid.innerHTML = '<p style="font-size:13px;font-weight:700;margin:0;color:var(--wt-text);">' + escapeHtml(item.name) + trend + '</p>' +
+      mid.innerHTML = '<p style="font-size:13px;font-weight:700;margin:0;color:var(--wt-text);">' + escapeHtml(item.name) + variantBadge + trend + '</p>' +
         '<p style="font-size:12px;color:var(--wt-text-muted);margin:2px 0 0;">' + summary + '</p>';
       mid.addEventListener('click', function () {
         selectedCategory = item.category;
@@ -2892,9 +2927,10 @@
       var notes = ex.sets.filter(function (s) { return s.note; })
         .map(function (s) { return '<span style="display:block;font-size:11px;color:var(--wt-text-muted);margin-top:2px;">· ' + escapeHtml(s.note) + '</span>'; }).join('');
 
+      var exVariantBadge = ex.variant ? '<span class="wt-plan-badge">' + escapeHtml(ex.variant) + '</span>' : '';
       var mid = document.createElement('div');
       mid.style.cssText = 'flex:1;min-width:0;';
-      mid.innerHTML = '<p style="font-size:14px;font-weight:700;margin:0 0 2px;color:var(--wt-text);">' + escapeHtml(ex.name) + '</p>' +
+      mid.innerHTML = '<p style="font-size:14px;font-weight:700;margin:0 0 2px;color:var(--wt-text);">' + escapeHtml(ex.name) + exVariantBadge + '</p>' +
         '<div style="font-size:13px;color:var(--wt-text-muted);">' + setsHtml + exTail + '</div>' + notes;
 
       var btnGroup = document.createElement('div');
@@ -3292,18 +3328,40 @@
     drawLineChart('protein-canvas', points, 'grams', function (v) { return Math.round(v) + 'g'; });
   }
 
-  function allExerciseNames() {
-    var set = {};
-    data.days.forEach(function (day) { day.exercises.forEach(function (ex) { set[ex.name] = 1; }); });
-    return Object.keys(set).sort();
+  // 종목(이름+변형) 목록. 한 이름에 변형이 여러 개 쓰인 적 있을 때만 "이름 · 변형"으로 쪼개서 보여주고,
+  // 변형을 한 번도 안 썼거나 하나만 썼던 이름은 그냥 이름 그대로 보여준다(불필요하게 목록만 늘리지 않기 위해).
+  var progressOptionsByKey = {};
+  function allExerciseOptions() {
+    var seen = {}; // key(이름\u0000변형) -> { name, variant }
+    data.days.forEach(function (day) {
+      day.exercises.forEach(function (ex) {
+        var v = ex.variant || '';
+        var key = ex.name + '\u0000' + v;
+        if (!seen[key]) seen[key] = { name: ex.name, variant: v };
+      });
+    });
+    var variantCountByName = {};
+    Object.keys(seen).forEach(function (k) {
+      var n = seen[k].name;
+      variantCountByName[n] = (variantCountByName[n] || 0) + 1;
+    });
+    var options = Object.keys(seen).map(function (k) {
+      var o = seen[k];
+      var multi = variantCountByName[o.name] > 1;
+      var label = multi ? (o.name + ' · ' + (o.variant || '(변형 없음)')) : o.name;
+      return { key: k, name: o.name, variant: o.variant, label: label };
+    });
+    options.sort(function (a, b) { return a.label.localeCompare(b.label, 'ko'); });
+    return options;
   }
 
   function renderProgressSelect() {
     var sel = $('progress-exercise');
-    var names = allExerciseNames();
+    var options = allExerciseOptions();
     var prev = sel.value;
     sel.innerHTML = '';
-    if (!names.length) {
+    progressOptionsByKey = {};
+    if (!options.length) {
       $('progress-empty').style.display = 'block';
       $('progress-stats').style.display = 'none';
       sel.style.display = 'none';
@@ -3311,12 +3369,13 @@
     }
     sel.style.display = '';
     $('progress-empty').style.display = 'none';
-    names.forEach(function (n) {
+    options.forEach(function (o) {
+      progressOptionsByKey[o.key] = o;
       var opt = document.createElement('option');
-      opt.value = n; opt.textContent = n;
+      opt.value = o.key; opt.textContent = o.label;
       sel.appendChild(opt);
     });
-    if (names.indexOf(prev) !== -1) sel.value = prev;
+    if (progressOptionsByKey[prev]) sel.value = prev;
     renderProgress();
   }
 
@@ -3327,11 +3386,13 @@
     }
     return false;
   }
-  function pointsFor(name) {
+  function pointsFor(name, variant) {
     var cardio = isCardioExercise(name);
     return data.days.slice().sort(function (a, b) { return a.date.localeCompare(b.date); })
       .map(function (day) {
-        var matches = day.exercises.filter(function (ex) { return ex.name === name; });
+        var matches = day.exercises.filter(function (ex) {
+          return ex.name === name && (variant === undefined || (ex.variant || '') === variant);
+        });
         if (!matches.length) return null;
         var all = [].concat.apply([], matches.map(function (m) { return m.sets; }));
         if (cardio) {
@@ -3346,11 +3407,13 @@
   }
 
   function renderProgress() {
-    var name = $('progress-exercise').value;
-    if (!name) return;
+    var key = $('progress-exercise').value;
+    var opt = progressOptionsByKey[key];
+    if (!opt) return;
+    var name = opt.name, variant = opt.variant;
     $('progress-stats').style.display = 'block';
 
-    var points = pointsFor(name);
+    var points = pointsFor(name, variant);
     var cardio = points.length ? !!points[0].cardio : false;
     var unit = cardio ? '' : 'kg';
 
@@ -3391,7 +3454,7 @@
     // 예상 최고 1RM(현재까지 전체 역대 최고치, 유산소 제외)
     var oneRMCaption = $('progress-1rm-caption');
     if (!cardio) {
-      var bestRM = bestOneRMSoFar(name, []);
+      var bestRM = bestOneRMSoFar(name, [], variant);
       oneRMCaption.textContent = bestRM > 0 ? '예상 최고 1RM 약 ' + Math.round(bestRM) + 'kg (Epley 공식 추정치)' : '';
       oneRMCaption.style.display = bestRM > 0 ? '' : 'none';
     } else {
@@ -3400,7 +3463,7 @@
 
     // 정체기(plateau) 안내 — PR 배지(금색·트로피)와 겹치지 않게 차분한 톤으로 구분
     var plateauBadge = $('progress-plateau-badge');
-    var plateau = !cardio ? detectPlateau(name) : null;
+    var plateau = !cardio ? detectPlateau(name, variant) : null;
     if (plateau) {
       plateauBadge.textContent = '⏸ ' + plateau.daysSincePR + '일째 정체 · 최근 ' + plateau.sessionsSincePR + '회 동안 1RM 갱신 없음';
       plateauBadge.style.display = 'inline-block';
@@ -3416,10 +3479,10 @@
 
     drawLineChart('progress-canvas', points, chartMode, labelFn);
     renderProgressTable(points, cardio);
-    renderProgressNotes(name);
+    renderProgressNotes(name, variant);
   }
 
-  function renderProgressNotes(name) {
+  function renderProgressNotes(name, variant) {
     var card = $('progress-notes');
     var list = $('progress-notes-list');
     var rows = [];
@@ -3427,6 +3490,7 @@
       .forEach(function (day) {
         (day.exercises || []).forEach(function (ex) {
           if (ex.name !== name) return;
+          if (variant !== undefined && (ex.variant || '') !== variant) return;
           (ex.sets || []).forEach(function (st) {
             if (!st.note && !(st.tags && st.tags.length)) return;
             rows.push({ date: day.date, note: st.note || '', tags: st.tags || [], label: setLabel(st) });
