@@ -365,7 +365,8 @@
           <p style="font-size: 15px; font-weight: 700; margin: 0; color: var(--wt-text);" id="qe-name"></p>
           <button id="qe-close" aria-label="닫기" class="wt-icon-btn-sm"><span data-icon="x" data-size="14"></span></button>
         </div>
-        <input type="text" id="qe-variant" class="wt-input" placeholder="변형 (선택 — 그립·기구 등. 예: 로프, 와이드그립, 머신)" maxlength="16" autocomplete="off" style="width: 100%; font-size: 12px; padding: 8px 10px; margin-bottom: 10px;" />
+        <input type="text" id="qe-variant" class="wt-input" placeholder="변형 (선택 — 그립·기구 등. 예: 로프, 와이드그립, 머신)" maxlength="16" autocomplete="off" style="width: 100%; font-size: 12px; padding: 8px 10px;" />
+        <div id="qe-variant-chips" style="display: none; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px;"></div>
         <div id="qe-last" class="wt-last-empty"></div>
         <div id="qe-bw-row" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
           <button id="qe-bw-toggle" class="wt-btn-ghost-sm" type="button">맨몸운동</button>
@@ -1818,6 +1819,38 @@
     }
     return '';
   }
+  // 이 종목에서 예전에 썼던 변형 문구 목록(최근 쓴 순, 중복 제거) — 타이핑 대신 탭으로 골라서
+  // "로프"/"로프 "처럼 살짝 다르게 적어 기록이 갈라지는 걸 막기 위한 칩 목록에 씀
+  function variantsUsedFor(name) {
+    var out = [], seen = {};
+    data.days.slice().sort(function (a, b) { return b.date.localeCompare(a.date); })
+      .forEach(function (day) {
+        day.exercises.forEach(function (ex) {
+          if (ex.name !== name || !ex.variant || seen[ex.variant]) return;
+          seen[ex.variant] = true;
+          out.push(ex.variant);
+        });
+      });
+    return out;
+  }
+  function renderVariantChips(name, activeVariant) {
+    var wrap = $('qe-variant-chips');
+    var used = variantsUsedFor(name);
+    if (!used.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = '';
+    used.forEach(function (v) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'wt-chip' + (v === activeVariant ? ' active' : '');
+      chip.textContent = v;
+      chip.addEventListener('click', function () {
+        $('qe-variant').value = v;
+        $('qe-variant').dispatchEvent(new Event('input'));
+      });
+      wrap.appendChild(chip);
+    });
+  }
 
   function renderCategoryChips() {
     var wrap = $('category-chips');
@@ -2185,6 +2218,7 @@
     $('quick-entry').style.display = '';
     $('qe-name').textContent = name;
     $('qe-variant').value = currentQE.variant || '';
+    renderVariantChips(name, currentQE.variant || '');
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
@@ -2264,6 +2298,7 @@
     $('quick-entry').style.display = '';
     $('qe-name').textContent = ex.name + ' — 기록 수정';
     $('qe-variant').value = currentQE.variant || '';
+    renderVariantChips(ex.name, currentQE.variant || '');
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(ex.category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
@@ -2429,6 +2464,9 @@
   $('qe-variant').addEventListener('input', function () {
     if (!currentQE) return;
     currentQE.variant = this.value.trim().slice(0, 16);
+    document.querySelectorAll('#qe-variant-chips .wt-chip').forEach(function (chip) {
+      chip.classList.toggle('active', chip.textContent === currentQE.variant);
+    });
     var last = lastPerformance(currentQE.name, $('entry-date').value, currentQE.variant);
     renderLastRecord(last);
     // "지난 세트 그대로" 버튼은 열 때 계산한 지난 기록을 기준으로 동작하므로,
