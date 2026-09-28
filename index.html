@@ -631,7 +631,7 @@
     </div>
 
     <div class="wt-card" style="margin-bottom: 12px;">
-      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">설정</p>
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">타이머 · 목표</p>
       <div class="wt-setting-row">
         <div>
           <span style="font-size: 13px; color: var(--wt-text);">주 운동 목표</span>
@@ -651,6 +651,10 @@
           <button class="wt-stepper-btn" id="rest-plus" aria-label="휴식 시간 증가">+</button>
         </div>
       </div>
+    </div>
+
+    <div class="wt-card" style="margin-bottom: 12px;">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">알림</p>
       <div class="wt-setting-row">
         <span style="font-size: 13px; color: var(--wt-text);">알림음</span>
         <button id="sound-switch" class="wt-switch" role="switch" aria-label="알림음"></button>
@@ -661,10 +665,6 @@
           <span id="vibe-support" style="display: block; font-size: 11px; color: var(--wt-text-muted);"></span>
         </div>
         <button id="vibe-switch" class="wt-switch" role="switch" aria-label="진동"></button>
-      </div>
-      <div class="wt-setting-row">
-        <span style="font-size: 13px; color: var(--wt-text);">다크 모드</span>
-        <button id="dark-switch" class="wt-switch" role="switch" aria-label="다크 모드"></button>
       </div>
       <button id="test-alert-btn" class="wt-btn-secondary" style="width: 100%; margin-top: 10px;">알림 테스트</button>
     </div>
@@ -1663,7 +1663,6 @@
     document.documentElement.setAttribute('data-theme', data.dark ? 'dark' : 'light');
     $('theme-color-meta').setAttribute('content', data.dark ? '#111214' : '#F7F7F9');
     $('theme-toggle').innerHTML = svg(data.dark ? 'sun' : 'moon', 16);
-    $('dark-switch').classList.toggle('on', data.dark);
     redrawCharts();
   }
   function redrawCharts() {
@@ -3658,7 +3657,6 @@
     $('rest-display').textContent = fmtMinSec(data.restSeconds);
     $('sound-switch').classList.toggle('on', data.sound);
     $('vibe-switch').classList.toggle('on', data.vibrate && canVibrate);
-    $('dark-switch').classList.toggle('on', data.dark);
     $('vibe-support').textContent = canVibrate ? '' : '이 브라우저는 진동을 지원하지 않습니다';
     $('vibe-switch').style.opacity = canVibrate ? '1' : '0.4';
     $('goal-display').textContent = data.weeklyGoal > 0 ? '주 ' + data.weeklyGoal + '일' : '사용 안 함';
@@ -3772,12 +3770,6 @@
     if (!canVibrate) return;
     data.vibrate = !data.vibrate;
     if (data.vibrate) buzz();
-    renderSettings();
-    persist();
-  });
-  $('dark-switch').addEventListener('click', function () {
-    data.dark = !data.dark;
-    applyTheme();
     renderSettings();
     persist();
   });
