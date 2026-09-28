@@ -183,6 +183,11 @@
   }
   @keyframes wt-timer-pulse { 0%, 100% { background: var(--wt-accent); } 50% { background: var(--wt-danger); } }
   #wt-root #rest-timer-pill.wt-timer-ended { animation: wt-timer-pulse 1s ease-in-out infinite; cursor: pointer; }
+  @keyframes wt-spin { to { transform: rotate(360deg); } }
+  #wt-root .wt-spin { animation: wt-spin .7s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    #wt-root .wt-spin { animation: none; }
+  }
   @keyframes wt-screen-flash { 0% { opacity: 0; } 12% { opacity: .5; } 24% { opacity: 0; } 36% { opacity: .5; } 48% { opacity: 0; } 100% { opacity: 0; } }
   #wt-flash-overlay { position: fixed; inset: 0; background: var(--wt-danger); pointer-events: none; opacity: 0; z-index: 90; }
   #wt-flash-overlay.show { animation: wt-screen-flash 1.8s ease-in-out; }
@@ -307,6 +312,7 @@
         <span id="rest-timer-value" style="font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">00:00</span>
         <button id="rest-timer-stop" aria-label="타이머 중지" style="position: relative; width: 28px; height: 28px; border: none; border-radius: 50%; background: rgba(255,255,255,0.25); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer;"><span data-icon="x" data-size="13"></span></button>
       </div>
+      <button id="gh-refresh-header-btn" class="wt-icon-btn-round" aria-label="GitHub에서 새로고침" style="display: none;"><span data-icon="refresh-cw" data-size="16"></span></button>
       <button id="theme-toggle" class="wt-icon-btn-round" aria-label="다크 모드 전환"><span data-icon="moon" data-size="16"></span></button>
     </div>
   </div>
@@ -698,9 +704,6 @@
         </div>
         <p id="gh-verify-hint" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: -2px 0 0; display: none;">먼저 "연결 테스트"를 통과해야 저장할 수 있습니다.</p>
       </div>
-      <div id="gh-refresh-row" style="display: none; gap: 6px; margin-bottom: 6px;">
-        <button id="gh-refresh-btn" class="wt-btn-secondary" style="flex: 1;">새로고침 (다른 기기 기록 받아오기)</button>
-      </div>
       <button id="gh-disconnect-btn" class="wt-btn-secondary" style="width: 100%; display: none;">연결 해제 (이 기기에서 설정 삭제)</button>
       <p id="gh-help" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: 10px 0 0; line-height: 1.6;">아직 비공개 저장소나 토큰을 안 만드셨다면, 먼저 GitHub에서<br>① 새 비공개 저장소 생성(README 포함) → ② Settings → Developer settings →<br>Fine-grained tokens에서 그 저장소만 골라 Contents 권한 Read/Write로 토큰 발급</p>
       <p id="gh-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
@@ -790,7 +793,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 5;
+  var APP_VERSION = 6;
   var APP_BUILD_DATE = '2026-09-28';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -1031,7 +1034,8 @@
     'pencil': '<path d="M4 20h4L19 9a2.1 2.1 0 10-3-3L5 17v3z"/>',
     'chevron-right': '<path d="M9 5l7 7-7 7"/>',
     'arrow-up': '<path d="M12 19V5M6 11l6-6 6 6"/>',
-    'arrow-down': '<path d="M12 5v14M6 13l6 6 6-6"/>'
+    'arrow-down': '<path d="M12 5v14M6 13l6 6 6-6"/>',
+    'refresh-cw': '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'
   };
 
   function svg(name, size) {
@@ -3875,7 +3879,7 @@
     if (cfg) {
       $('gh-status').textContent = '연결됨 — ' + cfg.owner + '/' + cfg.repo + (cfg.branch && cfg.branch !== 'main' ? ' (브랜치: ' + cfg.branch + ')' : '') + '. 이 기기에서 저장하면 GitHub에도 함께 저장됩니다.';
       $('gh-form').style.display = 'none';
-      $('gh-refresh-row').style.display = 'flex';
+      $('gh-refresh-header-btn').style.display = '';
       $('gh-disconnect-btn').style.display = '';
       $('gh-help').style.display = 'none';
       if (cfg.tokenExpiresAt) {
@@ -3887,7 +3891,7 @@
     } else {
       $('gh-status').textContent = '연결 안 됨 — 이 기기에만 저장됩니다.';
       $('gh-form').style.display = 'flex';
-      $('gh-refresh-row').style.display = 'none';
+      $('gh-refresh-header-btn').style.display = 'none';
       $('gh-disconnect-btn').style.display = 'none';
       $('gh-help').style.display = '';
       expEl.style.display = 'none';
@@ -3984,12 +3988,15 @@
       btn.textContent = '저장하고 시작';
     }
   });
-  $('gh-refresh-btn').addEventListener('click', async function () {
+  // 업무일지처럼, 설정 탭에 들어가지 않고도 헤더에서 바로 최신 기록을 받아올 수 있게 함
+  // (다크모드 전환 버튼과 같은 자리 — GitHub 연결 중일 때만 보임)
+  $('gh-refresh-header-btn').addEventListener('click', async function () {
     var cfg = getGhConfig();
     if (!cfg) return;
-    var btn = $('gh-refresh-btn');
+    var btn = $('gh-refresh-header-btn');
+    var icon = btn.querySelector('[data-icon]');
     btn.disabled = true;
-    btn.textContent = '불러오는 중...';
+    if (icon) icon.classList.add('wt-spin');
     try {
       // store.get은 방금 내가 저장한 직후엔 로컬 사본을 우선하는데(읽기 지연 방지),
       // 새로고침은 "다른 기기가 방금 바꾼 걸 지금 당장 확인하고 싶다"는 명시적 요청이므로
@@ -4003,15 +4010,18 @@
         try { window.localStorage.setItem(GH_CACHE_KEY, remote.value); } catch (e) {}
         try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); } catch (e) {}
         renderAll();
+        toast('최신 기록을 받아왔습니다');
         ghMsg('최신 기록을 받아왔습니다.', true);
       } else {
+        toast('GitHub에 아직 기록 파일이 없습니다');
         ghMsg('GitHub에 아직 기록 파일이 없습니다.', false);
       }
     } catch (e) {
+      toast(e.message || '새로고침에 실패했습니다');
       ghMsg(e.message || '새로고침에 실패했습니다.', false);
     } finally {
       btn.disabled = false;
-      btn.textContent = '새로고침 (다른 기기 기록 받아오기)';
+      if (icon) icon.classList.remove('wt-spin');
     }
   });
   $('gh-disconnect-btn').addEventListener('click', function () {
