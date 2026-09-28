@@ -320,7 +320,7 @@
   <div id="loading" style="font-size: 13px; color: var(--wt-text-muted); padding: 2rem 0; text-align: center;">불러오는 중...</div>
 
   <!-- ===== 기록 ===== -->
-  <div id="view-log" style="display: none;">
+  <div id="view-log" style="display: none; transition: margin-top .18s ease;">
 
     <div style="display: flex; gap: 8px; margin-bottom: 14px;">
       <input type="date" id="entry-date" class="wt-input" style="flex: 1; min-width: 0;" />
@@ -2538,7 +2538,11 @@
   function updateUnsavedBar() {
     var bar = $('unsaved-bar');
     var c = stagingCounts();
-    if (!c.sets || currentTab !== 'log') { bar.style.display = 'none'; bar.classList.remove('show'); return; }
+    if (!c.sets || currentTab !== 'log') {
+      bar.style.display = 'none'; bar.classList.remove('show');
+      $('view-log').style.marginTop = '';
+      return;
+    }
     // 저장 영역이 화면에 보이면 알림 줄은 숨김
     var visible = false;
     try {
@@ -2546,14 +2550,27 @@
       var h = window.innerHeight || 800;
       visible = r.top < h - 60 && r.bottom > 0;
     } catch (e) {}
-    if (visible) { bar.style.display = 'none'; bar.classList.remove('show'); return; }
+    if (visible) {
+      bar.style.display = 'none'; bar.classList.remove('show');
+      $('view-log').style.marginTop = '';
+      return;
+    }
     $('unsaved-bar-text').textContent = '저장 전 기록 ' + c.ex + '종목 · ' + c.sets + '세트';
-    // 헤더(휴식 타이머 포함)와 겹치지 않도록, 헤더가 화면에 보이는 동안은 그 아래에 위치시킴
+    bar.style.display = 'flex';
+    // 헤더(휴식 타이머 포함)와 겹치지 않도록, 헤더가 화면에 보이는 동안은 그 아래에 위치시키고,
+    // 그만큼 아래 내용(날짜 입력 등)도 밀어내려서 알림 줄이 그 위를 가리지 않게 함.
+    // 스크롤을 내려 헤더가 화면 밖으로 나가면, 알림 줄은 화면 맨 위에 떠 있는 리마인더로만 동작하고
+    // (이미 지나간 내용을 덮어도 무방) 아래 내용을 밀어내지 않는다.
     try {
       var hRect = $('top-header').getBoundingClientRect();
-      bar.style.top = (hRect.bottom > 0 ? Math.round(hRect.bottom) + 10 : 8) + 'px';
-    } catch (e) { bar.style.top = ''; }
-    bar.style.display = 'flex';
+      if (hRect.bottom > 0) {
+        bar.style.top = (Math.round(hRect.bottom) + 10) + 'px';
+        $('view-log').style.marginTop = (bar.offsetHeight + 10) + 'px';
+      } else {
+        bar.style.top = '8px';
+        $('view-log').style.marginTop = '';
+      }
+    } catch (e) { bar.style.top = ''; $('view-log').style.marginTop = ''; }
     requestAnimationFrame(function () { bar.classList.add('show'); });
   }
   $('unsaved-bar').addEventListener('click', function () {
