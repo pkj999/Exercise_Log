@@ -132,8 +132,8 @@
   #wt-root .wt-cal-cell.empty { visibility: hidden; }
   #wt-root .wt-cal-cell.today { background: var(--wt-accent-soft); font-weight: 700; }
   #wt-root .wt-cal-cell.selected { outline: 2px solid var(--wt-accent); }
-  #wt-root .wt-cal-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--wt-text-muted); }
-  #wt-root .wt-cal-cell.today .wt-cal-dot { background: var(--wt-accent); }
+  #wt-root .wt-cal-dots { display: flex; align-items: center; gap: 2px; }
+  #wt-root .wt-cal-dot { width: 10px; height: 4px; border-radius: 999px; background: var(--wt-text-muted); }
 
   #wt-root .wt-switch { position: relative; width: 42px; height: 24px; border-radius: 8px; background: var(--wt-bg); border: 1.5px solid var(--wt-border-strong); cursor: pointer; flex-shrink: 0; padding: 0; }
   #wt-root .wt-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--wt-text-muted); transition: left .18s, background .18s; }
@@ -3076,6 +3076,18 @@
   }
 
   // ---------- [조회] 캘린더 ----------
+  // 캘린더 셀 하단에 그날 한 부위를 알약 모양 점으로 표시(부위별 색) — 최대 3개까지만, 나머지는 생략
+  function dayCategoryDots(day) {
+    if (!day) return '';
+    var seen = {}, cats = [];
+    day.exercises.forEach(function (ex) {
+      var c = ex.category || '기타';
+      if (!seen[c]) { seen[c] = true; cats.push(c); }
+    });
+    return cats.slice(0, 3).map(function (c) {
+      return '<span class="wt-cal-dot" style="background:' + meta(c).color + ';"></span>';
+    }).join('');
+  }
   function renderCalendar() {
     var y = calCursor.getFullYear(), mo = calCursor.getMonth();
     $('cal-title').textContent = y + '년 ' + (mo + 1) + '월';
@@ -3108,7 +3120,7 @@
         var day = data.days.find(function (d) { return d.date === iso; });
         var cell = document.createElement('button');
         cell.className = 'wt-cal-cell' + (iso === todayIso ? ' today' : '') + (iso === calSelected ? ' selected' : '');
-        cell.innerHTML = '<span>' + n + '</span>' + (day ? '<span class="wt-cal-dot"></span>' : '');
+        cell.innerHTML = '<span>' + n + '</span>' + (day ? '<span class="wt-cal-dots">' + dayCategoryDots(day) + '</span>' : '');
         cell.addEventListener('click', function () {
           calSelected = (calSelected === iso) ? null : iso;
           renderCalendar();
