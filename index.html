@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="운동 기록">
-<meta name="theme-color" id="theme-color-meta" content="#F5F3EF">
+<meta name="theme-color" id="theme-color-meta" content="#F7F7F9">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -20,7 +20,7 @@
 <style>
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  html, body { background: #F5F3EF; }
+  html, body { background: #F7F7F9; }
   html[data-theme="dark"], html[data-theme="dark"] body { background: #111214; }
   body {
     margin: 0;
@@ -38,20 +38,20 @@
        아껴 쓰고, 구분은 색이 아니라 테두리·타이포(폰트 굵기/크기)로 한다. 선택 상태는
        꽉 찬 배경(fill)이 아니라 테두리+옅은 배경(accent-soft)로 표현 — 이 톤을 벗어나는
        새 색을 추가하지 말 것. 숫자는 JetBrains Mono(.wt-stat-value 등), 본문은 Pretendard. */
-    --wt-bg: #F5F3EF;
+    --wt-bg: #F7F7F9;
     --wt-card: #FFFFFF;
     --wt-accent: #5E6AD2;
     --wt-accent-dark: #4A55B0;
     --wt-accent-soft: #E7E8FA;
-    --wt-text: #201F1D;
-    --wt-text-muted: #726D63;
-    --wt-border: #E7E2D6;
-    --wt-border-strong: #D9D2C1;
+    --wt-text: #0F172A;
+    --wt-text-muted: #64748B;
+    --wt-border: #E2E8F0;
+    --wt-border-strong: #CBD5E1;
     --wt-good: #3B6D11;
     --wt-danger: #D93954;
     --wt-danger-bg: #FCE7EA;
-    --wt-shadow-sm: 0 1px 0 rgba(32,31,29,0.04);
-    --wt-shadow-md: 0 2px 4px rgba(32,31,29,0.05);
+    --wt-shadow-sm: 0 1px 0 rgba(15,23,42,0.04);
+    --wt-shadow-md: 0 2px 4px rgba(15,23,42,0.05);
     --wt-shadow-accent: 0 4px 10px rgba(94,106,210,0.22);
     background: var(--wt-bg);
   }
@@ -1462,7 +1462,7 @@
   // ---------- [설정] 테마 (라이트/다크) ----------
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', data.dark ? 'dark' : 'light');
-    $('theme-color-meta').setAttribute('content', data.dark ? '#111214' : '#F5F3EF');
+    $('theme-color-meta').setAttribute('content', data.dark ? '#111214' : '#F7F7F9');
     $('theme-toggle').innerHTML = svg(data.dark ? 'sun' : 'moon', 16);
     $('dark-switch').classList.toggle('on', data.dark);
     redrawCharts();
@@ -2946,8 +2946,8 @@
     if (!points.length) return;
 
     var accent = cssVar('--wt-accent', '#5E6AD2');
-    var grid = cssVar('--wt-border', '#E7E2D6');
-    var muted = cssVar('--wt-text-muted', '#726D63');
+    var grid = cssVar('--wt-border', '#E2E8F0');
+    var muted = cssVar('--wt-text-muted', '#64748B');
     var cardBg = cssVar('--wt-card', '#FFFFFF');
 
     var padL = 50, padR = 12, padT = 12, padB = 24;
