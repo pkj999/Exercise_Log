@@ -2335,9 +2335,7 @@
       row.className = 'wt-set-row' + (editingSetIndex === i ? ' editing' : '');
 
       var tailInfo = '';
-      if (s.cardio) tailInfo = '';
-      else if (s.warmup) tailInfo = '<span class="wt-warm-badge">W</span>';
-      else tailInfo = '<span style="color:var(--wt-text-muted);font-weight:400;margin-left:6px;">' + Math.round(effWeight(s) * s.reps).toLocaleString() + 'kg</span>';
+      if (s.warmup) tailInfo = '<span class="wt-warm-badge">W</span>';
 
       var label = document.createElement('div');
       label.style.cssText = 'flex:1; min-width:0; cursor:pointer;';
