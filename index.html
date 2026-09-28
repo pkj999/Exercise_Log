@@ -475,7 +475,7 @@
     <div id="history-list" style="display: none;"></div>
 
     <button id="protein-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="protein-body">
-      <span class="wt-section-title">오늘 단백질</span>
+      <span class="wt-section-title">오늘 섭취한 단백질</span>
       <span id="protein-count" class="wt-section-count"></span>
       <span class="wt-section-line"></span>
       <span class="wt-section-caret" data-icon="chevron-down" data-size="16"></span>
@@ -493,12 +493,17 @@
       </div>
       <div id="protein-log-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;"></div>
       <p id="protein-log-empty" style="display: none; font-size: 12px; color: var(--wt-text-muted); margin: 0 0 10px;">아직 기록한 끼니가 없습니다.</p>
-      <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
-        <button class="wt-chip protein-quick" data-label="아침" type="button">아침</button>
-        <button class="wt-chip protein-quick" data-label="점심" type="button">점심</button>
-        <button class="wt-chip protein-quick" data-label="저녁" type="button">저녁</button>
-        <button class="wt-chip protein-quick" data-label="간식" type="button">간식</button>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <p class="wt-mini-label" style="margin: 0;">빠른 입력</p>
+        <button id="protein-label-edit-btn" class="wt-btn-ghost-sm" type="button">편집</button>
       </div>
+      <div id="protein-quick-chips" style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;"></div>
+      <div id="protein-label-add-form" style="display: none; gap: 6px; margin-bottom: 8px;">
+        <input type="text" id="protein-label-add-input" class="wt-input" placeholder="새 항목 이름 (예: 게이너)" maxlength="10" style="flex: 1; min-width: 0;" />
+        <button id="protein-label-add-confirm" class="wt-btn-primary" style="padding: 10px 16px;">추가</button>
+        <button id="protein-label-add-cancel" class="wt-btn-secondary" style="padding: 10px 14px;">취소</button>
+      </div>
+      <p id="protein-label-edit-hint" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: 0 0 8px;">삭제할 항목을 탭하면 목록에서 제거됩니다.</p>
       <div style="display: flex; gap: 6px;">
         <input type="text" id="protein-label-input" class="wt-input" placeholder="끼니(선택)" maxlength="20" enterkeyhint="next" style="flex: 1; min-width: 0;" />
         <input type="number" id="protein-grams-input" class="wt-input" placeholder="g" inputmode="numeric" enterkeyhint="done" min="0" max="300" style="width: 68px; text-align: center; flex-shrink: 0;" />
@@ -1109,7 +1114,8 @@
     days: [], customExercises: {}, hiddenExercises: {},
     restSeconds: 90, sound: true, vibrate: true, dark: false,
     heightCm: 0, weightKg: 0, weeklyGoal: 0, historyOpen: false, bwExercises: {}, schema: SCHEMA,
-    protein: { targetG: 0, targetAuto: true, goalDirection: 'maintain', logs: {} }, proteinOpen: false
+    protein: { targetG: 0, targetAuto: true, goalDirection: 'maintain', logs: {} }, proteinOpen: false,
+    customProteinLabels: [], hiddenProteinLabels: [], proteinLabelGrams: {}
   };
   var staging = [];
   var selectedCategory = null;
@@ -1462,6 +1468,8 @@
     var l = (label || '').trim().slice(0, 20) || '끼니';
     if (!data.protein.logs[dateStr]) data.protein.logs[dateStr] = [];
     data.protein.logs[dateStr].push({ id: uid(), label: l, grams: g });
+    // 같은 항목(끼니 이름)을 다음에 또 고를 때, 마지막으로 입력했던 g수를 기본값으로 보여주기 위해 기억해둠
+    data.proteinLabelGrams[l.slice(0, 10)] = g;
     return true;
   }
   function deleteProteinLog(dateStr, id) {
@@ -1592,6 +1600,19 @@
           if (cleaned.length) data.protein.logs[dateKey] = cleaned;
         });
       }
+    }
+    data.customProteinLabels = Array.isArray(obj.customProteinLabels)
+      ? obj.customProteinLabels.map(function (l) { return String(l).trim().slice(0, 10); }).filter(Boolean).slice(0, 30)
+      : [];
+    data.hiddenProteinLabels = Array.isArray(obj.hiddenProteinLabels)
+      ? obj.hiddenProteinLabels.map(function (l) { return String(l).trim().slice(0, 10); }).filter(Boolean)
+      : [];
+    data.proteinLabelGrams = {};
+    if (obj.proteinLabelGrams && typeof obj.proteinLabelGrams === 'object') {
+      Object.keys(obj.proteinLabelGrams).forEach(function (l) {
+        var g = Number(obj.proteinLabelGrams[l]);
+        if (isFinite(g) && g > 0 && g <= LIMITS.proteinMeal) data.proteinLabelGrams[l.slice(0, 10)] = Math.round(g);
+      });
     }
     data.schema = SCHEMA;
   }
@@ -2767,11 +2788,77 @@
       list.appendChild(row);
     });
   }
-  document.querySelectorAll('.protein-quick').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      $('protein-label-input').value = btn.getAttribute('data-label');
-      $('protein-grams-input').focus();
+  // ---------- [단백질] 빠른 입력 항목(끼니/보충제 등) 관리 — 종목 편집과 같은 방식 ----------
+  var PROTEIN_QUICK_BASE = ['아침', '점심', '저녁', '간식'];
+  var proteinLabelEditMode = false;
+  function proteinQuickLabels() {
+    var hidden = data.hiddenProteinLabels || [];
+    return PROTEIN_QUICK_BASE.filter(function (l) { return hidden.indexOf(l) === -1; })
+      .concat(data.customProteinLabels || []);
+  }
+  function renderProteinQuickChips() {
+    var wrap = $('protein-quick-chips');
+    wrap.innerHTML = '';
+    proteinQuickLabels().forEach(function (l) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'wt-chip' + (proteinLabelEditMode ? ' deletable' : '');
+      btn.innerHTML = escapeHtml(l) + (proteinLabelEditMode ? svg('trash', 13) : '');
+      btn.addEventListener('click', function () {
+        if (proteinLabelEditMode) {
+          var custom = data.customProteinLabels || [];
+          var ci = custom.indexOf(l);
+          if (ci !== -1) {
+            custom.splice(ci, 1);
+          } else {
+            data.hiddenProteinLabels = data.hiddenProteinLabels || [];
+            if (data.hiddenProteinLabels.indexOf(l) === -1) data.hiddenProteinLabels.push(l);
+          }
+          renderProteinQuickChips();
+          persist();
+          return;
+        }
+        $('protein-label-input').value = l;
+        var lastGrams = data.proteinLabelGrams[l];
+        $('protein-grams-input').value = lastGrams ? lastGrams : '';
+        $('protein-grams-input').focus();
+      });
+      wrap.appendChild(btn);
     });
+    if (!proteinLabelEditMode) {
+      var addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'wt-chip wt-chip-new';
+      addBtn.textContent = '+ 추가';
+      addBtn.addEventListener('click', function () {
+        $('protein-label-add-form').style.display = 'flex';
+        $('protein-label-add-input').value = '';
+        $('protein-label-add-input').focus();
+      });
+      wrap.appendChild(addBtn);
+    }
+  }
+  $('protein-label-edit-btn').addEventListener('click', function () {
+    proteinLabelEditMode = !proteinLabelEditMode;
+    $('protein-label-edit-btn').classList.toggle('on', proteinLabelEditMode);
+    $('protein-label-edit-btn').textContent = proteinLabelEditMode ? '편집 완료' : '편집';
+    $('protein-label-edit-hint').style.display = proteinLabelEditMode ? '' : 'none';
+    $('protein-label-add-form').style.display = 'none';
+    renderProteinQuickChips();
+  });
+  $('protein-label-add-confirm').addEventListener('click', function () {
+    var name = $('protein-label-add-input').value.trim().slice(0, 10);
+    if (!name) return;
+    if (proteinQuickLabels().indexOf(name) === -1) {
+      data.customProteinLabels = data.customProteinLabels || [];
+      data.customProteinLabels.push(name);
+      persist();
+    }
+    $('protein-label-add-form').style.display = 'none';
+    renderProteinQuickChips();
+  });
+  $('protein-label-add-cancel').addEventListener('click', function () {
+    $('protein-label-add-form').style.display = 'none';
   });
   function submitProteinEntry() {
     var err = $('protein-add-err');
@@ -4081,6 +4168,7 @@
     renderWeeklySummary();
     renderCategoryVolumeChart();
     renderProteinToday();
+    renderProteinQuickChips();
     renderProteinStats();
     renderCalendar();
     renderCalDetail();
