@@ -787,7 +787,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 3;
+  var APP_VERSION = 4;
   var APP_BUILD_DATE = '2026-09-28';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -796,6 +796,13 @@
   // ---------- [저장] GitHub 동기화 (선택 사항 — 설정 안 하면 기존처럼 이 기기에만 저장됨) ----------
   var GH_CONFIG_KEY = 'wt-github-cfg';
   var GH_CACHE_KEY = 'wt-github-cache'; // GitHub 요청 실패(오프라인 등) 시 마지막으로 받았던 내용을 대신 보여주기 위한 로컬 사본
+  var GH_CACHE_AT_KEY = 'wt-github-cache-at'; // 위 사본을 "내가 직접" 마지막으로 저장에 성공한 시각
+  // GitHub Contents API는 커밋 자체는 바로 끝나도, 그 직후 다시 읽으면 몇 초~몇 분 정도 저장 전
+  // 내용을 그대로 돌려주는 지연(읽기 일관성 지연)이 있을 수 있다. 그래서 "방금 내가 저장한 것"은
+  // 이 시간 동안 무조건 로컬 사본을 그대로 믿고, 네트워크로 다시 확인하지 않는다 — 안 그러면
+  // 예를 들어 다크→라이트로 바꾸고 바로 앱을 껐다 켰을 때, 지연된 응답 때문에 다시 다크로
+  // 보이는 것처럼 방금 바꾼 설정이 도로 사라지는 것처럼 보일 수 있다.
+  var GH_WRITE_GRACE_MS = 3 * 60 * 1000;
   var GH_API = 'https://api.github.com';
   var GH_DATA_PATH = 'data/workout-data.json';
   var ghSha = null; // 마지막으로 읽거나 쓴 파일의 sha — 다음 저장(PUT) 때 충돌 감지용으로 필요
@@ -943,6 +950,13 @@
       get: function (k) {
         var cfg = getGhConfig();
         if (!cfg || k !== STORAGE_KEY) return baseStore.get(k);
+        try {
+          var cachedAt = Number(window.localStorage.getItem(GH_CACHE_AT_KEY) || 0);
+          var cached = window.localStorage.getItem(GH_CACHE_KEY);
+          if (cached && cachedAt && (Date.now() - cachedAt) < GH_WRITE_GRACE_MS) {
+            return Promise.resolve({ key: k, value: cached });
+          }
+        } catch (e) {}
         return ghGetData(cfg).then(function (r) {
           if (r.value == null) return baseStore.get(k);
           ghSha = r.sha;
@@ -960,15 +974,17 @@
         var cfg = getGhConfig();
         if (!cfg || k !== STORAGE_KEY) return baseStore.set(k, v);
         try { window.localStorage.setItem(GH_CACHE_KEY, v); } catch (e) {}
+        function markWritten() { try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); } catch (e) {} }
         return ghPutData(cfg, v, ghSha).then(function (sha) {
           ghSha = sha;
+          markWritten();
           return { key: k, value: v };
         }).catch(function (err) {
           if (err.status === 409) {
             // 다른 기기가 먼저 저장해서 sha가 어긋남 — 최신 sha로 다시 한 번만 시도
             return ghGetData(cfg).then(function (r) {
               ghSha = r.sha;
-              return ghPutData(cfg, v, ghSha).then(function (sha) { ghSha = sha; return { key: k, value: v }; });
+              return ghPutData(cfg, v, ghSha).then(function (sha) { ghSha = sha; markWritten(); return { key: k, value: v }; });
             });
           }
           throw err;
