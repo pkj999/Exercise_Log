@@ -248,7 +248,7 @@ const Upload = mkIcon('upload');
 =========================================================== */
 // 지금 보고 있는 화면이 최신 배포본인지 헷갈릴 때(캐시 문제 등) 설정 탭 맨 아래에서 확인하는 용도.
 // index.html/sw.js를 의미 있게 바꿀 때마다 이 값도 같이 올려주세요.
-const APP_VERSION = 'ver.20 · 2026-09-23';
+const APP_VERSION = 'ver.21 · 2026-09-28';
 const CONFIG_KEY = 'workjournal.ghconfig.v1';
 const THEME_KEY = 'workjournal.theme.v1';
 const PATH_ENTRIES = 'data/entries.json';
@@ -256,6 +256,7 @@ const PATH_QUICK_NOTES = 'data/quick-notes.json';
 const PATH_TODOS = 'data/todos.json';
 const PATH_PHRASES = 'data/phrases.json';
 const PATH_CATEGORIES = 'data/categories.json'; // 사용자가 직접 추가한 카테고리
+const PATH_MEMOS = 'data/memos.json'; // 할 일 탭 "기억할 것" 섹션 — 완료해도 안 사라지는 상시 메모
 const GH_API = 'https://api.github.com';
 
 const CATEGORIES = [
@@ -1756,7 +1757,9 @@ function QuickCaptureTab({ cfg, notes, phrases, editingNote, onEditNote, onAdd, 
 /* ===========================================================
    할 일 탭
 =========================================================== */
-function TodoTab({ todos, onAdd, onToggle, onDelete, onEdit, onClearDone }) {
+function TodoTab({ todos, onAdd, onToggle, onDelete, onEdit, onClearDone, memos, onAddMemo, onEditMemo, onDeleteMemo }) {
+  // 할 일(일회성, 완료하면 사라짐)과 기억할 것(계속 쌓이는 상시 메모)을 이름부터 헷갈리지 않게 세그먼트로 분리
+  const [segment, setSegment] = useState('todo');
   const [text, setText] = useState('');
   const [due, setDue] = useState('');
   const [showDone, setShowDone] = useState(false);
@@ -1865,6 +1868,21 @@ function TodoTab({ todos, onAdd, onToggle, onDelete, onEdit, onClearDone }) {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-1 gap-1">
+        <button onClick={() => setSegment('todo')}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-[13px] font-medium transition-colors ${segment === 'todo' ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          <ListChecks size={14} /> 할 일
+        </button>
+        <button onClick={() => setSegment('memo')}
+          className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-[13px] font-medium transition-colors ${segment === 'memo' ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+          <Quote size={14} /> 기억할 것{memos.length > 0 ? ` · ${memos.length}` : ''}
+        </button>
+      </div>
+
+      {segment === 'memo' ? (
+        <MemoSection memos={memos} onAdd={onAddMemo} onEdit={onEditMemo} onDelete={onDeleteMemo} />
+      ) : (
+      <>
       {(overdueCount > 0 || todayCount > 0) && (
         <div className="flex items-center gap-2 rounded-lg border border-[#F0654A]/25 bg-[#F0654A0D] px-3 py-2 text-[12px] text-[#F0654A]">
           <BellIcon size={13} />
@@ -1924,6 +1942,127 @@ function TodoTab({ todos, onAdd, onToggle, onDelete, onEdit, onClearDone }) {
               ))}
             </div>
           )}
+        </div>
+      )}
+      </>
+      )}
+    </div>
+  );
+}
+
+/* ===========================================================
+   기억할 것(memo) 섹션 — 태그 붙여서 검색으로 찾는 상시 메모. 완료 개념 없음(체크해도 안 사라짐).
+=========================================================== */
+function MemoSection({ memos, onAdd, onEdit, onDelete }) {
+  const [text, setText] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [query, setQuery] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [editTagInput, setEditTagInput] = useState('');
+
+  const parseTags = raw => [...new Set(raw.split(/[,\s]+/).map(t => t.trim()).filter(Boolean))];
+
+  const allTags = useMemo(() => {
+    const set = new Set();
+    memos.forEach(m => (m.tags || []).forEach(t => set.add(t)));
+    return [...set].sort();
+  }, [memos]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const sorted = [...memos].sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    if (!q) return sorted;
+    return sorted.filter(m => m.text.toLowerCase().includes(q) || (m.tags || []).some(t => t.toLowerCase().includes(q)));
+  }, [memos, query]);
+
+  const handleAdd = () => {
+    if (!text.trim()) return;
+    onAdd({ text: text.trim(), tags: parseTags(tagInput) });
+    setText(''); setTagInput('');
+  };
+
+  const startEdit = m => { setEditingId(m.id); setEditText(m.text); setEditTagInput((m.tags || []).join(', ')); };
+  const cancelEdit = () => setEditingId(null);
+  const saveEdit = m => {
+    if (!editText.trim()) return;
+    onEdit(m, { text: editText.trim(), tags: parseTags(editTagInput) });
+    setEditingId(null);
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-3 flex flex-col gap-2">
+        <div className="flex items-start gap-2">
+          <textarea value={text} onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); } }}
+            placeholder="예: 구매의뢰서 작성 시 결재선에 팀장님 추가" rows={2}
+            className="flex-1 min-w-0 px-2 py-1.5 text-[13px] bg-transparent text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none" />
+        </div>
+        <div className="flex items-center gap-2">
+          <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            placeholder="태그 (쉼표로 구분, 예: 구매의뢰서, 월간)"
+            className="flex-1 min-w-0 px-2.5 py-1.5 rounded-md text-[12px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+          <button onClick={handleAdd} disabled={!text.trim()}
+            className="shrink-0 p-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 active:scale-90 disabled:opacity-40 disabled:active:scale-100 transition-all">
+            <Plus size={15} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+
+      {memos.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="relative">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <input value={query} onChange={e => setQuery(e.target.value)}
+              placeholder="내용이나 태그로 검색…"
+              className="w-full pl-8 pr-2.5 py-1.5 rounded-md text-[13px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+          </div>
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {allTags.map(t => (
+                <button key={t} onClick={() => setQuery(q => q === t ? '' : t)}
+                  className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${query === t ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                  #{t}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-[13px]">
+          {memos.length === 0 ? '아직 기억해둘 메모가 없습니다.' : '검색 결과가 없습니다.'}
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {filtered.map(m => editingId === m.id ? (
+            <div key={m.id} className="rounded-lg border border-slate-400 dark:border-slate-500 bg-white dark:bg-slate-900/60 p-2.5 flex flex-col gap-2">
+              <textarea value={editText} onChange={e => setEditText(e.target.value)} autoFocus rows={2}
+                className="px-2 py-1 text-[13px] bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 resize-none" />
+              <div className="flex items-center gap-2">
+                <input value={editTagInput} onChange={e => setEditTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEdit(m)}
+                  placeholder="태그 (쉼표로 구분)"
+                  className="flex-1 min-w-0 px-2 py-1 rounded-md text-[12px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300" />
+                <button onClick={() => saveEdit(m)} className="shrink-0 p-1.5 rounded-md bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 active:scale-90 transition-all"><CircleCheckBig size={14} /></button>
+                <button onClick={cancelEdit} className="shrink-0 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 active:scale-90 transition-all"><X size={14} /></button>
+              </div>
+            </div>
+          ) : (
+            <div key={m.id} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 px-3 py-2.5 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+              <div className="flex items-start gap-2.5">
+                <span onClick={() => startEdit(m)} className="flex-1 min-w-0 text-[14px] text-slate-700 dark:text-slate-200 break-words whitespace-pre-wrap cursor-pointer">{m.text}</span>
+                <button onClick={() => startEdit(m)} title="수정" className="shrink-0 p-1.5 text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-300 active:scale-90 transition-all"><Pencil size={15} /></button>
+                <button onClick={() => onDelete(m)} className="shrink-0 p-1.5 text-slate-300 dark:text-slate-600 hover:text-red-500 active:scale-90 transition-all"><X size={15} /></button>
+              </div>
+              {m.tags && m.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {m.tags.map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">#{t}</span>)}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -3234,11 +3373,14 @@ function App() {
   const [phrasesSha, setPhrasesSha] = useState(null);
   const [customCategories, setCustomCategories] = useState([]);
   const [customCategoriesSha, setCustomCategoriesSha] = useState(null);
+  const [memos, setMemos] = useState([]);
+  const [memosSha, setMemosSha] = useState(null);
 
-  // entries.json/quick-notes.json/todos.json에 대한 쓰기 요청을 한 번에 하나씩만 실행되도록 줄 세우는 큐
+  // entries.json/quick-notes.json/todos.json/memos.json에 대한 쓰기 요청을 한 번에 하나씩만 실행되도록 줄 세우는 큐
   const entriesQueueRef = useRef(createSerialQueue());
   const quickNotesQueueRef = useRef(createSerialQueue());
   const todosQueueRef = useRef(createSerialQueue());
+  const memosQueueRef = useRef(createSerialQueue());
 
   // 동기화 상태
   const [loading, setLoading] = useState(false);
@@ -3292,7 +3434,7 @@ function App() {
     setLoading(true); setSyncError('');
     const cacheKey = `workjournal.cache.v1.${cfg.owner}/${cfg.repo}`;
     try {
-      const [e, q, t, p, cat] = await Promise.all([ghGetJSON(cfg, PATH_ENTRIES), ghGetJSON(cfg, PATH_QUICK_NOTES), ghGetJSON(cfg, PATH_TODOS), ghGetJSON(cfg, PATH_PHRASES), ghGetJSON(cfg, PATH_CATEGORIES)]);
+      const [e, q, t, p, cat, m] = await Promise.all([ghGetJSON(cfg, PATH_ENTRIES), ghGetJSON(cfg, PATH_QUICK_NOTES), ghGetJSON(cfg, PATH_TODOS), ghGetJSON(cfg, PATH_PHRASES), ghGetJSON(cfg, PATH_CATEGORIES), ghGetJSON(cfg, PATH_MEMOS)]);
       const activeTag = { owner: cfg.owner, repo: cfg.repo, branch: cfg.branch || 'main' };
       // 방금 저장에 성공했는데 GitHub 쪽에서 아직 안 보여주는 항목이 있으면 여기서 다시 붙여줌
       const reconciledEntries = reconcilePending(cfg, 'entries', e.data);
@@ -3303,11 +3445,12 @@ function App() {
       setTodos(t.data); setTodosSha(t.sha);
       setPhrases(p.data); setPhrasesSha(p.sha);
       setCustomCategories(cat.data); setCustomCategoriesSha(cat.sha);
+      setMemos(m.data); setMemosSha(m.sha);
       setLastSynced(Date.now());
       setOffline(false); setOfflineCachedAt(null);
       // 다음에 오프라인일 때 보여줄 수 있게, 성공한 결과를 이 기기에 그대로 캐시해둠
       try {
-        localStorage.setItem(cacheKey, JSON.stringify({ entries: e.data, quickNotes: q.data, todos: t.data, phrases: p.data, categories: cat.data, cachedAt: Date.now() }));
+        localStorage.setItem(cacheKey, JSON.stringify({ entries: e.data, quickNotes: q.data, todos: t.data, phrases: p.data, categories: cat.data, memos: m.data, cachedAt: Date.now() }));
       } catch (_) { /* 저장 공간 부족 등은 무시 — 캐시는 있으면 좋은 것일 뿐 */ }
     } catch (err) {
       // 네트워크 문제로 보이면, 이 기기에 마지막으로 저장해둔 내용이라도 보여줌 (읽기 전용은 아니지만 새로 쓰기는 어차피 네트워크가 있어야 됨)
@@ -3322,6 +3465,7 @@ function App() {
           setTodos(cached.todos || []);
           setPhrases(cached.phrases || []);
           setCustomCategories(cached.categories || []);
+          setMemos(cached.memos || []);
           setOffline(true);
           setOfflineCachedAt(cached.cachedAt || null);
           usedCache = true;
@@ -4119,6 +4263,54 @@ function App() {
     }
   };
 
+  /* ---------- 12-1. 기억할 것(memo) 핸들러 ---------- */
+  // 할 일과 달리 완료 개념이 없고, 태그로 검색해서 찾는 용도라 계속 쌓여도 됨 (writeTodos와 동일한 sha 충돌 재시도 패턴)
+  const writeMemos = (transformFn, message) => memosQueueRef.current(async () => {
+    const attempt = async (base, sha) => {
+      const merged = transformFn(base);
+      const newSha = await ghPutJSON(cfg, PATH_MEMOS, merged, sha, message);
+      return { merged, newSha };
+    };
+    try {
+      const { merged, newSha } = await attempt(memos, memosSha);
+      setMemosSha(newSha);
+      return merged;
+    } catch (err) {
+      if (err.status !== 409) throw err;
+      const fresh = await ghGetJSON(cfg, PATH_MEMOS);
+      const { merged, newSha } = await attempt(fresh.data, fresh.sha);
+      setMemosSha(newSha);
+      return merged;
+    }
+  });
+
+  const handleAddMemo = async ({ text, tags }) => {
+    try {
+      const now = Date.now();
+      const newMemo = { id: uid(), text, tags: tags || [], createdAt: now, updatedAt: now };
+      const merged = await writeMemos(current => [newMemo, ...current], '기억할 것 추가');
+      setMemos(merged);
+    } catch (err) {
+      showToast('저장 실패: ' + err.message, () => handleAddMemo({ text, tags }));
+    }
+  };
+  const handleEditMemo = async (memo, changes) => {
+    try {
+      const merged = await writeMemos(current => current.map(m => m.id === memo.id ? { ...m, ...changes, updatedAt: Date.now() } : m), '기억할 것 수정');
+      setMemos(merged);
+    } catch (err) {
+      showToast('저장 실패: ' + err.message, () => handleEditMemo(memo, changes));
+    }
+  };
+  const handleDeleteMemo = async memo => {
+    try {
+      const merged = await writeMemos(current => current.filter(m => m.id !== memo.id), '기억할 것 삭제');
+      setMemos(merged);
+    } catch (err) {
+      showToast('삭제 실패: ' + err.message, () => handleDeleteMemo(memo));
+    }
+  };
+
   /* ---------- 13. 일지 작성 / 수정 / 삭제 (+ 모달 열고 닫기) ---------- */
   const openNewEntry = () => { setEditingEntry(null); setPrefillNote(null); setModalOpen(true); };
   const openEditEntry = entry => {
@@ -4305,7 +4497,8 @@ function App() {
           ) : (
           <React.Fragment>
           {tab === 'quick' && <QuickCaptureTab cfg={cfg} notes={displayNotes} phrases={phrases} editingNote={editingNote} onEditNote={setEditingNote} onAdd={handleAddNote} onDelete={handleDeleteNote} onRestore={handleRestoreNote} onPermanentDelete={handlePermanentDeleteNote} onEditSave={handleEditNoteSave} onPromote={handlePromote} onViewEntry={handleViewLinkedEntry} uploading={uploading} savingEdit={savingNoteEdit} hasArchives={hasArchives} archivesLoaded={archivesLoaded} archiveLoading={archiveLoading} onLoadArchives={loadArchives} />}
-          {tab === 'todos' && <TodoTab todos={visibleTodos} onAdd={handleAddTodo} onToggle={handleToggleTodo} onDelete={handleDeleteTodo} onEdit={handleEditTodo} onClearDone={handleClearDoneTodos} />}
+          {tab === 'todos' && <TodoTab todos={visibleTodos} onAdd={handleAddTodo} onToggle={handleToggleTodo} onDelete={handleDeleteTodo} onEdit={handleEditTodo} onClearDone={handleClearDoneTodos}
+            memos={memos} onAddMemo={handleAddMemo} onEditMemo={handleEditMemo} onDeleteMemo={handleDeleteMemo} />}
           {tab === 'entries' && <EntriesTab cfg={cfg} entries={displayEntries} notes={displayNotes} categories={allCategories} categoryMap={allCategoryMap} onOpenNew={openNewEntry} onEdit={openEditEntry} onDelete={handleDeleteEntry} onToggleFavorite={handleToggleFavorite} onRestore={handleRestoreEntry} onPermanentDelete={handlePermanentDeleteEntry} onViewSource={handleViewSourceNote} onPreviewEntry={entry => setPreviewEntryId(entry.id)} hasArchives={hasArchives} archivesLoaded={archivesLoaded} archiveLoading={archiveLoading} onLoadArchives={loadArchives} />}
           {tab === 'settings' && (
             <div className="space-y-6">
