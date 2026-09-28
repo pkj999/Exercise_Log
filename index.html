@@ -90,7 +90,7 @@
   #wt-root .wt-tabbar-btn span:last-child { font-size: 10px; font-weight: 700; }
   #wt-root .wt-tabbar-btn.active { color: var(--wt-accent); background: var(--wt-accent-soft); }
 
-  #wt-root .wt-cat-btn { display: inline-flex; align-items: center; border: 1.5px solid var(--wt-border-strong); background: transparent; border-radius: 8px; padding: 10px 14px; min-height: 44px; cursor: pointer; color: var(--wt-text-muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  #wt-root .wt-cat-btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; border: 1.5px solid var(--wt-border-strong); background: transparent; border-radius: 8px; padding: 10px 8px; min-height: 44px; cursor: pointer; color: var(--wt-text-muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
   #wt-root .wt-cat-btn.active { border-color: var(--wt-accent); color: var(--wt-accent); background: var(--wt-accent-soft); }
 
   #wt-root .wt-chip { display: inline-flex; align-items: center; gap: 5px; border: 1.5px solid var(--wt-border-strong); background: transparent; border-radius: 8px; padding: 11px 15px; min-height: 44px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; color: var(--wt-text); }
@@ -104,7 +104,7 @@
   #wt-root .wt-stepper-btn::before { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
   #wt-root .wt-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--wt-accent), var(--wt-accent-dark)); color: #fff; font-weight: 700; padding: 12px 18px; cursor: pointer; font-size: 13px; }
-  #wt-root .wt-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1.5px solid var(--wt-border-strong); background: var(--wt-bg); color: var(--wt-text); font-weight: 700; padding: 12px 18px; cursor: pointer; font-size: 13px; }
+  #wt-root .wt-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1.5px solid var(--wt-border-strong); border-radius: 10px; background: var(--wt-bg); color: var(--wt-text); font-weight: 700; padding: 12px 18px; cursor: pointer; font-size: 13px; }
   #wt-root .wt-btn-ghost-sm { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 1.5px solid var(--wt-border-strong); background: var(--wt-card); color: var(--wt-text-muted); font-size: 12px; font-weight: 600; padding: 8px 12px; min-height: 40px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
   #wt-root .wt-btn-ghost-sm.on { background: var(--wt-accent-soft); color: var(--wt-accent); border-color: var(--wt-accent-soft); }
   #wt-root .wt-icon-btn-sm { position: relative; width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--wt-bg); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--wt-text-muted); flex-shrink: 0; }
@@ -132,8 +132,8 @@
   #wt-root .wt-cal-cell.empty { visibility: hidden; }
   #wt-root .wt-cal-cell.today { background: var(--wt-accent-soft); font-weight: 700; }
   #wt-root .wt-cal-cell.selected { outline: 2px solid var(--wt-accent); }
-  #wt-root .wt-cal-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--wt-text-muted); }
-  #wt-root .wt-cal-cell.today .wt-cal-dot { background: var(--wt-accent); }
+  #wt-root .wt-cal-dots { display: flex; align-items: center; gap: 2px; }
+  #wt-root .wt-cal-dot { width: 10px; height: 4px; border-radius: 999px; background: var(--wt-text-muted); }
 
   #wt-root .wt-switch { position: relative; width: 42px; height: 24px; border-radius: 8px; background: var(--wt-bg); border: 1.5px solid var(--wt-border-strong); cursor: pointer; flex-shrink: 0; padding: 0; }
   #wt-root .wt-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--wt-text-muted); transition: left .18s, background .18s; }
@@ -226,17 +226,14 @@
   #wt-root .wt-chip.wt-chip-new { border: 1px dashed var(--wt-accent); color: var(--wt-accent); background: transparent; }
   #wt-root .wt-ex-none { font-size: 12px; color: var(--wt-text-muted); margin: 8px 0 0; }
 
-  /* ===== 루틴 관리 ===== */
-  #wt-root .wt-rm-row { display: flex; align-items: center; gap: 8px; background: var(--wt-bg); border-radius: 8px; padding: 7px 8px 7px 12px; font-size: 13px; font-weight: 600; color: var(--wt-text); }
-  #wt-root .wt-rm-row .wt-rm-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #wt-root .wt-rm-cat { font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-right: 6px; }
+  /* ===== 오늘 추가할 기록의 순서 바꾸기 버튼(위/아래) ===== */
   #wt-root .wt-rm-ord { width: 26px; height: 26px; border-radius: 8px; border: none; background: var(--wt-card); color: var(--wt-text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: transform .08s ease, filter .12s ease; }
   #wt-root .wt-rm-ord:active { transform: scale(.88); filter: brightness(.9); }
   #wt-root .wt-rm-ord:disabled { opacity: .3; cursor: default; }
   #wt-root #rest-timer-stop::before { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
   /* ===== 저장 전 / 저장 완료 구분 ===== */
-  #wt-root #staging-area { border: 2px dashed var(--wt-accent); background: var(--wt-accent-soft); border-radius: 12px; padding: 14px; }
+  #wt-root #staging-area { background: var(--wt-card); border: 1.5px solid var(--wt-border-strong); border-left: 4px solid var(--wt-accent); border-radius: 12px; padding: 14px 14px 14px 12px; }
   #wt-root .wt-unsaved-tag { display: inline-block; font-size: 10px; font-weight: 800; border-radius: 6px; padding: 2px 7px; background: var(--wt-accent); color: #fff; margin-left: 6px; vertical-align: 1px; }
   #wt-root .wt-saved-tag { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 6px; padding: 2px 7px; background: var(--wt-bg); color: var(--wt-text-muted); margin-left: 6px; vertical-align: 1px; }
   #wt-root .wt-section-head { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
@@ -266,7 +263,7 @@
   }
   #wt-root #unsaved-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ===== 루틴 자동 입력 표시 ===== */
+  /* ===== 회색 보조 뱃지 (종목 변형 등) ===== */
   #wt-root .wt-plan-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: #E7EBF1; color: #57606E; }
   html[data-theme="dark"] #wt-root .wt-plan-badge { background: #2A2E36; color: #A7AFBC; }
   #wt-root .wt-pr-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: #FFF1C2; color: #8A5A12; }
@@ -303,7 +300,7 @@
 <div id="wt-root">
 
   <div id="top-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 1.1rem;">
-    <h1 id="screen-title" style="font-size: 20px; font-weight: 700; margin: 0; color: var(--wt-text);">운동 기록</h1>
+    <h1 id="screen-title" style="font-size: 20px; font-weight: 700; margin: 0; color: var(--wt-text);">운동 기록<span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--wt-text-muted); margin-left: 8px; vertical-align: 2px;">Exercise_Log</span></h1>
     <div style="display: flex; align-items: center; gap: 8px;">
       <div id="rest-timer-pill" style="display: none; align-items: center; gap: 8px; background: var(--wt-accent); color: #fff; border-radius: 10px; padding: 6px 8px 6px 14px; box-shadow: var(--wt-shadow-accent);">
         <span data-icon="clock" data-size="15"></span>
@@ -323,7 +320,7 @@
   <div id="loading" style="font-size: 13px; color: var(--wt-text-muted); padding: 2rem 0; text-align: center;">불러오는 중...</div>
 
   <!-- ===== 기록 ===== -->
-  <div id="view-log" style="display: none;">
+  <div id="view-log" style="display: none; transition: margin-top .18s ease;">
 
     <div style="display: flex; gap: 8px; margin-bottom: 14px;">
       <input type="date" id="entry-date" class="wt-input" style="flex: 1; min-width: 0;" />
@@ -338,7 +335,7 @@
 
     <div class="wt-card" style="margin-bottom: 14px;">
       <p class="wt-label">부위 선택</p>
-      <div id="category-chips" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+      <div id="category-chips" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
 
       <div id="exercise-picker" style="display: none; margin-top: 14px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
@@ -365,6 +362,8 @@
           <p style="font-size: 15px; font-weight: 700; margin: 0; color: var(--wt-text);" id="qe-name"></p>
           <button id="qe-close" aria-label="닫기" class="wt-icon-btn-sm"><span data-icon="x" data-size="14"></span></button>
         </div>
+        <input type="text" id="qe-variant" class="wt-input" placeholder="변형 (선택 — 그립·기구 등. 예: 로프, 와이드그립, 머신)" maxlength="16" autocomplete="off" style="width: 100%; font-size: 12px; padding: 8px 10px;" />
+        <div id="qe-variant-chips" style="display: none; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px;"></div>
         <div id="qe-last" class="wt-last-empty"></div>
         <div id="qe-bw-row" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
           <button id="qe-bw-toggle" class="wt-btn-ghost-sm" type="button">맨몸운동</button>
@@ -395,7 +394,6 @@
             </div>
           </div>
         </div>
-        <p id="qe-onerm-hint" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: -4px 0 10px;"></p>
 
         <div id="qe-cardio-fields" style="display: none; margin-bottom: 10px;">
           <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
@@ -477,7 +475,7 @@
     <div id="history-list" style="display: none;"></div>
 
     <button id="protein-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="protein-body">
-      <span class="wt-section-title">오늘 단백질</span>
+      <span class="wt-section-title">오늘 섭취한 단백질</span>
       <span id="protein-count" class="wt-section-count"></span>
       <span class="wt-section-line"></span>
       <span class="wt-section-caret" data-icon="chevron-down" data-size="16"></span>
@@ -495,12 +493,17 @@
       </div>
       <div id="protein-log-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;"></div>
       <p id="protein-log-empty" style="display: none; font-size: 12px; color: var(--wt-text-muted); margin: 0 0 10px;">아직 기록한 끼니가 없습니다.</p>
-      <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
-        <button class="wt-chip protein-quick" data-label="아침" type="button">아침</button>
-        <button class="wt-chip protein-quick" data-label="점심" type="button">점심</button>
-        <button class="wt-chip protein-quick" data-label="저녁" type="button">저녁</button>
-        <button class="wt-chip protein-quick" data-label="간식" type="button">간식</button>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <p class="wt-mini-label" style="margin: 0;">빠른 입력</p>
+        <button id="protein-label-edit-btn" class="wt-btn-ghost-sm" type="button">편집</button>
       </div>
+      <div id="protein-quick-chips" style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;"></div>
+      <div id="protein-label-add-form" style="display: none; gap: 6px; margin-bottom: 8px;">
+        <input type="text" id="protein-label-add-input" class="wt-input" placeholder="새 항목 이름 (예: 게이너)" maxlength="10" style="flex: 1; min-width: 0;" />
+        <button id="protein-label-add-confirm" class="wt-btn-primary" style="padding: 10px 16px;">추가</button>
+        <button id="protein-label-add-cancel" class="wt-btn-secondary" style="padding: 10px 14px;">취소</button>
+      </div>
+      <p id="protein-label-edit-hint" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: 0 0 8px;">삭제할 항목을 탭하면 목록에서 제거됩니다.</p>
       <div style="display: flex; gap: 6px;">
         <input type="text" id="protein-label-input" class="wt-input" placeholder="끼니(선택)" maxlength="20" enterkeyhint="next" style="flex: 1; min-width: 0;" />
         <input type="number" id="protein-grams-input" class="wt-input" placeholder="g" inputmode="numeric" enterkeyhint="done" min="0" max="300" style="width: 68px; text-align: center; flex-shrink: 0;" />
@@ -564,7 +567,8 @@
       <p id="total-empty" style="display: none; font-size: 12px; color: var(--wt-text-muted); text-align: center; margin: 0;">기록이 쌓이면 표시됩니다.</p>
     </div>
 
-    <div style="margin-bottom: 12px;">
+    <div class="wt-card" style="margin-bottom: 12px;">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 10px; color: var(--wt-text);">종목별 추이</p>
       <select id="progress-exercise" class="wt-input" style="width: 100%;"></select>
     </div>
     <div id="progress-empty" style="font-size: 13px; color: var(--wt-text-muted); text-align: center; padding: 2rem 0; display: none;">기록된 운동이 없습니다.</div>
@@ -574,14 +578,11 @@
         <div class="wt-stat-card"><p class="wt-stat-label">최근 무게</p><p class="wt-stat-value" id="stat-recent" style="display: flex; align-items: baseline; gap: 4px;"><span>-</span></p></div>
         <div class="wt-stat-card"><p class="wt-stat-label">기록 횟수</p><p class="wt-stat-value" id="stat-count">-</p></div>
       </div>
-      <p id="progress-1rm-caption" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: -4px 0 10px;"></p>
       <p id="progress-plateau-badge" class="wt-plateau-badge" style="display: none;"></p>
       <div class="wt-card" style="padding: 1rem;">
         <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
           <button id="chart-mode-weight" class="wt-seg-btn active">최고 무게</button>
-          <button id="chart-mode-volume" class="wt-seg-btn">볼륨</button>
           <button id="chart-mode-sets" class="wt-seg-btn">세트</button>
-          <button id="chart-mode-onerm" class="wt-seg-btn">1RM</button>
         </div>
         <div style="position: relative; height: 190px;">
           <canvas id="progress-canvas"></canvas>
@@ -630,7 +631,7 @@
     </div>
 
     <div class="wt-card" style="margin-bottom: 12px;">
-      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">설정</p>
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">타이머 · 목표</p>
       <div class="wt-setting-row">
         <div>
           <span style="font-size: 13px; color: var(--wt-text);">주 운동 목표</span>
@@ -650,6 +651,10 @@
           <button class="wt-stepper-btn" id="rest-plus" aria-label="휴식 시간 증가">+</button>
         </div>
       </div>
+    </div>
+
+    <div class="wt-card" style="margin-bottom: 12px;">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">알림</p>
       <div class="wt-setting-row">
         <span style="font-size: 13px; color: var(--wt-text);">알림음</span>
         <button id="sound-switch" class="wt-switch" role="switch" aria-label="알림음"></button>
@@ -661,11 +666,41 @@
         </div>
         <button id="vibe-switch" class="wt-switch" role="switch" aria-label="진동"></button>
       </div>
-      <div class="wt-setting-row">
-        <span style="font-size: 13px; color: var(--wt-text);">다크 모드</span>
-        <button id="dark-switch" class="wt-switch" role="switch" aria-label="다크 모드"></button>
-      </div>
       <button id="test-alert-btn" class="wt-btn-secondary" style="width: 100%; margin-top: 10px;">알림 테스트</button>
+    </div>
+
+    <div class="wt-card" style="margin-bottom: 12px;">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">GitHub 동기화</p>
+      <p id="gh-status" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 4px; line-height: 1.5;">연결 안 됨 — 이 기기에만 저장됩니다.</p>
+      <p id="gh-token-expiry" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; display: none;"></p>
+      <div id="gh-form" style="display: flex; flex-direction: column; gap: 6px;">
+        <div>
+          <p class="wt-mini-label">GitHub 계정명 (owner)</p>
+          <input type="text" id="gh-owner" class="wt-input" style="width: 100%;" placeholder="예: octocat" autocomplete="off" autocapitalize="off" />
+        </div>
+        <div>
+          <p class="wt-mini-label">데이터 저장소 이름</p>
+          <input type="text" id="gh-repo" class="wt-input" style="width: 100%;" placeholder="예: my-workout-data" autocomplete="off" autocapitalize="off" />
+        </div>
+        <button id="gh-advanced-toggle" type="button" class="wt-btn-ghost-sm" style="align-self: flex-start;">고급 설정</button>
+        <div id="gh-advanced" style="display: none;">
+          <p class="wt-mini-label">브랜치 — 보통 안 건드려도 됩니다, 기본값 main</p>
+          <input type="text" id="gh-branch" class="wt-input" style="width: 100%;" placeholder="main" autocomplete="off" autocapitalize="off" />
+        </div>
+        <div>
+          <p class="wt-mini-label">Personal Access Token</p>
+          <input type="password" id="gh-token" class="wt-input" style="width: 100%; font-family: monospace;" placeholder="github_pat_..." autocomplete="off" />
+        </div>
+        <p id="gh-test-msg" style="font-size: 12px; margin: 0; display: none;"></p>
+        <div style="display: flex; gap: 6px; margin-top: 4px;">
+          <button id="gh-test-btn" class="wt-btn-secondary" style="flex: 1;">연결 테스트</button>
+          <button id="gh-connect-btn" class="wt-btn-primary" style="flex: 1;" disabled>저장하고 시작</button>
+        </div>
+        <p id="gh-verify-hint" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: -2px 0 0; display: none;">먼저 "연결 테스트"를 통과해야 저장할 수 있습니다.</p>
+      </div>
+      <button id="gh-disconnect-btn" class="wt-btn-secondary" style="width: 100%; display: none;">연결 해제 (이 기기에서 설정 삭제)</button>
+      <p id="gh-help" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: 10px 0 0; line-height: 1.6;">아직 비공개 저장소나 토큰을 안 만드셨다면, 먼저 GitHub에서<br>① 새 비공개 저장소 생성(README 포함) → ② Settings → Developer settings →<br>Fine-grained tokens에서 그 저장소만 골라 Contents 권한 Read/Write로 토큰 발급</p>
+      <p id="gh-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
     </div>
 
     <div class="wt-card" style="margin-bottom: 12px;">
@@ -693,6 +728,8 @@
       </div>
       <p id="backup-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
     </div>
+
+    <p id="app-version" style="text-align: center; font-size: 11px; color: var(--wt-text-muted); margin: 4px 0 0;"></p>
   </div>
 
   <div id="wt-toast" role="status" aria-live="polite"></div>
@@ -748,34 +785,193 @@
    *     이때 commitStaging()은 동작하지 않습니다(임시 목록 오염 방지).
    * ========================================================================= */
 
+  // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
+  // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
+  var APP_VERSION = 2;
+  var APP_BUILD_DATE = '2026-09-28';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
   var SCHEMA = 5; // day.durationMin/startedAt/endedAt(운동 소요시간) 추가. 마이그레이션 분기는 없음 — applyLoaded()가 항상 방어적으로 필드를 재구성하므로 구버전 데이터는 해당 필드가 0/미설정으로 채워짐
 
-  // ---------- [저장] 저장소 어댑터 (클로드 앱 storage / 브라우저 localStorage) ----------
+  // ---------- [저장] GitHub 동기화 (선택 사항 — 설정 안 하면 기존처럼 이 기기에만 저장됨) ----------
+  var GH_CONFIG_KEY = 'wt-github-cfg';
+  var GH_CACHE_KEY = 'wt-github-cache'; // GitHub 요청 실패(오프라인 등) 시 마지막으로 받았던 내용을 대신 보여주기 위한 로컬 사본
+  var GH_API = 'https://api.github.com';
+  var GH_DATA_PATH = 'data/workout-data.json';
+  var ghSha = null; // 마지막으로 읽거나 쓴 파일의 sha — 다음 저장(PUT) 때 충돌 감지용으로 필요
+
+  function getGhConfig() {
+    try { var raw = window.localStorage.getItem(GH_CONFIG_KEY); return raw ? JSON.parse(raw) : null; }
+    catch (e) { return null; }
+  }
+  function setGhConfig(cfg) { try { window.localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg)); } catch (e) {} }
+  function clearGhConfig() { try { window.localStorage.removeItem(GH_CONFIG_KEY); } catch (e) {} }
+
+  function utf8ToBase64(str) {
+    var bytes = new TextEncoder().encode(str);
+    var binary = '';
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  function base64ToUtf8(b64) {
+    var binary = atob(b64.replace(/\n/g, ''));
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  async function ghFetch(cfg, opts) {
+    opts = opts || {};
+    var url = GH_API + '/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + GH_DATA_PATH + (opts.query || '');
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, opts.timeoutMs || 20000);
+    try {
+      var headers = {
+        Authorization: 'Bearer ' + cfg.token,
+        Accept: opts.accept || 'application/vnd.github+json'
+      };
+      if (opts.method === 'PUT') headers['Content-Type'] = 'application/json';
+      var res = await fetch(url, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        signal: controller.signal
+      });
+      if (res.status === 401) throw new Error('GitHub 토큰이 만료됐거나 유효하지 않습니다. 설정에서 다시 연결해주세요.');
+      // GitHub는 만료일이 있는 토큰으로 요청하면 응답 헤더에 만료 시각을 실어준다 — 연결된
+      // 상태에서 쓸 때마다 최신값으로 갱신해서, 사용자가 따로 만료일을 입력할 필요가 없게 함
+      try {
+        var exp = res.headers.get('github-authentication-token-expiration');
+        if (exp) {
+          var stored = getGhConfig();
+          if (stored) { stored.tokenExpiresAt = exp; setGhConfig(stored); }
+        }
+      } catch (e) {}
+      return res;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('요청 시간이 초과됐습니다. 네트워크 상태를 확인해주세요.');
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async function ghGetData(cfg) {
+    var res = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main') });
+    var tokenExpiresAt = res.headers.get('github-authentication-token-expiration') || null;
+    if (res.status === 404) return { value: null, sha: null, tokenExpiresAt: tokenExpiresAt };
+    if (!res.ok) {
+      var body = await res.json().catch(function () { return {}; });
+      throw new Error(body.message || 'GitHub 읽기 실패 (' + res.status + ')');
+    }
+    var json = await res.json();
+    var text;
+    if (json.content != null) {
+      text = base64ToUtf8(json.content);
+    } else if (json.size > 0) {
+      var rawRes = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main'), accept: 'application/vnd.github.raw' });
+      if (!rawRes.ok) throw new Error('기록 파일이 커서 읽는 데 실패했습니다 (' + rawRes.status + ').');
+      text = await rawRes.text();
+    } else {
+      text = null;
+    }
+    return { value: text, sha: json.sha, tokenExpiresAt: tokenExpiresAt };
+  }
+
+  async function ghTestConnection(cfg) {
+    var res = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main') });
+    if (res.status === 401) throw new Error('토큰이 올바르지 않거나 만료되었습니다.');
+    if (res.status === 403) throw new Error('접근이 거부되었습니다. 토큰 권한(Contents: Read and write)을 확인해주세요.');
+    var tokenExpiresAt = res.headers.get('github-authentication-token-expiration') || null;
+    if (res.status === 404) return { tokenExpiresAt: tokenExpiresAt }; // 저장소는 있지만 아직 기록 파일이 없음 — 처음 연결할 때는 정상
+    if (!res.ok) {
+      var body = await res.json().catch(function () { return {}; });
+      throw new Error(body.message || '연결 실패 (' + res.status + ')');
+    }
+    return { tokenExpiresAt: tokenExpiresAt };
+  }
+
+  async function ghPutData(cfg, valueStr, sha) {
+    var body = { message: 'update workout data', content: utf8ToBase64(valueStr), branch: cfg.branch || 'main' };
+    if (sha) body.sha = sha;
+    var res = await ghFetch(cfg, { method: 'PUT', body: body });
+    if (!res.ok) {
+      var err = await res.json().catch(function () { return {}; });
+      var e = new Error(err.message || 'GitHub 저장 실패 (' + res.status + ')');
+      e.status = res.status;
+      throw e;
+    }
+    var json = await res.json();
+    return json.content.sha;
+  }
+
+  // ---------- [저장] 저장소 어댑터 (클로드 앱 storage / 브라우저 localStorage / GitHub) ----------
   var store = (function () {
     var hasClaude = typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+    var baseStore;
     if (hasClaude) {
-      return {
+      baseStore = {
         mode: 'claude',
         get: function (k) { return window.storage.get(k, false); },
         set: function (k, v) { return window.storage.set(k, v, false); }
       };
+    } else {
+      baseStore = {
+        mode: 'local',
+        get: function (k) {
+          return new Promise(function (resolve, reject) {
+            try {
+              var v = window.localStorage.getItem(k);
+              if (v === null) reject(new Error('not found')); else resolve({ key: k, value: v });
+            } catch (e) { reject(e); }
+          });
+        },
+        set: function (k, v) {
+          return new Promise(function (resolve, reject) {
+            try { window.localStorage.setItem(k, v); resolve({ key: k, value: v }); }
+            catch (e) { reject(e); }
+          });
+        }
+      };
     }
+
+    // 운동 기록 본문(STORAGE_KEY)만 GitHub로 라우팅한다. 임시저장(draft)·타이머 같은 건
+    // 기기마다 다르고 자주 바뀌는 값이라 그대로 이 기기 로컬에만 둔다(매번 GitHub에 커밋하면
+    // API 호출도 과하고 커밋 기록도 지저분해짐).
     return {
-      mode: 'local',
+      get mode() { return getGhConfig() ? 'github' : baseStore.mode; },
       get: function (k) {
-        return new Promise(function (resolve, reject) {
+        var cfg = getGhConfig();
+        if (!cfg || k !== STORAGE_KEY) return baseStore.get(k);
+        return ghGetData(cfg).then(function (r) {
+          if (r.value == null) return baseStore.get(k);
+          ghSha = r.sha;
+          try { window.localStorage.setItem(GH_CACHE_KEY, r.value); } catch (e) {}
+          return { key: k, value: r.value };
+        }).catch(function (err) {
           try {
-            var v = window.localStorage.getItem(k);
-            if (v === null) reject(new Error('not found')); else resolve({ key: k, value: v });
-          } catch (e) { reject(e); }
+            var cached = window.localStorage.getItem(GH_CACHE_KEY);
+            if (cached) return { key: k, value: cached };
+          } catch (e) {}
+          throw err;
         });
       },
       set: function (k, v) {
-        return new Promise(function (resolve, reject) {
-          try { window.localStorage.setItem(k, v); resolve({ key: k, value: v }); }
-          catch (e) { reject(e); }
+        var cfg = getGhConfig();
+        if (!cfg || k !== STORAGE_KEY) return baseStore.set(k, v);
+        try { window.localStorage.setItem(GH_CACHE_KEY, v); } catch (e) {}
+        return ghPutData(cfg, v, ghSha).then(function (sha) {
+          ghSha = sha;
+          return { key: k, value: v };
+        }).catch(function (err) {
+          if (err.status === 409) {
+            // 다른 기기가 먼저 저장해서 sha가 어긋남 — 최신 sha로 다시 한 번만 시도
+            return ghGetData(cfg).then(function (r) {
+              ghSha = r.sha;
+              return ghPutData(cfg, v, ghSha).then(function (sha) { ghSha = sha; return { key: k, value: v }; });
+            });
+          }
+          throw err;
         });
       }
     };
@@ -937,7 +1133,8 @@
     days: [], customExercises: {}, hiddenExercises: {},
     restSeconds: 90, sound: true, vibrate: true, dark: false,
     heightCm: 0, weightKg: 0, weeklyGoal: 0, historyOpen: false, bwExercises: {}, schema: SCHEMA,
-    protein: { targetG: 0, targetAuto: true, goalDirection: 'maintain', logs: {} }, proteinOpen: false
+    protein: { targetG: 0, targetAuto: true, goalDirection: 'maintain', logs: {} }, proteinOpen: false,
+    customProteinLabels: [], hiddenProteinLabels: [], proteinLabelGrams: {}
   };
   var staging = [];
   var selectedCategory = null;
@@ -1028,11 +1225,14 @@
     return w * (1 + r / 30);
   }
   // 저장된 기록(+선택적으로 현재 세션에서 이미 추가된 세트) 중 해당 종목의 역대 최고 1RM
-  function bestOneRMSoFar(name, extraSets) {
+  // variant를 넘기면 같은 이름이라도 그립/기구가 다른 기록은 비교 대상에서 제외한다
+  // (안 넘기면 이름이 같은 모든 기록을 합쳐서 봄 — 통계 화면의 "전체" 조회용)
+  function bestOneRMSoFar(name, extraSets, variant) {
     var best = 0;
     data.days.forEach(function (day) {
       day.exercises.forEach(function (ex) {
         if (ex.name !== name) return;
+        if (variant !== undefined && (ex.variant || '') !== variant) return;
         ex.sets.forEach(function (s) { best = Math.max(best, estOneRM(s)); });
       });
     });
@@ -1041,8 +1241,8 @@
   }
   // 세트(entry) 하나가 PR인지 판정하고, PR이면 entry.pr = true로 표시한다.
   // baselineSets: 이번 세트를 제외한 비교 기준 세트 목록(수정 중이면 수정 대상 제외하고 전달)
-  function judgeAndMarkPR(name, entry, baselineSets) {
-    var prevBest = bestOneRMSoFar(name, baselineSets);
+  function judgeAndMarkPR(name, entry, baselineSets, variant) {
+    var prevBest = bestOneRMSoFar(name, baselineSets, variant);
     var newOneRM = estOneRM(entry);
     var isPR = prevBest > 0 && newOneRM > prevBest;
     if (isPR) entry.pr = true;
@@ -1084,11 +1284,12 @@
     return Math.round((today - d) / 86400000);
   }
   // 종목의 날짜별 최고 1RM 이력(오름차순). 하루에 여러 세트가 있으면 그날의 최고값 하나만 사용.
-  function exerciseOneRMHistory(name) {
+  function exerciseOneRMHistory(name, variant) {
     var byDate = {};
     data.days.forEach(function (day) {
       day.exercises.forEach(function (ex) {
         if (ex.name !== name) return;
+        if (variant !== undefined && (ex.variant || '') !== variant) return;
         var best = 0;
         ex.sets.forEach(function (s) { best = Math.max(best, estOneRM(s)); });
         if (best > 0) byDate[day.date] = Math.max(byDate[day.date] || 0, best);
@@ -1097,8 +1298,8 @@
     return Object.keys(byDate).sort().map(function (d) { return { date: d, oneRM: byDate[d] }; });
   }
   // 정체 상태가 아니면 null, 정체면 { sessionsSincePR, daysSincePR, bestOneRM }를 반환
-  function detectPlateau(name) {
-    var history = exerciseOneRMHistory(name);
+  function detectPlateau(name, variant) {
+    var history = exerciseOneRMHistory(name, variant);
     if (history.length < PLATEAU_MIN_TOTAL_SESSIONS) return null;
 
     var bestSoFar = 0, lastPRIdx = 0;
@@ -1229,7 +1430,7 @@
       if (work[0].cardio) {
         sum = '총 ' + totalMinutes(last.sets) + '분 · ' + work.length + '회';
       } else {
-        sum = '최고 ' + maxWeight(last.sets) + 'kg · 볼륨 ' + fmtVol(setVolume(last.sets)) + ' · ' + work.length + '세트';
+        sum = '최고 ' + maxWeight(last.sets) + 'kg · ' + work.length + '세트';
       }
     }
     box.innerHTML =
@@ -1286,6 +1487,8 @@
     var l = (label || '').trim().slice(0, 20) || '끼니';
     if (!data.protein.logs[dateStr]) data.protein.logs[dateStr] = [];
     data.protein.logs[dateStr].push({ id: uid(), label: l, grams: g });
+    // 같은 항목(끼니 이름)을 다음에 또 고를 때, 마지막으로 입력했던 g수를 기본값으로 보여주기 위해 기억해둠
+    data.proteinLabelGrams[l.slice(0, 10)] = g;
     return true;
   }
   function deleteProteinLog(dateStr, id) {
@@ -1332,7 +1535,7 @@
   function mergeDupExercises(list) {
     var out = [], idx = {};
     (list || []).forEach(function (ex) {
-      var key = (ex.category || '기타') + '\u0000' + ex.name;
+      var key = (ex.category || '기타') + '\u0000' + ex.name + '\u0000' + (ex.variant || '');
       if (idx[key] === undefined) { idx[key] = out.length; out.push(ex); }
       else { out[idx[key]].sets = (out[idx[key]].sets || []).concat(ex.sets || []); }
     });
@@ -1350,6 +1553,7 @@
           return {
             name: ex.name,
             category: ex.category || '기타',
+            variant: (typeof ex.variant === 'string') ? ex.variant.trim().slice(0, 16) : '',
             sets: (ex.sets || []).map(function (s) {
               var out = {
                 weight: Number(s.weight) || 0,
@@ -1416,6 +1620,19 @@
         });
       }
     }
+    data.customProteinLabels = Array.isArray(obj.customProteinLabels)
+      ? obj.customProteinLabels.map(function (l) { return String(l).trim().slice(0, 10); }).filter(Boolean).slice(0, 30)
+      : [];
+    data.hiddenProteinLabels = Array.isArray(obj.hiddenProteinLabels)
+      ? obj.hiddenProteinLabels.map(function (l) { return String(l).trim().slice(0, 10); }).filter(Boolean)
+      : [];
+    data.proteinLabelGrams = {};
+    if (obj.proteinLabelGrams && typeof obj.proteinLabelGrams === 'object') {
+      Object.keys(obj.proteinLabelGrams).forEach(function (l) {
+        var g = Number(obj.proteinLabelGrams[l]);
+        if (isFinite(g) && g > 0 && g <= LIMITS.proteinMeal) data.proteinLabelGrams[l.slice(0, 10)] = Math.round(g);
+      });
+    }
     data.schema = SCHEMA;
   }
   async function persist() {
@@ -1442,7 +1659,7 @@
       if (!d || !Array.isArray(d.staging) || !d.staging.length) return;
       staging = d.staging.map(function (item) {
         return {
-          category: item.category, name: item.name,
+          category: item.category, name: item.name, variant: item.variant || '',
           sets: (item.sets || []).map(function (x) { return x; })
         };
       });
@@ -1464,7 +1681,6 @@
     document.documentElement.setAttribute('data-theme', data.dark ? 'dark' : 'light');
     $('theme-color-meta').setAttribute('content', data.dark ? '#111214' : '#F7F7F9');
     $('theme-toggle').innerHTML = svg(data.dark ? 'sun' : 'moon', 16);
-    $('dark-switch').classList.toggle('on', data.dark);
     redrawCharts();
   }
   function redrawCharts() {
@@ -1611,17 +1827,61 @@
       .filter(function (n) { return hidden.indexOf(n) === -1; });
   }
 
-  function lastPerformance(name, beforeDate) {
+  // variant를 넘기면 그 그립/기구로 한 기록만(없으면 "무변형"만) 찾는다 — 안 넘기면 이름이 같은 걸 전부 봄
+  function lastPerformance(name, beforeDate, variant) {
     var days = data.days.filter(function (d) { return !beforeDate || d.date < beforeDate; })
       .slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
     for (var i = 0; i < days.length; i++) {
-      var matches = days[i].exercises.filter(function (ex) { return ex.name === name; });
+      var matches = days[i].exercises.filter(function (ex) {
+        return ex.name === name && (variant === undefined || (ex.variant || '') === variant);
+      });
       if (matches.length) {
         var all = [].concat.apply([], matches.map(function (m) { return m.sets; }));
         return { date: days[i].date, sets: all, maxWeight: maxWeight(all) };
       }
     }
     return null;
+  }
+  // 이 종목을 가장 최근에 기록할 때 썼던 변형(그립/기구) 문구 — 새로 입력 시작할 때 기본값으로 씀
+  function lastVariantFor(name) {
+    var days = data.days.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
+    for (var i = 0; i < days.length; i++) {
+      var matches = days[i].exercises.filter(function (ex) { return ex.name === name; });
+      if (matches.length) return matches[matches.length - 1].variant || '';
+    }
+    return '';
+  }
+  // 이 종목에서 예전에 썼던 변형 문구 목록(최근 쓴 순, 중복 제거) — 타이핑 대신 탭으로 골라서
+  // "로프"/"로프 "처럼 살짝 다르게 적어 기록이 갈라지는 걸 막기 위한 칩 목록에 씀
+  function variantsUsedFor(name) {
+    var out = [], seen = {};
+    data.days.slice().sort(function (a, b) { return b.date.localeCompare(a.date); })
+      .forEach(function (day) {
+        day.exercises.forEach(function (ex) {
+          if (ex.name !== name || !ex.variant || seen[ex.variant]) return;
+          seen[ex.variant] = true;
+          out.push(ex.variant);
+        });
+      });
+    return out;
+  }
+  function renderVariantChips(name, activeVariant) {
+    var wrap = $('qe-variant-chips');
+    var used = variantsUsedFor(name);
+    if (!used.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+    wrap.style.display = 'flex';
+    wrap.innerHTML = '';
+    used.forEach(function (v) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'wt-chip' + (v === activeVariant ? ' active' : '');
+      chip.textContent = v;
+      chip.addEventListener('click', function () {
+        $('qe-variant').value = v;
+        $('qe-variant').dispatchEvent(new Event('input'));
+      });
+      wrap.appendChild(chip);
+    });
   }
 
   function renderCategoryChips() {
@@ -1902,20 +2162,6 @@
     $('qe-cardio-fields').style.display = cardio ? 'block' : 'none';
     $('qe-warmup').style.display = cardio ? 'none' : '';
     applyBodyweightMode(cardio ? null : name);
-    updateOneRMHint();
-  }
-  function updateOneRMHint() {
-    var hint = $('qe-onerm-hint');
-    if (!currentQE || isCardio(currentQE.category)) { hint.style.display = 'none'; return; }
-    var w = parseFloat($('qe-weight').value);
-    var r = parseInt($('qe-reps').value, 10);
-    if (!isFinite(w) || !isFinite(r) || r <= 0) { hint.style.display = 'none'; return; }
-    var bwl = bwLoadFor(currentQE.name);
-    var eff = (bwl > 0 ? bwl : 0) + (w || 0);
-    if (eff <= 0) { hint.style.display = 'none'; return; }
-    var rm = r === 1 ? eff : eff * (1 + r / 30);
-    hint.textContent = '예상 1RM 약 ' + Math.round(rm) + 'kg';
-    hint.style.display = '';
   }
   function applyBodyweightMode(name) {
     var note = $('qe-bw-note');
@@ -1979,7 +2225,8 @@
   function openQuickEntry(category, name) {
     var dateVal = $('entry-date').value;
     var existing = staging.find(function (s) { return s.name === name && s.category === category; });
-    currentQE = existing || { category: category, name: name, sets: [] };
+    currentQE = existing || { category: category, name: name, variant: lastVariantFor(name), sets: [] };
+    if (currentQE.variant === undefined) currentQE.variant = '';
 
     editingSetIndex = -1;
     setWarmup(false);
@@ -1988,12 +2235,14 @@
     applyModeFields(category, name);
     $('quick-entry').style.display = '';
     $('qe-name').textContent = name;
+    $('qe-variant').value = currentQE.variant || '';
+    renderVariantChips(name, currentQE.variant || '');
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
 
     var cardio = isCardio(category);
-    var last = lastPerformance(name, dateVal);
+    var last = lastPerformance(name, dateVal, currentQE.variant);
     var repeatBtn = $('qe-repeat-last');
 
     if (last) {
@@ -2033,7 +2282,6 @@
       repeatBtn.style.display = 'none';
     }
     renderQESetList();
-    updateOneRMHint();
     safeScrollIntoView($('quick-entry'));
   }
 
@@ -2051,6 +2299,7 @@
     currentQE = {
       category: ex.category,
       name: ex.name,
+      variant: ex.variant || '',
       sets: ex.sets.map(function (s) {
         var copy = {};
         Object.keys(s).forEach(function (k) { copy[k] = s[k]; });
@@ -2065,6 +2314,8 @@
     applyModeFields(ex.category, ex.name);
     $('quick-entry').style.display = '';
     $('qe-name').textContent = ex.name + ' — 기록 수정';
+    $('qe-variant').value = currentQE.variant || '';
+    renderVariantChips(ex.name, currentQE.variant || '');
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(ex.category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
@@ -2099,7 +2350,7 @@
     unlockAudio();
     var src = currentQE.sets[currentQE.sets.length - 1];
     var copy = {};
-    Object.keys(src).forEach(function (k) { if (k !== 'planned') copy[k] = src[k]; });
+    Object.keys(src).forEach(function (k) { copy[k] = src[k]; });
     if (Array.isArray(src.tags)) copy.tags = src.tags.slice();
     currentQE.sets.push(copy);
     commitStaging();
@@ -2123,15 +2374,13 @@
       row.className = 'wt-set-row' + (editingSetIndex === i ? ' editing' : '');
 
       var tailInfo = '';
-      if (s.cardio) tailInfo = '';
-      else if (s.warmup) tailInfo = '<span class="wt-warm-badge">W</span>';
-      else tailInfo = '<span style="color:var(--wt-text-muted);font-weight:400;margin-left:6px;">' + Math.round(effWeight(s) * s.reps).toLocaleString() + 'kg</span>';
+      if (s.warmup) tailInfo = '<span class="wt-warm-badge">W</span>';
 
       var label = document.createElement('div');
       label.style.cssText = 'flex:1; min-width:0; cursor:pointer;';
       label.innerHTML = '<span>' + (i + 1) + '. ' + setLabel(s) + tailInfo +
         prBadgeHtml(s.pr) +
-        (s.planned ? '<span class="wt-plan-badge">예정</span>' : '') + rpeBadge(s) + tagMini(s) + '</span>' +
+        rpeBadge(s) + tagMini(s) + '</span>' +
         (s.note ? '<span style="display:block;font-size:11px;font-weight:400;color:var(--wt-text-muted);margin-top:2px;">' + escapeHtml(s.note) + '</span>' : '');
       label.addEventListener('click', function () { beginEditSet(i); });
 
@@ -2141,13 +2390,15 @@
       del.setAttribute('aria-label', (i + 1) + '번 세트 삭제');
       del.innerHTML = svg('trash', 13);
       del.addEventListener('click', function () {
-        currentQE.sets.splice(i, 1);
-        if (editingSetIndex === i) exitEditMode();
-        else if (editingSetIndex > i) editingSetIndex -= 1;
-        if (currentQE.sets.length === 0) removeStaging(currentQE);
-        renderQESetList();
-        renderStaging();
-        saveDraft();
+        armDelete(del, '삭제?', function () {
+          currentQE.sets.splice(i, 1);
+          if (editingSetIndex === i) exitEditMode();
+          else if (editingSetIndex > i) editingSetIndex -= 1;
+          if (currentQE.sets.length === 0) removeStaging(currentQE);
+          renderQESetList();
+          renderStaging();
+          saveDraft();
+        });
       });
 
       row.appendChild(label);
@@ -2176,7 +2427,6 @@
     $('qe-cancel-edit').style.display = '';
     $('qe-repeat-last').style.display = 'none';
     renderQESetList();
-    updateOneRMHint();
   }
 
   function commitStaging() { if (currentQE && !editingRecordCtx && staging.indexOf(currentQE) === -1) staging.push(currentQE); }
@@ -2191,6 +2441,7 @@
       if (!day.exercises.length) data.days = data.days.filter(function (d) { return d !== day; });
     } else {
       day.exercises[exIdx].sets = currentQE.sets;
+      day.exercises[exIdx].variant = currentQE.variant || '';
     }
     closeQuickEntry();
     selectedCategory = null;
@@ -2207,23 +2458,31 @@
 
   $('qe-weight-minus').addEventListener('click', function () {
     var el = $('qe-weight'); el.value = Math.max(0, Math.round(((parseFloat(el.value) || 0) - 2.5) * 100) / 100);
-    updateOneRMHint();
   });
   $('qe-weight-plus').addEventListener('click', function () {
     var el = $('qe-weight');
     el.value = Math.min(LIMITS.weight, Math.round(((parseFloat(el.value) || 0) + 2.5) * 100) / 100);
-    updateOneRMHint();
   });
   $('qe-reps-minus').addEventListener('click', function () {
     var el = $('qe-reps'); el.value = Math.max(0, (parseInt(el.value, 10) || 0) - 1);
-    updateOneRMHint();
   });
   $('qe-reps-plus').addEventListener('click', function () {
     var el = $('qe-reps'); el.value = Math.min(LIMITS.reps, (parseInt(el.value, 10) || 0) + 1);
-    updateOneRMHint();
   });
-  $('qe-weight').addEventListener('input', updateOneRMHint);
-  $('qe-reps').addEventListener('input', updateOneRMHint);
+  // 변형(그립·기구)을 바꿔 입력하면, "지난 기록" 카드를 그 변형 기준으로 다시 찾아 보여줌
+  // (무게/횟수 입력칸은 그대로 둠 — 이미 타이핑 중인 값을 지우지 않기 위해)
+  $('qe-variant').addEventListener('input', function () {
+    if (!currentQE) return;
+    currentQE.variant = this.value.trim().slice(0, 16);
+    document.querySelectorAll('#qe-variant-chips .wt-chip').forEach(function (chip) {
+      chip.classList.toggle('active', chip.textContent === currentQE.variant);
+    });
+    var last = lastPerformance(currentQE.name, $('entry-date').value, currentQE.variant);
+    renderLastRecord(last);
+    // "지난 세트 그대로" 버튼은 열 때 계산한 지난 기록을 기준으로 동작하므로,
+    // 변형을 바꾸면 그 기준이 달라져 숨겨둔다(다시 열면 새 변형 기준으로 정상 표시됨)
+    $('qe-repeat-last').style.display = 'none';
+  });
   $('qe-min-minus').addEventListener('click', function () {
     var el = $('qe-minutes'); el.value = Math.max(0, (parseInt(el.value, 10) || 0) - 5);
   });
@@ -2277,7 +2536,7 @@
     var baselineSets = editingSetIndex >= 0
       ? currentQE.sets.filter(function (_, idx) { return idx !== editingSetIndex; })
       : currentQE.sets;
-    var prResult = judgeAndMarkPR(currentQE.name, entry, baselineSets);
+    var prResult = judgeAndMarkPR(currentQE.name, entry, baselineSets, currentQE.variant);
     var isPR = prResult.isPR, newOneRM = prResult.oneRM;
 
     if (editingSetIndex >= 0) {
@@ -2320,7 +2579,11 @@
   function updateUnsavedBar() {
     var bar = $('unsaved-bar');
     var c = stagingCounts();
-    if (!c.sets || currentTab !== 'log') { bar.style.display = 'none'; bar.classList.remove('show'); return; }
+    if (!c.sets || currentTab !== 'log') {
+      bar.style.display = 'none'; bar.classList.remove('show');
+      $('view-log').style.marginTop = '';
+      return;
+    }
     // 저장 영역이 화면에 보이면 알림 줄은 숨김
     var visible = false;
     try {
@@ -2328,14 +2591,27 @@
       var h = window.innerHeight || 800;
       visible = r.top < h - 60 && r.bottom > 0;
     } catch (e) {}
-    if (visible) { bar.style.display = 'none'; bar.classList.remove('show'); return; }
+    if (visible) {
+      bar.style.display = 'none'; bar.classList.remove('show');
+      $('view-log').style.marginTop = '';
+      return;
+    }
     $('unsaved-bar-text').textContent = '저장 전 기록 ' + c.ex + '종목 · ' + c.sets + '세트';
-    // 헤더(휴식 타이머 포함)와 겹치지 않도록, 헤더가 화면에 보이는 동안은 그 아래에 위치시킴
+    bar.style.display = 'flex';
+    // 헤더(휴식 타이머 포함)와 겹치지 않도록, 헤더가 화면에 보이는 동안은 그 아래에 위치시키고,
+    // 그만큼 아래 내용(날짜 입력 등)도 밀어내려서 알림 줄이 그 위를 가리지 않게 함.
+    // 스크롤을 내려 헤더가 화면 밖으로 나가면, 알림 줄은 화면 맨 위에 떠 있는 리마인더로만 동작하고
+    // (이미 지나간 내용을 덮어도 무방) 아래 내용을 밀어내지 않는다.
     try {
       var hRect = $('top-header').getBoundingClientRect();
-      bar.style.top = (hRect.bottom > 0 ? Math.round(hRect.bottom) + 10 : 8) + 'px';
-    } catch (e) { bar.style.top = ''; }
-    bar.style.display = 'flex';
+      if (hRect.bottom > 0) {
+        bar.style.top = (Math.round(hRect.bottom) + 10) + 'px';
+        $('view-log').style.marginTop = (bar.offsetHeight + 10) + 'px';
+      } else {
+        bar.style.top = '8px';
+        $('view-log').style.marginTop = '';
+      }
+    } catch (e) { bar.style.top = ''; $('view-log').style.marginTop = ''; }
     requestAnimationFrame(function () { bar.classList.add('show'); });
   }
   $('unsaved-bar').addEventListener('click', function () {
@@ -2367,7 +2643,7 @@
       row.className = 'wt-row-card';
 
       var todayMax = maxWeight(item.sets);
-      var last = lastPerformance(item.name, dateVal);
+      var last = lastPerformance(item.name, dateVal, item.variant);
       var trend = '';
       if (!isCardio(item.category) && last && last.maxWeight > 0 && todayMax > 0) {
         var d = Math.round((todayMax - last.maxWeight) * 100) / 100;
@@ -2390,11 +2666,12 @@
         summary = item.sets.map(setLabel).join(' / ') + ' · 총 ' + totalMinutes(item.sets) + '분';
       } else {
         summary = item.sets.map(function (s) { return setLabel(s).replace(' × ', '×') + (s.warmup ? 'W' : ''); }).join(', ') +
-          ' · ' + fmtVol(setVolume(item.sets)) + (warmCount ? ' · 워밍업 ' + warmCount : '');
+          (warmCount ? ' · 워밍업 ' + warmCount : '');
       }
+      var variantBadge = item.variant ? '<span class="wt-plan-badge">' + escapeHtml(item.variant) + '</span>' : '';
       var mid = document.createElement('div');
       mid.style.cssText = 'flex:1;cursor:pointer;min-width:0;';
-      mid.innerHTML = '<p style="font-size:13px;font-weight:700;margin:0;color:var(--wt-text);">' + escapeHtml(item.name) + trend + '</p>' +
+      mid.innerHTML = '<p style="font-size:13px;font-weight:700;margin:0;color:var(--wt-text);">' + escapeHtml(item.name) + variantBadge + trend + '</p>' +
         '<p style="font-size:12px;color:var(--wt-text-muted);margin:2px 0 0;">' + summary + '</p>';
       mid.addEventListener('click', function () {
         selectedCategory = item.category;
@@ -2435,10 +2712,12 @@
       del.setAttribute('aria-label', item.name + ' 삭제');
       del.innerHTML = svg('trash', 14);
       del.addEventListener('click', function () {
-        removeStaging(item);
-        if (currentQE === item) closeQuickEntry();
-        renderStaging();
-        saveDraft();
+        armDelete(del, '삭제?', function () {
+          removeStaging(item);
+          if (currentQE === item) closeQuickEntry();
+          renderStaging();
+          saveDraft();
+        });
       });
 
       row.appendChild(icon); row.appendChild(mid); row.appendChild(ordWrap); row.appendChild(del);
@@ -2531,11 +2810,77 @@
       list.appendChild(row);
     });
   }
-  document.querySelectorAll('.protein-quick').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      $('protein-label-input').value = btn.getAttribute('data-label');
-      $('protein-grams-input').focus();
+  // ---------- [단백질] 빠른 입력 항목(끼니/보충제 등) 관리 — 종목 편집과 같은 방식 ----------
+  var PROTEIN_QUICK_BASE = ['아침', '점심', '저녁', '간식'];
+  var proteinLabelEditMode = false;
+  function proteinQuickLabels() {
+    var hidden = data.hiddenProteinLabels || [];
+    return PROTEIN_QUICK_BASE.filter(function (l) { return hidden.indexOf(l) === -1; })
+      .concat(data.customProteinLabels || []);
+  }
+  function renderProteinQuickChips() {
+    var wrap = $('protein-quick-chips');
+    wrap.innerHTML = '';
+    proteinQuickLabels().forEach(function (l) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'wt-chip' + (proteinLabelEditMode ? ' deletable' : '');
+      btn.innerHTML = escapeHtml(l) + (proteinLabelEditMode ? svg('trash', 13) : '');
+      btn.addEventListener('click', function () {
+        if (proteinLabelEditMode) {
+          var custom = data.customProteinLabels || [];
+          var ci = custom.indexOf(l);
+          if (ci !== -1) {
+            custom.splice(ci, 1);
+          } else {
+            data.hiddenProteinLabels = data.hiddenProteinLabels || [];
+            if (data.hiddenProteinLabels.indexOf(l) === -1) data.hiddenProteinLabels.push(l);
+          }
+          renderProteinQuickChips();
+          persist();
+          return;
+        }
+        $('protein-label-input').value = l;
+        var lastGrams = data.proteinLabelGrams[l];
+        $('protein-grams-input').value = lastGrams ? lastGrams : '';
+        $('protein-grams-input').focus();
+      });
+      wrap.appendChild(btn);
     });
+    if (!proteinLabelEditMode) {
+      var addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'wt-chip wt-chip-new';
+      addBtn.textContent = '+ 추가';
+      addBtn.addEventListener('click', function () {
+        $('protein-label-add-form').style.display = 'flex';
+        $('protein-label-add-input').value = '';
+        $('protein-label-add-input').focus();
+      });
+      wrap.appendChild(addBtn);
+    }
+  }
+  $('protein-label-edit-btn').addEventListener('click', function () {
+    proteinLabelEditMode = !proteinLabelEditMode;
+    $('protein-label-edit-btn').classList.toggle('on', proteinLabelEditMode);
+    $('protein-label-edit-btn').textContent = proteinLabelEditMode ? '편집 완료' : '편집';
+    $('protein-label-edit-hint').style.display = proteinLabelEditMode ? '' : 'none';
+    $('protein-label-add-form').style.display = 'none';
+    renderProteinQuickChips();
+  });
+  $('protein-label-add-confirm').addEventListener('click', function () {
+    var name = $('protein-label-add-input').value.trim().slice(0, 10);
+    if (!name) return;
+    if (proteinQuickLabels().indexOf(name) === -1) {
+      data.customProteinLabels = data.customProteinLabels || [];
+      data.customProteinLabels.push(name);
+      persist();
+    }
+    $('protein-label-add-form').style.display = 'none';
+    renderProteinQuickChips();
+  });
+  $('protein-label-add-cancel').addEventListener('click', function () {
+    $('protein-label-add-form').style.display = 'none';
   });
   function submitProteinEntry() {
     var err = $('protein-add-err');
@@ -2588,10 +2933,10 @@
     valid.forEach(function (item) {
       var cleaned = item.sets.map(function (st) {
         var c = {};
-        Object.keys(st).forEach(function (k) { if (k !== 'planned') c[k] = st[k]; });
+        Object.keys(st).forEach(function (k) { c[k] = st[k]; });
         return c;
       });
-      day.exercises.push({ name: item.name, category: item.category, sets: cleaned });
+      day.exercises.push({ name: item.name, category: item.category, variant: item.variant || '', sets: cleaned });
     });
     day.exercises = mergeDupExercises(day.exercises);
     commitSessionDuration(day);
@@ -2644,10 +2989,10 @@
     card.className = 'wt-card';
     card.style.marginBottom = '10px';
 
-    var dayVol = day.exercises.reduce(function (sum, ex) { return sum + setVolume(ex.sets); }, 0);
+    var daySets = day.exercises.reduce(function (sum, ex) { return sum + workSets(ex.sets).length; }, 0);
     var dayMin = day.exercises.reduce(function (sum, ex) { return sum + totalMinutes(ex.sets); }, 0);
     var headBits = [];
-    if (dayVol > 0) headBits.push(fmtVol(dayVol));
+    if (daySets > 0) headBits.push(daySets + '세트');
     if (dayMin > 0) headBits.push(dayMin + '분');
     var header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;';
@@ -2715,9 +3060,10 @@
       var notes = ex.sets.filter(function (s) { return s.note; })
         .map(function (s) { return '<span style="display:block;font-size:11px;color:var(--wt-text-muted);margin-top:2px;">· ' + escapeHtml(s.note) + '</span>'; }).join('');
 
+      var exVariantBadge = ex.variant ? '<span class="wt-plan-badge">' + escapeHtml(ex.variant) + '</span>' : '';
       var mid = document.createElement('div');
       mid.style.cssText = 'flex:1;min-width:0;';
-      mid.innerHTML = '<p style="font-size:14px;font-weight:700;margin:0 0 2px;color:var(--wt-text);">' + escapeHtml(ex.name) + '</p>' +
+      mid.innerHTML = '<p style="font-size:14px;font-weight:700;margin:0 0 2px;color:var(--wt-text);">' + escapeHtml(ex.name) + exVariantBadge + '</p>' +
         '<div style="font-size:13px;color:var(--wt-text-muted);">' + setsHtml + exTail + '</div>' + notes;
 
       var btnGroup = document.createElement('div');
@@ -2752,6 +3098,18 @@
   }
 
   // ---------- [조회] 캘린더 ----------
+  // 캘린더 셀 하단에 그날 한 부위를 알약 모양 점으로 표시(부위별 색) — 최대 3개까지만, 나머지는 생략
+  function dayCategoryDots(day) {
+    if (!day) return '';
+    var seen = {}, cats = [];
+    day.exercises.forEach(function (ex) {
+      var c = ex.category || '기타';
+      if (!seen[c]) { seen[c] = true; cats.push(c); }
+    });
+    return cats.slice(0, 3).map(function (c) {
+      return '<span class="wt-cal-dot" style="background:' + meta(c).color + ';"></span>';
+    }).join('');
+  }
   function renderCalendar() {
     var y = calCursor.getFullYear(), mo = calCursor.getMonth();
     $('cal-title').textContent = y + '년 ' + (mo + 1) + '월';
@@ -2784,7 +3142,7 @@
         var day = data.days.find(function (d) { return d.date === iso; });
         var cell = document.createElement('button');
         cell.className = 'wt-cal-cell' + (iso === todayIso ? ' today' : '') + (iso === calSelected ? ' selected' : '');
-        cell.innerHTML = '<span>' + n + '</span>' + (day ? '<span class="wt-cal-dot"></span>' : '');
+        cell.innerHTML = '<span>' + n + '</span>' + (day ? '<span class="wt-cal-dots">' + dayCategoryDots(day) + '</span>' : '');
         cell.addEventListener('click', function () {
           calSelected = (calSelected === iso) ? null : iso;
           renderCalendar();
@@ -3115,18 +3473,40 @@
     drawLineChart('protein-canvas', points, 'grams', function (v) { return Math.round(v) + 'g'; });
   }
 
-  function allExerciseNames() {
-    var set = {};
-    data.days.forEach(function (day) { day.exercises.forEach(function (ex) { set[ex.name] = 1; }); });
-    return Object.keys(set).sort();
+  // 종목(이름+변형) 목록. 한 이름에 변형이 여러 개 쓰인 적 있을 때만 "이름 · 변형"으로 쪼개서 보여주고,
+  // 변형을 한 번도 안 썼거나 하나만 썼던 이름은 그냥 이름 그대로 보여준다(불필요하게 목록만 늘리지 않기 위해).
+  var progressOptionsByKey = {};
+  function allExerciseOptions() {
+    var seen = {}; // key(이름\u0000변형) -> { name, variant }
+    data.days.forEach(function (day) {
+      day.exercises.forEach(function (ex) {
+        var v = ex.variant || '';
+        var key = ex.name + '\u0000' + v;
+        if (!seen[key]) seen[key] = { name: ex.name, variant: v };
+      });
+    });
+    var variantCountByName = {};
+    Object.keys(seen).forEach(function (k) {
+      var n = seen[k].name;
+      variantCountByName[n] = (variantCountByName[n] || 0) + 1;
+    });
+    var options = Object.keys(seen).map(function (k) {
+      var o = seen[k];
+      var multi = variantCountByName[o.name] > 1;
+      var label = multi ? (o.name + ' · ' + (o.variant || '(변형 없음)')) : o.name;
+      return { key: k, name: o.name, variant: o.variant, label: label };
+    });
+    options.sort(function (a, b) { return a.label.localeCompare(b.label, 'ko'); });
+    return options;
   }
 
   function renderProgressSelect() {
     var sel = $('progress-exercise');
-    var names = allExerciseNames();
+    var options = allExerciseOptions();
     var prev = sel.value;
     sel.innerHTML = '';
-    if (!names.length) {
+    progressOptionsByKey = {};
+    if (!options.length) {
       $('progress-empty').style.display = 'block';
       $('progress-stats').style.display = 'none';
       sel.style.display = 'none';
@@ -3134,12 +3514,13 @@
     }
     sel.style.display = '';
     $('progress-empty').style.display = 'none';
-    names.forEach(function (n) {
+    options.forEach(function (o) {
+      progressOptionsByKey[o.key] = o;
       var opt = document.createElement('option');
-      opt.value = n; opt.textContent = n;
+      opt.value = o.key; opt.textContent = o.label;
       sel.appendChild(opt);
     });
-    if (names.indexOf(prev) !== -1) sel.value = prev;
+    if (progressOptionsByKey[prev]) sel.value = prev;
     renderProgress();
   }
 
@@ -3150,11 +3531,13 @@
     }
     return false;
   }
-  function pointsFor(name) {
+  function pointsFor(name, variant) {
     var cardio = isCardioExercise(name);
     return data.days.slice().sort(function (a, b) { return a.date.localeCompare(b.date); })
       .map(function (day) {
-        var matches = day.exercises.filter(function (ex) { return ex.name === name; });
+        var matches = day.exercises.filter(function (ex) {
+          return ex.name === name && (variant === undefined || (ex.variant || '') === variant);
+        });
         if (!matches.length) return null;
         var all = [].concat.apply([], matches.map(function (m) { return m.sets; }));
         if (cardio) {
@@ -3169,25 +3552,17 @@
   }
 
   function renderProgress() {
-    var name = $('progress-exercise').value;
-    if (!name) return;
+    var key = $('progress-exercise').value;
+    var opt = progressOptionsByKey[key];
+    if (!opt) return;
+    var name = opt.name, variant = opt.variant;
     $('progress-stats').style.display = 'block';
 
-    var points = pointsFor(name);
+    var points = pointsFor(name, variant);
     var cardio = points.length ? !!points[0].cardio : false;
     var unit = cardio ? '' : 'kg';
 
-    // 유산소 종목엔 1RM 개념이 없으므로 버튼을 숨기고, 모드가 1RM으로 걸려 있으면 무게로 되돌림
-    $('chart-mode-onerm').style.display = cardio ? 'none' : '';
-    if (cardio && chartMode === 'oneRM') {
-      chartMode = 'weight';
-      $('chart-mode-weight').classList.add('active');
-      $('chart-mode-volume').classList.remove('active');
-      $('chart-mode-onerm').classList.remove('active');
-    }
-
     $('chart-mode-weight').textContent = cardio ? '강도' : '최고 무게';
-    $('chart-mode-volume').textContent = cardio ? '시간' : '볼륨';
     document.querySelectorAll('#progress-stats .wt-stat-label')[0].textContent = cardio ? '최고 강도' : '최고 무게';
     document.querySelectorAll('#progress-stats .wt-stat-label')[1].textContent = cardio ? '최근 강도' : '최근 무게';
 
@@ -3211,19 +3586,9 @@
       el.appendChild(delta);
     }
 
-    // 예상 최고 1RM(현재까지 전체 역대 최고치, 유산소 제외)
-    var oneRMCaption = $('progress-1rm-caption');
-    if (!cardio) {
-      var bestRM = bestOneRMSoFar(name, []);
-      oneRMCaption.textContent = bestRM > 0 ? '예상 최고 1RM 약 ' + Math.round(bestRM) + 'kg (Epley 공식 추정치)' : '';
-      oneRMCaption.style.display = bestRM > 0 ? '' : 'none';
-    } else {
-      oneRMCaption.style.display = 'none';
-    }
-
     // 정체기(plateau) 안내 — PR 배지(금색·트로피)와 겹치지 않게 차분한 톤으로 구분
     var plateauBadge = $('progress-plateau-badge');
-    var plateau = !cardio ? detectPlateau(name) : null;
+    var plateau = !cardio ? detectPlateau(name, variant) : null;
     if (plateau) {
       plateauBadge.textContent = '⏸ ' + plateau.daysSincePR + '일째 정체 · 최근 ' + plateau.sessionsSincePR + '회 동안 1RM 갱신 없음';
       plateauBadge.style.display = 'inline-block';
@@ -3232,17 +3597,15 @@
     }
 
     var labelFn;
-    if (chartMode === 'volume') labelFn = cardio ? function (v) { return Math.round(v) + '분'; } : fmtVol;
-    else if (chartMode === 'oneRM') labelFn = function (v) { return Math.round(v) + 'kg'; };
-    else if (chartMode === 'sets') labelFn = function (v) { return v + '세트'; };
+    if (chartMode === 'sets') labelFn = function (v) { return v + '세트'; };
     else labelFn = cardio ? function (v) { return '강도 ' + Math.round(v); } : function (v) { return Math.round(v) + 'kg'; };
 
     drawLineChart('progress-canvas', points, chartMode, labelFn);
     renderProgressTable(points, cardio);
-    renderProgressNotes(name);
+    renderProgressNotes(name, variant);
   }
 
-  function renderProgressNotes(name) {
+  function renderProgressNotes(name, variant) {
     var card = $('progress-notes');
     var list = $('progress-notes-list');
     var rows = [];
@@ -3250,6 +3613,7 @@
       .forEach(function (day) {
         (day.exercises || []).forEach(function (ex) {
           if (ex.name !== name) return;
+          if (variant !== undefined && (ex.variant || '') !== variant) return;
           (ex.sets || []).forEach(function (st) {
             if (!st.note && !(st.tags && st.tags.length)) return;
             rows.push({ date: day.date, note: st.note || '', tags: st.tags || [], label: setLabel(st) });
@@ -3284,7 +3648,7 @@
         }
         var sub = cardio
           ? p.minutes + '분' + (p.distance ? ' · ' + (Math.round(p.distance * 100) / 100) + 'km' : '')
-          : fmtVol(p.volume);
+          : p.sets + '세트';
         var main = cardio ? '강도 ' + p.weight : p.weight + 'kg';
         return '<tr><td style="padding:8px 0;font-size:13px;color:var(--wt-text-muted);border-top:1px solid var(--wt-border);">' +
           fmtDisplayDate(p.date) + '<span style="font-size:11px;margin-left:6px;">' + sub + '</span></td>' +
@@ -3296,33 +3660,13 @@
   $('chart-mode-weight').addEventListener('click', function () {
     chartMode = 'weight';
     this.classList.add('active');
-    $('chart-mode-volume').classList.remove('active');
     $('chart-mode-sets').classList.remove('active');
-    $('chart-mode-onerm').classList.remove('active');
-    renderProgress();
-  });
-  $('chart-mode-volume').addEventListener('click', function () {
-    chartMode = 'volume';
-    this.classList.add('active');
-    $('chart-mode-weight').classList.remove('active');
-    $('chart-mode-sets').classList.remove('active');
-    $('chart-mode-onerm').classList.remove('active');
     renderProgress();
   });
   $('chart-mode-sets').addEventListener('click', function () {
     chartMode = 'sets';
     this.classList.add('active');
     $('chart-mode-weight').classList.remove('active');
-    $('chart-mode-volume').classList.remove('active');
-    $('chart-mode-onerm').classList.remove('active');
-    renderProgress();
-  });
-  $('chart-mode-onerm').addEventListener('click', function () {
-    chartMode = 'oneRM';
-    this.classList.add('active');
-    $('chart-mode-weight').classList.remove('active');
-    $('chart-mode-volume').classList.remove('active');
-    $('chart-mode-sets').classList.remove('active');
     renderProgress();
   });
 
@@ -3331,13 +3675,13 @@
     $('rest-display').textContent = fmtMinSec(data.restSeconds);
     $('sound-switch').classList.toggle('on', data.sound);
     $('vibe-switch').classList.toggle('on', data.vibrate && canVibrate);
-    $('dark-switch').classList.toggle('on', data.dark);
     $('vibe-support').textContent = canVibrate ? '' : '이 브라우저는 진동을 지원하지 않습니다';
     $('vibe-switch').style.opacity = canVibrate ? '1' : '0.4';
     $('goal-display').textContent = data.weeklyGoal > 0 ? '주 ' + data.weeklyGoal + '일' : '사용 안 함';
     $('goal-hint').textContent = data.weeklyGoal > 0 ? '채운 주는 캘린더에 체크 표시' : '';
     renderBody();
     renderProteinSettings();
+    renderGithubSync();
   }
 
   function renderProteinSettings() {
@@ -3447,12 +3791,6 @@
     renderSettings();
     persist();
   });
-  $('dark-switch').addEventListener('click', function () {
-    data.dark = !data.dark;
-    applyTheme();
-    renderSettings();
-    persist();
-  });
   $('theme-toggle').addEventListener('click', function () {
     data.dark = !data.dark;
     applyTheme();
@@ -3462,6 +3800,139 @@
   $('test-alert-btn').addEventListener('click', function () {
     unlockAudio();
     fireAlert();
+  });
+
+  // ---------- [저장] GitHub 동기화 화면 ----------
+  function storageModeLabel() {
+    if (store.mode === 'github') return '저장 위치: GitHub 저장소 (이 기기 포함 모든 기기 공유)';
+    return store.mode === 'claude' ? '저장 위치: 클로드 앱' : '저장 위치: 이 브라우저';
+  }
+  function ghMsg(text, ok) {
+    var el = $('gh-msg');
+    el.textContent = text;
+    el.style.color = ok ? 'var(--wt-good)' : 'var(--wt-danger)';
+    el.style.display = 'block';
+  }
+  var ghVerified = false; // "연결 테스트"를 통과했을 때만 true — 그래야 "저장하고 시작"이 눌림
+  function invalidateGhVerify() {
+    ghVerified = false;
+    $('gh-connect-btn').disabled = true;
+    $('gh-verify-hint').style.display = 'none';
+    $('gh-test-msg').style.display = 'none';
+  }
+  // 헤더에 담긴 "2027-09-28 00:00:00 UTC" 형식 문자열에서 날짜만 뽑아 보여줌
+  function formatTokenExpiry(raw) {
+    var m = String(raw || '').match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : String(raw || '');
+  }
+  function renderGithubSync() {
+    var cfg = getGhConfig();
+    var expEl = $('gh-token-expiry');
+    if (cfg) {
+      $('gh-status').textContent = '연결됨 — ' + cfg.owner + '/' + cfg.repo + (cfg.branch && cfg.branch !== 'main' ? ' (브랜치: ' + cfg.branch + ')' : '') + '. 이 기기에서 저장하면 GitHub에도 함께 저장됩니다.';
+      $('gh-form').style.display = 'none';
+      $('gh-disconnect-btn').style.display = '';
+      $('gh-help').style.display = 'none';
+      if (cfg.tokenExpiresAt) {
+        expEl.textContent = '토큰 만료일: ' + formatTokenExpiry(cfg.tokenExpiresAt);
+        expEl.style.display = '';
+      } else {
+        expEl.style.display = 'none';
+      }
+    } else {
+      $('gh-status').textContent = '연결 안 됨 — 이 기기에만 저장됩니다.';
+      $('gh-form').style.display = 'flex';
+      $('gh-disconnect-btn').style.display = 'none';
+      $('gh-help').style.display = '';
+      expEl.style.display = 'none';
+      invalidateGhVerify();
+    }
+  }
+  ['gh-owner', 'gh-repo', 'gh-branch', 'gh-token'].forEach(function (id) {
+    $(id).addEventListener('input', invalidateGhVerify);
+  });
+  $('gh-advanced-toggle').addEventListener('click', function () {
+    var box = $('gh-advanced');
+    box.style.display = box.style.display === 'none' ? '' : 'none';
+  });
+  function readGhFormCfg() {
+    return {
+      owner: $('gh-owner').value.trim(),
+      repo: $('gh-repo').value.trim(),
+      branch: $('gh-branch').value.trim() || 'main',
+      token: $('gh-token').value.trim()
+    };
+  }
+  $('gh-test-btn').addEventListener('click', async function () {
+    var cfg = readGhFormCfg();
+    if (!cfg.owner || !cfg.repo || !cfg.token) { ghMsg('계정명, 저장소 이름, 토큰을 모두 입력해주세요.', false); return; }
+    var btn = $('gh-test-btn');
+    btn.disabled = true;
+    btn.textContent = '확인 중...';
+    var testMsgEl = $('gh-test-msg');
+    testMsgEl.style.display = 'none';
+    try {
+      await ghTestConnection(cfg);
+      ghVerified = true;
+      $('gh-connect-btn').disabled = false;
+      $('gh-verify-hint').style.display = 'none';
+      testMsgEl.textContent = '연결 성공! "저장하고 시작"을 눌러주세요.';
+      testMsgEl.style.color = 'var(--wt-good)';
+      testMsgEl.style.display = 'block';
+    } catch (e) {
+      ghVerified = false;
+      $('gh-connect-btn').disabled = true;
+      testMsgEl.textContent = e.message || '연결에 실패했습니다.';
+      testMsgEl.style.color = 'var(--wt-danger)';
+      testMsgEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '연결 테스트';
+    }
+  });
+  $('gh-connect-btn').addEventListener('click', async function () {
+    if (!ghVerified) { $('gh-verify-hint').style.display = 'block'; return; }
+    var cfg = readGhFormCfg();
+    if (!cfg.owner || !cfg.repo || !cfg.token) { ghMsg('계정명, 저장소 이름, 토큰을 모두 입력해주세요.', false); return; }
+    var btn = $('gh-connect-btn');
+    btn.disabled = true;
+    btn.textContent = '저장 중...';
+    try {
+      var remote = await ghGetData(cfg);
+      cfg.tokenExpiresAt = remote.tokenExpiresAt || null;
+      if (remote.value != null) {
+        // 이미 그 저장소에 기록이 있으면 — 그걸 이 기기의 최신 기록으로 삼는다(덮어쓰지 않음)
+        applyLoaded(JSON.parse(remote.value));
+        ghSha = remote.sha;
+        setGhConfig(cfg);
+        try { window.localStorage.setItem(GH_CACHE_KEY, remote.value); } catch (e) {}
+        renderAll();
+        ghMsg('GitHub에 있던 기록을 불러왔습니다.', true);
+      } else {
+        // 저장소에 아직 파일이 없으면 — 지금 이 기기의 기록을 처음으로 올린다
+        ghSha = null;
+        setGhConfig(cfg);
+        await persist();
+        ghMsg('이 기기의 기록을 GitHub에 처음 업로드했습니다.', true);
+      }
+      $('gh-owner').value = ''; $('gh-repo').value = ''; $('gh-branch').value = ''; $('gh-token').value = '';
+      renderGithubSync();
+      $('storage-mode').textContent = storageModeLabel();
+    } catch (e) {
+      ghMsg(e.message || '저장에 실패했습니다. 계정명/저장소 이름과 토큰을 확인해주세요.', false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '저장하고 시작';
+    }
+  });
+  $('gh-disconnect-btn').addEventListener('click', function () {
+    armDelete($('gh-disconnect-btn'), '연결 해제?', function () {
+      clearGhConfig();
+      ghSha = null;
+      renderGithubSync();
+      $('storage-mode').textContent = storageModeLabel();
+      ghMsg('이 기기에서 연결 설정을 삭제했습니다. GitHub의 데이터는 그대로 남아있습니다.', true);
+    });
   });
 
   // ---------- [저장] 데이터 백업 및 복원 ----------
@@ -3674,36 +4145,6 @@
     b.addEventListener('click', function () { switchTab(b.getAttribute('data-tab')); });
   });
 
-  // ---------- [화면] 탭 간 좌우 스와이프 전환 ----------
-  (function () {
-    var startX = 0, startY = 0, startT = 0, active = false;
-    function allowSwipe(target) {
-      if ($('quick-entry').style.display !== 'none' && $('quick-entry').contains(target)) return false;
-      if (target.closest && target.closest('#tabbar')) return false;
-      return true;
-    }
-    var root = $('wt-root');
-    root.addEventListener('touchstart', function (e) {
-      if (e.touches.length !== 1 || !allowSwipe(e.target)) { active = false; return; }
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startT = Date.now();
-      active = true;
-    }, { passive: true });
-    root.addEventListener('touchend', function (e) {
-      if (!active) return;
-      active = false;
-      var t = e.changedTouches[0];
-      var dx = t.clientX - startX, dy = t.clientY - startY;
-      if (Date.now() - startT > 600) return;
-      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-      var idx = TAB_ORDER.indexOf(currentTab);
-      if (dx < 0 && idx < TAB_ORDER.length - 1) switchTab(TAB_ORDER[idx + 1]);
-      else if (dx > 0 && idx > 0) switchTab(TAB_ORDER[idx - 1]);
-    }, { passive: true });
-    root.addEventListener('touchcancel', function () { active = false; }, { passive: true });
-  })();
-
   $('progress-exercise').addEventListener('change', renderProgress);
   $('entry-date').addEventListener('change', function () {
     updateTodayVolume();
@@ -3738,6 +4179,7 @@
     renderWeeklySummary();
     renderCategoryVolumeChart();
     renderProteinToday();
+    renderProteinQuickChips();
     renderProteinStats();
     renderCalendar();
     renderCalDetail();
@@ -3754,6 +4196,7 @@
   window.addEventListener('resize', syncTabbarSpace);
 
   (async function init() {
+    $('app-version').textContent = '운동 기록 ver.' + APP_VERSION + ' · ' + APP_BUILD_DATE;
     hydrateIcons();
     await loadData();
     applyTheme();
@@ -3765,9 +4208,12 @@
     await loadDraft();
     await resumeRestTimerIfAny();
     checkFutureDate();
-    $('storage-mode').textContent = store.mode === 'claude' ? '저장 위치: 클로드 앱' : '저장 위치: 이 브라우저';
+    $('storage-mode').textContent = storageModeLabel();
     renderRpeChips();
     renderAll();
+    if ('serviceWorker' in navigator) {
+      try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+    }
   })();
 })();
 </script>
