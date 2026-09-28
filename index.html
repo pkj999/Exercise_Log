@@ -698,6 +698,9 @@
         </div>
         <p id="gh-verify-hint" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: -2px 0 0; display: none;">먼저 "연결 테스트"를 통과해야 저장할 수 있습니다.</p>
       </div>
+      <div id="gh-refresh-row" style="display: none; gap: 6px; margin-bottom: 6px;">
+        <button id="gh-refresh-btn" class="wt-btn-secondary" style="flex: 1;">새로고침 (다른 기기 기록 받아오기)</button>
+      </div>
       <button id="gh-disconnect-btn" class="wt-btn-secondary" style="width: 100%; display: none;">연결 해제 (이 기기에서 설정 삭제)</button>
       <p id="gh-help" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: 10px 0 0; line-height: 1.6;">아직 비공개 저장소나 토큰을 안 만드셨다면, 먼저 GitHub에서<br>① 새 비공개 저장소 생성(README 포함) → ② Settings → Developer settings →<br>Fine-grained tokens에서 그 저장소만 골라 Contents 권한 Read/Write로 토큰 발급</p>
       <p id="gh-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
@@ -787,7 +790,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 4;
+  var APP_VERSION = 5;
   var APP_BUILD_DATE = '2026-09-28';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -1556,6 +1559,31 @@
       else { out[idx[key]].sets = (out[idx[key]].sets || []).concat(ex.sets || []); }
     });
     return out;
+  }
+
+  // GitHub 최초 연결 시 — 연결 전 이 기기에만 있던 기록(localDays)을, 방금 불러온 원격 기록
+  // 배열(days)에 병합한다. 날짜가 없으면 그 날 통째로 추가, 있으면 종목 단위로 중복 여부만
+  // 확인해서 새 것만 추가 (텍스트 백업 "합치기"와 같은 방식의 중복 판정)
+  function mergeLocalDaysInto(days, localDays) {
+    var addedDays = 0, addedEx = 0;
+    localDays.forEach(function (inDay) {
+      var mine = days.find(function (d) { return d.date === inDay.date; });
+      if (!mine) {
+        days.push(JSON.parse(JSON.stringify(inDay)));
+        addedDays += 1;
+        addedEx += (inDay.exercises || []).length;
+        return;
+      }
+      (inDay.exercises || []).forEach(function (inEx) {
+        var dup = mine.exercises.some(function (myEx) {
+          return myEx.name === inEx.name && (myEx.variant || '') === (inEx.variant || '') &&
+            JSON.stringify(myEx.sets) === JSON.stringify(inEx.sets);
+        });
+        if (!dup) { mine.exercises.push(JSON.parse(JSON.stringify(inEx))); addedEx += 1; }
+      });
+    });
+    days.forEach(function (d) { d.exercises = mergeDupExercises(d.exercises); });
+    return { addedDays: addedDays, addedEx: addedEx };
   }
 
   function applyLoaded(obj) {
@@ -3847,6 +3875,7 @@
     if (cfg) {
       $('gh-status').textContent = '연결됨 — ' + cfg.owner + '/' + cfg.repo + (cfg.branch && cfg.branch !== 'main' ? ' (브랜치: ' + cfg.branch + ')' : '') + '. 이 기기에서 저장하면 GitHub에도 함께 저장됩니다.';
       $('gh-form').style.display = 'none';
+      $('gh-refresh-row').style.display = 'flex';
       $('gh-disconnect-btn').style.display = '';
       $('gh-help').style.display = 'none';
       if (cfg.tokenExpiresAt) {
@@ -3858,6 +3887,7 @@
     } else {
       $('gh-status').textContent = '연결 안 됨 — 이 기기에만 저장됩니다.';
       $('gh-form').style.display = 'flex';
+      $('gh-refresh-row').style.display = 'none';
       $('gh-disconnect-btn').style.display = 'none';
       $('gh-help').style.display = '';
       expEl.style.display = 'none';
@@ -3917,13 +3947,26 @@
       var remote = await ghGetData(cfg);
       cfg.tokenExpiresAt = remote.tokenExpiresAt || null;
       if (remote.value != null) {
-        // 이미 그 저장소에 기록이 있으면 — 그걸 이 기기의 최신 기록으로 삼는다(덮어쓰지 않음)
+        // 이미 그 저장소에 기록이 있으면 — 그걸 이 기기의 최신 기록으로 삼되, 연결 전에
+        // 이 기기에만 있던 기록(다른 곳엔 없던 것)은 사라지지 않도록 합쳐준다
+        var localDaysSnapshot = data.days.length ? JSON.parse(JSON.stringify(data.days)) : [];
         applyLoaded(JSON.parse(remote.value));
         ghSha = remote.sha;
         setGhConfig(cfg);
-        try { window.localStorage.setItem(GH_CACHE_KEY, remote.value); } catch (e) {}
-        renderAll();
-        ghMsg('GitHub에 있던 기록을 불러왔습니다.', true);
+        if (localDaysSnapshot.length) {
+          var mergeResult = mergeLocalDaysInto(data.days, localDaysSnapshot);
+          await persist(); // 합친 결과를 GitHub에도 반영
+          renderAll();
+          if (mergeResult.addedDays || mergeResult.addedEx) {
+            ghMsg('GitHub 기록을 불러오고, 연결 전 이 기기에만 있던 기록(새 날짜 ' + mergeResult.addedDays + '일 · 운동 ' + mergeResult.addedEx + '건)도 합쳤습니다.', true);
+          } else {
+            ghMsg('GitHub에 있던 기록을 불러왔습니다.', true);
+          }
+        } else {
+          try { window.localStorage.setItem(GH_CACHE_KEY, remote.value); } catch (e) {}
+          renderAll();
+          ghMsg('GitHub에 있던 기록을 불러왔습니다.', true);
+        }
       } else {
         // 저장소에 아직 파일이 없으면 — 지금 이 기기의 기록을 처음으로 올린다
         ghSha = null;
@@ -3939,6 +3982,36 @@
     } finally {
       btn.disabled = false;
       btn.textContent = '저장하고 시작';
+    }
+  });
+  $('gh-refresh-btn').addEventListener('click', async function () {
+    var cfg = getGhConfig();
+    if (!cfg) return;
+    var btn = $('gh-refresh-btn');
+    btn.disabled = true;
+    btn.textContent = '불러오는 중...';
+    try {
+      // store.get은 방금 내가 저장한 직후엔 로컬 사본을 우선하는데(읽기 지연 방지),
+      // 새로고침은 "다른 기기가 방금 바꾼 걸 지금 당장 확인하고 싶다"는 명시적 요청이므로
+      // 그 우선순위를 건너뛰고 항상 네트워크에서 실제로 다시 받아온다
+      var remote = await ghGetData(cfg);
+      cfg.tokenExpiresAt = remote.tokenExpiresAt || null;
+      setGhConfig(cfg);
+      if (remote.value != null) {
+        applyLoaded(JSON.parse(remote.value));
+        ghSha = remote.sha;
+        try { window.localStorage.setItem(GH_CACHE_KEY, remote.value); } catch (e) {}
+        try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); } catch (e) {}
+        renderAll();
+        ghMsg('최신 기록을 받아왔습니다.', true);
+      } else {
+        ghMsg('GitHub에 아직 기록 파일이 없습니다.', false);
+      }
+    } catch (e) {
+      ghMsg(e.message || '새로고침에 실패했습니다.', false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '새로고침 (다른 기기 기록 받아오기)';
     }
   });
   $('gh-disconnect-btn').addEventListener('click', function () {
