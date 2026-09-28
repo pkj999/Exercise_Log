@@ -787,7 +787,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 2;
+  var APP_VERSION = 3;
   var APP_BUILD_DATE = '2026-09-28';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -3926,12 +3926,16 @@
     }
   });
   $('gh-disconnect-btn').addEventListener('click', function () {
-    armDelete($('gh-disconnect-btn'), '연결 해제?', function () {
+    armDelete($('gh-disconnect-btn'), '연결 해제?', async function () {
       clearGhConfig();
       ghSha = null;
+      // 연결을 끊은 뒤에도 지금까지 GitHub에서 보고 있던 최신 기록이 이 기기에 그대로 이어지도록,
+      // 로컬 저장소로도 한 번 저장해둔다(안 하면 다음에 앱을 열 때 연결 전의 옛 로컬 기록으로
+      // 되돌아가 버릴 수 있음 — GH_CACHE_KEY에만 있고 STORAGE_KEY엔 없던 데이터라서)
+      await persist();
       renderGithubSync();
       $('storage-mode').textContent = storageModeLabel();
-      ghMsg('이 기기에서 연결 설정을 삭제했습니다. GitHub의 데이터는 그대로 남아있습니다.', true);
+      ghMsg('이 기기에서 연결 설정을 삭제했습니다. 지금까지의 기록은 이 기기에 그대로 저장돼 있고, GitHub의 데이터도 그대로 남아있습니다.', true);
     });
   });
 
