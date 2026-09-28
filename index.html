@@ -300,7 +300,7 @@
 <div id="wt-root">
 
   <div id="top-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 1.1rem;">
-    <h1 id="screen-title" style="font-size: 20px; font-weight: 700; margin: 0; color: var(--wt-text);">운동 기록</h1>
+    <h1 id="screen-title" style="font-size: 20px; font-weight: 700; margin: 0; color: var(--wt-text);">운동 기록<span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--wt-text-muted); margin-left: 8px; vertical-align: 2px;">WORKOUT LOG</span></h1>
     <div style="display: flex; align-items: center; gap: 8px;">
       <div id="rest-timer-pill" style="display: none; align-items: center; gap: 8px; background: var(--wt-accent); color: #fff; border-radius: 10px; padding: 6px 8px 6px 14px; box-shadow: var(--wt-shadow-accent);">
         <span data-icon="clock" data-size="15"></span>
@@ -671,7 +671,8 @@
 
     <div class="wt-card" style="margin-bottom: 12px;">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">GitHub 동기화</p>
-      <p id="gh-status" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; line-height: 1.5;">연결 안 됨 — 이 기기에만 저장됩니다.</p>
+      <p id="gh-status" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 4px; line-height: 1.5;">연결 안 됨 — 이 기기에만 저장됩니다.</p>
+      <p id="gh-token-expiry" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; display: none;"></p>
       <div id="gh-form" style="display: flex; flex-direction: column; gap: 6px;">
         <div>
           <p class="wt-mini-label">GitHub 계정명 (owner)</p>
@@ -727,6 +728,8 @@
       </div>
       <p id="backup-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
     </div>
+
+    <p id="app-version" style="text-align: center; font-size: 11px; color: var(--wt-text-muted); margin: 4px 0 0;"></p>
   </div>
 
   <div id="wt-toast" role="status" aria-live="polite"></div>
@@ -782,6 +785,8 @@
    *     이때 commitStaging()은 동작하지 않습니다(임시 목록 오염 방지).
    * ========================================================================= */
 
+  // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
+  var APP_VERSION = '2026.09.28-1';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
   var SCHEMA = 5; // day.durationMin/startedAt/endedAt(운동 소요시간) 추가. 마이그레이션 분기는 없음 — applyLoaded()가 항상 방어적으로 필드를 재구성하므로 구버전 데이터는 해당 필드가 0/미설정으로 채워짐
@@ -831,6 +836,15 @@
         signal: controller.signal
       });
       if (res.status === 401) throw new Error('GitHub 토큰이 만료됐거나 유효하지 않습니다. 설정에서 다시 연결해주세요.');
+      // GitHub는 만료일이 있는 토큰으로 요청하면 응답 헤더에 만료 시각을 실어준다 — 연결된
+      // 상태에서 쓸 때마다 최신값으로 갱신해서, 사용자가 따로 만료일을 입력할 필요가 없게 함
+      try {
+        var exp = res.headers.get('github-authentication-token-expiration');
+        if (exp) {
+          var stored = getGhConfig();
+          if (stored) { stored.tokenExpiresAt = exp; setGhConfig(stored); }
+        }
+      } catch (e) {}
       return res;
     } catch (e) {
       if (e.name === 'AbortError') throw new Error('요청 시간이 초과됐습니다. 네트워크 상태를 확인해주세요.');
@@ -842,7 +856,8 @@
 
   async function ghGetData(cfg) {
     var res = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main') });
-    if (res.status === 404) return { value: null, sha: null };
+    var tokenExpiresAt = res.headers.get('github-authentication-token-expiration') || null;
+    if (res.status === 404) return { value: null, sha: null, tokenExpiresAt: tokenExpiresAt };
     if (!res.ok) {
       var body = await res.json().catch(function () { return {}; });
       throw new Error(body.message || 'GitHub 읽기 실패 (' + res.status + ')');
@@ -858,19 +873,20 @@
     } else {
       text = null;
     }
-    return { value: text, sha: json.sha };
+    return { value: text, sha: json.sha, tokenExpiresAt: tokenExpiresAt };
   }
 
   async function ghTestConnection(cfg) {
     var res = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main') });
     if (res.status === 401) throw new Error('토큰이 올바르지 않거나 만료되었습니다.');
     if (res.status === 403) throw new Error('접근이 거부되었습니다. 토큰 권한(Contents: Read and write)을 확인해주세요.');
-    if (res.status === 404) return true; // 저장소는 있지만 아직 기록 파일이 없음 — 처음 연결할 때는 정상
+    var tokenExpiresAt = res.headers.get('github-authentication-token-expiration') || null;
+    if (res.status === 404) return { tokenExpiresAt: tokenExpiresAt }; // 저장소는 있지만 아직 기록 파일이 없음 — 처음 연결할 때는 정상
     if (!res.ok) {
       var body = await res.json().catch(function () { return {}; });
       throw new Error(body.message || '연결 실패 (' + res.status + ')');
     }
-    return true;
+    return { tokenExpiresAt: tokenExpiresAt };
   }
 
   async function ghPutData(cfg, valueStr, sha) {
@@ -3802,18 +3818,31 @@
     $('gh-verify-hint').style.display = 'none';
     $('gh-test-msg').style.display = 'none';
   }
+  // 헤더에 담긴 "2027-09-28 00:00:00 UTC" 형식 문자열에서 날짜만 뽑아 보여줌
+  function formatTokenExpiry(raw) {
+    var m = String(raw || '').match(/^(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : String(raw || '');
+  }
   function renderGithubSync() {
     var cfg = getGhConfig();
+    var expEl = $('gh-token-expiry');
     if (cfg) {
       $('gh-status').textContent = '연결됨 — ' + cfg.owner + '/' + cfg.repo + (cfg.branch && cfg.branch !== 'main' ? ' (브랜치: ' + cfg.branch + ')' : '') + '. 이 기기에서 저장하면 GitHub에도 함께 저장됩니다.';
       $('gh-form').style.display = 'none';
       $('gh-disconnect-btn').style.display = '';
       $('gh-help').style.display = 'none';
+      if (cfg.tokenExpiresAt) {
+        expEl.textContent = '토큰 만료일: ' + formatTokenExpiry(cfg.tokenExpiresAt);
+        expEl.style.display = '';
+      } else {
+        expEl.style.display = 'none';
+      }
     } else {
       $('gh-status').textContent = '연결 안 됨 — 이 기기에만 저장됩니다.';
       $('gh-form').style.display = 'flex';
       $('gh-disconnect-btn').style.display = 'none';
       $('gh-help').style.display = '';
+      expEl.style.display = 'none';
       invalidateGhVerify();
     }
   }
@@ -3868,6 +3897,7 @@
     btn.textContent = '저장 중...';
     try {
       var remote = await ghGetData(cfg);
+      cfg.tokenExpiresAt = remote.tokenExpiresAt || null;
       if (remote.value != null) {
         // 이미 그 저장소에 기록이 있으면 — 그걸 이 기기의 최신 기록으로 삼는다(덮어쓰지 않음)
         applyLoaded(JSON.parse(remote.value));
@@ -4164,6 +4194,7 @@
   window.addEventListener('resize', syncTabbarSpace);
 
   (async function init() {
+    $('app-version').textContent = '버전 ' + APP_VERSION;
     hydrateIcons();
     await loadData();
     applyTheme();
