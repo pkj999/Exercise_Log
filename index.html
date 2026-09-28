@@ -4104,36 +4104,6 @@
     b.addEventListener('click', function () { switchTab(b.getAttribute('data-tab')); });
   });
 
-  // ---------- [화면] 탭 간 좌우 스와이프 전환 ----------
-  (function () {
-    var startX = 0, startY = 0, startT = 0, active = false;
-    function allowSwipe(target) {
-      if ($('quick-entry').style.display !== 'none' && $('quick-entry').contains(target)) return false;
-      if (target.closest && target.closest('#tabbar')) return false;
-      return true;
-    }
-    var root = $('wt-root');
-    root.addEventListener('touchstart', function (e) {
-      if (e.touches.length !== 1 || !allowSwipe(e.target)) { active = false; return; }
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startT = Date.now();
-      active = true;
-    }, { passive: true });
-    root.addEventListener('touchend', function (e) {
-      if (!active) return;
-      active = false;
-      var t = e.changedTouches[0];
-      var dx = t.clientX - startX, dy = t.clientY - startY;
-      if (Date.now() - startT > 600) return;
-      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-      var idx = TAB_ORDER.indexOf(currentTab);
-      if (dx < 0 && idx < TAB_ORDER.length - 1) switchTab(TAB_ORDER[idx + 1]);
-      else if (dx > 0 && idx > 0) switchTab(TAB_ORDER[idx - 1]);
-    }, { passive: true });
-    root.addEventListener('touchcancel', function () { active = false; }, { passive: true });
-  })();
-
   $('progress-exercise').addEventListener('change', renderProgress);
   $('entry-date').addEventListener('change', function () {
     updateTodayVolume();
