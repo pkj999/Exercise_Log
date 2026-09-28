@@ -669,6 +669,39 @@
     </div>
 
     <div class="wt-card" style="margin-bottom: 12px;">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">GitHub 동기화</p>
+      <p id="gh-status" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; line-height: 1.5;">연결 안 됨 — 이 기기에만 저장됩니다.</p>
+      <div id="gh-form" style="display: flex; flex-direction: column; gap: 6px;">
+        <div>
+          <p class="wt-mini-label">GitHub 계정명 (owner)</p>
+          <input type="text" id="gh-owner" class="wt-input" style="width: 100%;" placeholder="예: octocat" autocomplete="off" autocapitalize="off" />
+        </div>
+        <div>
+          <p class="wt-mini-label">데이터 저장소 이름</p>
+          <input type="text" id="gh-repo" class="wt-input" style="width: 100%;" placeholder="예: my-workout-data" autocomplete="off" autocapitalize="off" />
+        </div>
+        <button id="gh-advanced-toggle" type="button" class="wt-btn-ghost-sm" style="align-self: flex-start;">고급 설정</button>
+        <div id="gh-advanced" style="display: none;">
+          <p class="wt-mini-label">브랜치 — 보통 안 건드려도 됩니다, 기본값 main</p>
+          <input type="text" id="gh-branch" class="wt-input" style="width: 100%;" placeholder="main" autocomplete="off" autocapitalize="off" />
+        </div>
+        <div>
+          <p class="wt-mini-label">Personal Access Token</p>
+          <input type="password" id="gh-token" class="wt-input" style="width: 100%; font-family: monospace;" placeholder="github_pat_..." autocomplete="off" />
+        </div>
+        <p id="gh-test-msg" style="font-size: 12px; margin: 0; display: none;"></p>
+        <div style="display: flex; gap: 6px; margin-top: 4px;">
+          <button id="gh-test-btn" class="wt-btn-secondary" style="flex: 1;">연결 테스트</button>
+          <button id="gh-connect-btn" class="wt-btn-primary" style="flex: 1;" disabled>저장하고 시작</button>
+        </div>
+        <p id="gh-verify-hint" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: -2px 0 0; display: none;">먼저 "연결 테스트"를 통과해야 저장할 수 있습니다.</p>
+      </div>
+      <button id="gh-disconnect-btn" class="wt-btn-secondary" style="width: 100%; display: none;">연결 해제 (이 기기에서 설정 삭제)</button>
+      <p id="gh-help" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: 10px 0 0; line-height: 1.6;">아직 비공개 저장소나 토큰을 안 만드셨다면, 먼저 GitHub에서<br>① 새 비공개 저장소 생성(README 포함) → ② Settings → Developer settings →<br>Fine-grained tokens에서 그 저장소만 골라 Contents 권한 Read/Write로 토큰 발급</p>
+      <p id="gh-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
+    </div>
+
+    <div class="wt-card" style="margin-bottom: 12px;">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">데이터 백업</p>
       <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 8px; line-height: 1.5;">파일로 저장해 두면 브라우저 데이터가 지워져도 복원할 수 있습니다. 한 달에 한 번 정도 저장해 두세요.</p>
       <p id="storage-mode" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 12px;"></p>
@@ -752,30 +785,174 @@
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
   var SCHEMA = 5; // day.durationMin/startedAt/endedAt(운동 소요시간) 추가. 마이그레이션 분기는 없음 — applyLoaded()가 항상 방어적으로 필드를 재구성하므로 구버전 데이터는 해당 필드가 0/미설정으로 채워짐
 
-  // ---------- [저장] 저장소 어댑터 (클로드 앱 storage / 브라우저 localStorage) ----------
+  // ---------- [저장] GitHub 동기화 (선택 사항 — 설정 안 하면 기존처럼 이 기기에만 저장됨) ----------
+  var GH_CONFIG_KEY = 'wt-github-cfg';
+  var GH_CACHE_KEY = 'wt-github-cache'; // GitHub 요청 실패(오프라인 등) 시 마지막으로 받았던 내용을 대신 보여주기 위한 로컬 사본
+  var GH_API = 'https://api.github.com';
+  var GH_DATA_PATH = 'data/workout-data.json';
+  var ghSha = null; // 마지막으로 읽거나 쓴 파일의 sha — 다음 저장(PUT) 때 충돌 감지용으로 필요
+
+  function getGhConfig() {
+    try { var raw = window.localStorage.getItem(GH_CONFIG_KEY); return raw ? JSON.parse(raw) : null; }
+    catch (e) { return null; }
+  }
+  function setGhConfig(cfg) { try { window.localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg)); } catch (e) {} }
+  function clearGhConfig() { try { window.localStorage.removeItem(GH_CONFIG_KEY); } catch (e) {} }
+
+  function utf8ToBase64(str) {
+    var bytes = new TextEncoder().encode(str);
+    var binary = '';
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  function base64ToUtf8(b64) {
+    var binary = atob(b64.replace(/\n/g, ''));
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  async function ghFetch(cfg, opts) {
+    opts = opts || {};
+    var url = GH_API + '/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + GH_DATA_PATH + (opts.query || '');
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, opts.timeoutMs || 20000);
+    try {
+      var headers = {
+        Authorization: 'Bearer ' + cfg.token,
+        Accept: opts.accept || 'application/vnd.github+json'
+      };
+      if (opts.method === 'PUT') headers['Content-Type'] = 'application/json';
+      var res = await fetch(url, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        signal: controller.signal
+      });
+      if (res.status === 401) throw new Error('GitHub 토큰이 만료됐거나 유효하지 않습니다. 설정에서 다시 연결해주세요.');
+      return res;
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('요청 시간이 초과됐습니다. 네트워크 상태를 확인해주세요.');
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async function ghGetData(cfg) {
+    var res = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main') });
+    if (res.status === 404) return { value: null, sha: null };
+    if (!res.ok) {
+      var body = await res.json().catch(function () { return {}; });
+      throw new Error(body.message || 'GitHub 읽기 실패 (' + res.status + ')');
+    }
+    var json = await res.json();
+    var text;
+    if (json.content != null) {
+      text = base64ToUtf8(json.content);
+    } else if (json.size > 0) {
+      var rawRes = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main'), accept: 'application/vnd.github.raw' });
+      if (!rawRes.ok) throw new Error('기록 파일이 커서 읽는 데 실패했습니다 (' + rawRes.status + ').');
+      text = await rawRes.text();
+    } else {
+      text = null;
+    }
+    return { value: text, sha: json.sha };
+  }
+
+  async function ghTestConnection(cfg) {
+    var res = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main') });
+    if (res.status === 401) throw new Error('토큰이 올바르지 않거나 만료되었습니다.');
+    if (res.status === 403) throw new Error('접근이 거부되었습니다. 토큰 권한(Contents: Read and write)을 확인해주세요.');
+    if (res.status === 404) return true; // 저장소는 있지만 아직 기록 파일이 없음 — 처음 연결할 때는 정상
+    if (!res.ok) {
+      var body = await res.json().catch(function () { return {}; });
+      throw new Error(body.message || '연결 실패 (' + res.status + ')');
+    }
+    return true;
+  }
+
+  async function ghPutData(cfg, valueStr, sha) {
+    var body = { message: 'update workout data', content: utf8ToBase64(valueStr), branch: cfg.branch || 'main' };
+    if (sha) body.sha = sha;
+    var res = await ghFetch(cfg, { method: 'PUT', body: body });
+    if (!res.ok) {
+      var err = await res.json().catch(function () { return {}; });
+      var e = new Error(err.message || 'GitHub 저장 실패 (' + res.status + ')');
+      e.status = res.status;
+      throw e;
+    }
+    var json = await res.json();
+    return json.content.sha;
+  }
+
+  // ---------- [저장] 저장소 어댑터 (클로드 앱 storage / 브라우저 localStorage / GitHub) ----------
   var store = (function () {
     var hasClaude = typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+    var baseStore;
     if (hasClaude) {
-      return {
+      baseStore = {
         mode: 'claude',
         get: function (k) { return window.storage.get(k, false); },
         set: function (k, v) { return window.storage.set(k, v, false); }
       };
+    } else {
+      baseStore = {
+        mode: 'local',
+        get: function (k) {
+          return new Promise(function (resolve, reject) {
+            try {
+              var v = window.localStorage.getItem(k);
+              if (v === null) reject(new Error('not found')); else resolve({ key: k, value: v });
+            } catch (e) { reject(e); }
+          });
+        },
+        set: function (k, v) {
+          return new Promise(function (resolve, reject) {
+            try { window.localStorage.setItem(k, v); resolve({ key: k, value: v }); }
+            catch (e) { reject(e); }
+          });
+        }
+      };
     }
+
+    // 운동 기록 본문(STORAGE_KEY)만 GitHub로 라우팅한다. 임시저장(draft)·타이머 같은 건
+    // 기기마다 다르고 자주 바뀌는 값이라 그대로 이 기기 로컬에만 둔다(매번 GitHub에 커밋하면
+    // API 호출도 과하고 커밋 기록도 지저분해짐).
     return {
-      mode: 'local',
+      get mode() { return getGhConfig() ? 'github' : baseStore.mode; },
       get: function (k) {
-        return new Promise(function (resolve, reject) {
+        var cfg = getGhConfig();
+        if (!cfg || k !== STORAGE_KEY) return baseStore.get(k);
+        return ghGetData(cfg).then(function (r) {
+          if (r.value == null) return baseStore.get(k);
+          ghSha = r.sha;
+          try { window.localStorage.setItem(GH_CACHE_KEY, r.value); } catch (e) {}
+          return { key: k, value: r.value };
+        }).catch(function (err) {
           try {
-            var v = window.localStorage.getItem(k);
-            if (v === null) reject(new Error('not found')); else resolve({ key: k, value: v });
-          } catch (e) { reject(e); }
+            var cached = window.localStorage.getItem(GH_CACHE_KEY);
+            if (cached) return { key: k, value: cached };
+          } catch (e) {}
+          throw err;
         });
       },
       set: function (k, v) {
-        return new Promise(function (resolve, reject) {
-          try { window.localStorage.setItem(k, v); resolve({ key: k, value: v }); }
-          catch (e) { reject(e); }
+        var cfg = getGhConfig();
+        if (!cfg || k !== STORAGE_KEY) return baseStore.set(k, v);
+        try { window.localStorage.setItem(GH_CACHE_KEY, v); } catch (e) {}
+        return ghPutData(cfg, v, ghSha).then(function (sha) {
+          ghSha = sha;
+          return { key: k, value: v };
+        }).catch(function (err) {
+          if (err.status === 409) {
+            // 다른 기기가 먼저 저장해서 sha가 어긋남 — 최신 sha로 다시 한 번만 시도
+            return ghGetData(cfg).then(function (r) {
+              ghSha = r.sha;
+              return ghPutData(cfg, v, ghSha).then(function (sha) { ghSha = sha; return { key: k, value: v }; });
+            });
+          }
+          throw err;
         });
       }
     };
@@ -3338,6 +3515,7 @@
     $('goal-hint').textContent = data.weeklyGoal > 0 ? '채운 주는 캘린더에 체크 표시' : '';
     renderBody();
     renderProteinSettings();
+    renderGithubSync();
   }
 
   function renderProteinSettings() {
@@ -3462,6 +3640,125 @@
   $('test-alert-btn').addEventListener('click', function () {
     unlockAudio();
     fireAlert();
+  });
+
+  // ---------- [저장] GitHub 동기화 화면 ----------
+  function storageModeLabel() {
+    if (store.mode === 'github') return '저장 위치: GitHub 저장소 (이 기기 포함 모든 기기 공유)';
+    return store.mode === 'claude' ? '저장 위치: 클로드 앱' : '저장 위치: 이 브라우저';
+  }
+  function ghMsg(text, ok) {
+    var el = $('gh-msg');
+    el.textContent = text;
+    el.style.color = ok ? 'var(--wt-good)' : 'var(--wt-danger)';
+    el.style.display = 'block';
+  }
+  var ghVerified = false; // "연결 테스트"를 통과했을 때만 true — 그래야 "저장하고 시작"이 눌림
+  function invalidateGhVerify() {
+    ghVerified = false;
+    $('gh-connect-btn').disabled = true;
+    $('gh-verify-hint').style.display = 'none';
+    $('gh-test-msg').style.display = 'none';
+  }
+  function renderGithubSync() {
+    var cfg = getGhConfig();
+    if (cfg) {
+      $('gh-status').textContent = '연결됨 — ' + cfg.owner + '/' + cfg.repo + (cfg.branch && cfg.branch !== 'main' ? ' (브랜치: ' + cfg.branch + ')' : '') + '. 이 기기에서 저장하면 GitHub에도 함께 저장됩니다.';
+      $('gh-form').style.display = 'none';
+      $('gh-disconnect-btn').style.display = '';
+      $('gh-help').style.display = 'none';
+    } else {
+      $('gh-status').textContent = '연결 안 됨 — 이 기기에만 저장됩니다.';
+      $('gh-form').style.display = 'flex';
+      $('gh-disconnect-btn').style.display = 'none';
+      $('gh-help').style.display = '';
+      invalidateGhVerify();
+    }
+  }
+  ['gh-owner', 'gh-repo', 'gh-branch', 'gh-token'].forEach(function (id) {
+    $(id).addEventListener('input', invalidateGhVerify);
+  });
+  $('gh-advanced-toggle').addEventListener('click', function () {
+    var box = $('gh-advanced');
+    box.style.display = box.style.display === 'none' ? '' : 'none';
+  });
+  function readGhFormCfg() {
+    return {
+      owner: $('gh-owner').value.trim(),
+      repo: $('gh-repo').value.trim(),
+      branch: $('gh-branch').value.trim() || 'main',
+      token: $('gh-token').value.trim()
+    };
+  }
+  $('gh-test-btn').addEventListener('click', async function () {
+    var cfg = readGhFormCfg();
+    if (!cfg.owner || !cfg.repo || !cfg.token) { ghMsg('계정명, 저장소 이름, 토큰을 모두 입력해주세요.', false); return; }
+    var btn = $('gh-test-btn');
+    btn.disabled = true;
+    btn.textContent = '확인 중...';
+    var testMsgEl = $('gh-test-msg');
+    testMsgEl.style.display = 'none';
+    try {
+      await ghTestConnection(cfg);
+      ghVerified = true;
+      $('gh-connect-btn').disabled = false;
+      $('gh-verify-hint').style.display = 'none';
+      testMsgEl.textContent = '연결 성공! "저장하고 시작"을 눌러주세요.';
+      testMsgEl.style.color = 'var(--wt-good)';
+      testMsgEl.style.display = 'block';
+    } catch (e) {
+      ghVerified = false;
+      $('gh-connect-btn').disabled = true;
+      testMsgEl.textContent = e.message || '연결에 실패했습니다.';
+      testMsgEl.style.color = 'var(--wt-danger)';
+      testMsgEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '연결 테스트';
+    }
+  });
+  $('gh-connect-btn').addEventListener('click', async function () {
+    if (!ghVerified) { $('gh-verify-hint').style.display = 'block'; return; }
+    var cfg = readGhFormCfg();
+    if (!cfg.owner || !cfg.repo || !cfg.token) { ghMsg('계정명, 저장소 이름, 토큰을 모두 입력해주세요.', false); return; }
+    var btn = $('gh-connect-btn');
+    btn.disabled = true;
+    btn.textContent = '저장 중...';
+    try {
+      var remote = await ghGetData(cfg);
+      if (remote.value != null) {
+        // 이미 그 저장소에 기록이 있으면 — 그걸 이 기기의 최신 기록으로 삼는다(덮어쓰지 않음)
+        applyLoaded(JSON.parse(remote.value));
+        ghSha = remote.sha;
+        setGhConfig(cfg);
+        try { window.localStorage.setItem(GH_CACHE_KEY, remote.value); } catch (e) {}
+        renderAll();
+        ghMsg('GitHub에 있던 기록을 불러왔습니다.', true);
+      } else {
+        // 저장소에 아직 파일이 없으면 — 지금 이 기기의 기록을 처음으로 올린다
+        ghSha = null;
+        setGhConfig(cfg);
+        await persist();
+        ghMsg('이 기기의 기록을 GitHub에 처음 업로드했습니다.', true);
+      }
+      $('gh-owner').value = ''; $('gh-repo').value = ''; $('gh-branch').value = ''; $('gh-token').value = '';
+      renderGithubSync();
+      $('storage-mode').textContent = storageModeLabel();
+    } catch (e) {
+      ghMsg(e.message || '저장에 실패했습니다. 계정명/저장소 이름과 토큰을 확인해주세요.', false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '저장하고 시작';
+    }
+  });
+  $('gh-disconnect-btn').addEventListener('click', function () {
+    armDelete($('gh-disconnect-btn'), '연결 해제?', function () {
+      clearGhConfig();
+      ghSha = null;
+      renderGithubSync();
+      $('storage-mode').textContent = storageModeLabel();
+      ghMsg('이 기기에서 연결 설정을 삭제했습니다. GitHub의 데이터는 그대로 남아있습니다.', true);
+    });
   });
 
   // ---------- [저장] 데이터 백업 및 복원 ----------
@@ -3765,9 +4062,12 @@
     await loadDraft();
     await resumeRestTimerIfAny();
     checkFutureDate();
-    $('storage-mode').textContent = store.mode === 'claude' ? '저장 위치: 클로드 앱' : '저장 위치: 이 브라우저';
+    $('storage-mode').textContent = storageModeLabel();
     renderRpeChips();
     renderAll();
+    if ('serviceWorker' in navigator) {
+      try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+    }
   })();
 })();
 </script>
