@@ -394,7 +394,6 @@
             </div>
           </div>
         </div>
-        <p id="qe-onerm-hint" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: -4px 0 10px;"></p>
 
         <div id="qe-cardio-fields" style="display: none; margin-bottom: 10px;">
           <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
@@ -573,14 +572,11 @@
         <div class="wt-stat-card"><p class="wt-stat-label">최근 무게</p><p class="wt-stat-value" id="stat-recent" style="display: flex; align-items: baseline; gap: 4px;"><span>-</span></p></div>
         <div class="wt-stat-card"><p class="wt-stat-label">기록 횟수</p><p class="wt-stat-value" id="stat-count">-</p></div>
       </div>
-      <p id="progress-1rm-caption" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: -4px 0 10px;"></p>
       <p id="progress-plateau-badge" class="wt-plateau-badge" style="display: none;"></p>
       <div class="wt-card" style="padding: 1rem;">
         <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
           <button id="chart-mode-weight" class="wt-seg-btn active">최고 무게</button>
-          <button id="chart-mode-volume" class="wt-seg-btn">볼륨</button>
           <button id="chart-mode-sets" class="wt-seg-btn">세트</button>
-          <button id="chart-mode-onerm" class="wt-seg-btn">1RM</button>
         </div>
         <div style="position: relative; height: 190px;">
           <canvas id="progress-canvas"></canvas>
@@ -1409,7 +1405,7 @@
       if (work[0].cardio) {
         sum = '총 ' + totalMinutes(last.sets) + '분 · ' + work.length + '회';
       } else {
-        sum = '최고 ' + maxWeight(last.sets) + 'kg · 볼륨 ' + fmtVol(setVolume(last.sets)) + ' · ' + work.length + '세트';
+        sum = '최고 ' + maxWeight(last.sets) + 'kg · ' + work.length + '세트';
       }
     }
     box.innerHTML =
@@ -2127,20 +2123,6 @@
     $('qe-cardio-fields').style.display = cardio ? 'block' : 'none';
     $('qe-warmup').style.display = cardio ? 'none' : '';
     applyBodyweightMode(cardio ? null : name);
-    updateOneRMHint();
-  }
-  function updateOneRMHint() {
-    var hint = $('qe-onerm-hint');
-    if (!currentQE || isCardio(currentQE.category)) { hint.style.display = 'none'; return; }
-    var w = parseFloat($('qe-weight').value);
-    var r = parseInt($('qe-reps').value, 10);
-    if (!isFinite(w) || !isFinite(r) || r <= 0) { hint.style.display = 'none'; return; }
-    var bwl = bwLoadFor(currentQE.name);
-    var eff = (bwl > 0 ? bwl : 0) + (w || 0);
-    if (eff <= 0) { hint.style.display = 'none'; return; }
-    var rm = r === 1 ? eff : eff * (1 + r / 30);
-    hint.textContent = '예상 1RM 약 ' + Math.round(rm) + 'kg';
-    hint.style.display = '';
   }
   function applyBodyweightMode(name) {
     var note = $('qe-bw-note');
@@ -2261,7 +2243,6 @@
       repeatBtn.style.display = 'none';
     }
     renderQESetList();
-    updateOneRMHint();
     safeScrollIntoView($('quick-entry'));
   }
 
@@ -2407,7 +2388,6 @@
     $('qe-cancel-edit').style.display = '';
     $('qe-repeat-last').style.display = 'none';
     renderQESetList();
-    updateOneRMHint();
   }
 
   function commitStaging() { if (currentQE && !editingRecordCtx && staging.indexOf(currentQE) === -1) staging.push(currentQE); }
@@ -2439,23 +2419,17 @@
 
   $('qe-weight-minus').addEventListener('click', function () {
     var el = $('qe-weight'); el.value = Math.max(0, Math.round(((parseFloat(el.value) || 0) - 2.5) * 100) / 100);
-    updateOneRMHint();
   });
   $('qe-weight-plus').addEventListener('click', function () {
     var el = $('qe-weight');
     el.value = Math.min(LIMITS.weight, Math.round(((parseFloat(el.value) || 0) + 2.5) * 100) / 100);
-    updateOneRMHint();
   });
   $('qe-reps-minus').addEventListener('click', function () {
     var el = $('qe-reps'); el.value = Math.max(0, (parseInt(el.value, 10) || 0) - 1);
-    updateOneRMHint();
   });
   $('qe-reps-plus').addEventListener('click', function () {
     var el = $('qe-reps'); el.value = Math.min(LIMITS.reps, (parseInt(el.value, 10) || 0) + 1);
-    updateOneRMHint();
   });
-  $('qe-weight').addEventListener('input', updateOneRMHint);
-  $('qe-reps').addEventListener('input', updateOneRMHint);
   // 변형(그립·기구)을 바꿔 입력하면, "지난 기록" 카드를 그 변형 기준으로 다시 찾아 보여줌
   // (무게/횟수 입력칸은 그대로 둠 — 이미 타이핑 중인 값을 지우지 않기 위해)
   $('qe-variant').addEventListener('input', function () {
@@ -2636,7 +2610,7 @@
         summary = item.sets.map(setLabel).join(' / ') + ' · 총 ' + totalMinutes(item.sets) + '분';
       } else {
         summary = item.sets.map(function (s) { return setLabel(s).replace(' × ', '×') + (s.warmup ? 'W' : ''); }).join(', ') +
-          ' · ' + fmtVol(setVolume(item.sets)) + (warmCount ? ' · 워밍업 ' + warmCount : '');
+          (warmCount ? ' · 워밍업 ' + warmCount : '');
       }
       var variantBadge = item.variant ? '<span class="wt-plan-badge">' + escapeHtml(item.variant) + '</span>' : '';
       var mid = document.createElement('div');
@@ -2891,10 +2865,10 @@
     card.className = 'wt-card';
     card.style.marginBottom = '10px';
 
-    var dayVol = day.exercises.reduce(function (sum, ex) { return sum + setVolume(ex.sets); }, 0);
+    var daySets = day.exercises.reduce(function (sum, ex) { return sum + workSets(ex.sets).length; }, 0);
     var dayMin = day.exercises.reduce(function (sum, ex) { return sum + totalMinutes(ex.sets); }, 0);
     var headBits = [];
-    if (dayVol > 0) headBits.push(fmtVol(dayVol));
+    if (daySets > 0) headBits.push(daySets + '세트');
     if (dayMin > 0) headBits.push(dayMin + '분');
     var header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;';
@@ -3452,17 +3426,7 @@
     var cardio = points.length ? !!points[0].cardio : false;
     var unit = cardio ? '' : 'kg';
 
-    // 유산소 종목엔 1RM 개념이 없으므로 버튼을 숨기고, 모드가 1RM으로 걸려 있으면 무게로 되돌림
-    $('chart-mode-onerm').style.display = cardio ? 'none' : '';
-    if (cardio && chartMode === 'oneRM') {
-      chartMode = 'weight';
-      $('chart-mode-weight').classList.add('active');
-      $('chart-mode-volume').classList.remove('active');
-      $('chart-mode-onerm').classList.remove('active');
-    }
-
     $('chart-mode-weight').textContent = cardio ? '강도' : '최고 무게';
-    $('chart-mode-volume').textContent = cardio ? '시간' : '볼륨';
     document.querySelectorAll('#progress-stats .wt-stat-label')[0].textContent = cardio ? '최고 강도' : '최고 무게';
     document.querySelectorAll('#progress-stats .wt-stat-label')[1].textContent = cardio ? '최근 강도' : '최근 무게';
 
@@ -3486,16 +3450,6 @@
       el.appendChild(delta);
     }
 
-    // 예상 최고 1RM(현재까지 전체 역대 최고치, 유산소 제외)
-    var oneRMCaption = $('progress-1rm-caption');
-    if (!cardio) {
-      var bestRM = bestOneRMSoFar(name, [], variant);
-      oneRMCaption.textContent = bestRM > 0 ? '예상 최고 1RM 약 ' + Math.round(bestRM) + 'kg (Epley 공식 추정치)' : '';
-      oneRMCaption.style.display = bestRM > 0 ? '' : 'none';
-    } else {
-      oneRMCaption.style.display = 'none';
-    }
-
     // 정체기(plateau) 안내 — PR 배지(금색·트로피)와 겹치지 않게 차분한 톤으로 구분
     var plateauBadge = $('progress-plateau-badge');
     var plateau = !cardio ? detectPlateau(name, variant) : null;
@@ -3507,9 +3461,7 @@
     }
 
     var labelFn;
-    if (chartMode === 'volume') labelFn = cardio ? function (v) { return Math.round(v) + '분'; } : fmtVol;
-    else if (chartMode === 'oneRM') labelFn = function (v) { return Math.round(v) + 'kg'; };
-    else if (chartMode === 'sets') labelFn = function (v) { return v + '세트'; };
+    if (chartMode === 'sets') labelFn = function (v) { return v + '세트'; };
     else labelFn = cardio ? function (v) { return '강도 ' + Math.round(v); } : function (v) { return Math.round(v) + 'kg'; };
 
     drawLineChart('progress-canvas', points, chartMode, labelFn);
@@ -3560,7 +3512,7 @@
         }
         var sub = cardio
           ? p.minutes + '분' + (p.distance ? ' · ' + (Math.round(p.distance * 100) / 100) + 'km' : '')
-          : fmtVol(p.volume);
+          : p.sets + '세트';
         var main = cardio ? '강도 ' + p.weight : p.weight + 'kg';
         return '<tr><td style="padding:8px 0;font-size:13px;color:var(--wt-text-muted);border-top:1px solid var(--wt-border);">' +
           fmtDisplayDate(p.date) + '<span style="font-size:11px;margin-left:6px;">' + sub + '</span></td>' +
@@ -3572,33 +3524,13 @@
   $('chart-mode-weight').addEventListener('click', function () {
     chartMode = 'weight';
     this.classList.add('active');
-    $('chart-mode-volume').classList.remove('active');
     $('chart-mode-sets').classList.remove('active');
-    $('chart-mode-onerm').classList.remove('active');
-    renderProgress();
-  });
-  $('chart-mode-volume').addEventListener('click', function () {
-    chartMode = 'volume';
-    this.classList.add('active');
-    $('chart-mode-weight').classList.remove('active');
-    $('chart-mode-sets').classList.remove('active');
-    $('chart-mode-onerm').classList.remove('active');
     renderProgress();
   });
   $('chart-mode-sets').addEventListener('click', function () {
     chartMode = 'sets';
     this.classList.add('active');
     $('chart-mode-weight').classList.remove('active');
-    $('chart-mode-volume').classList.remove('active');
-    $('chart-mode-onerm').classList.remove('active');
-    renderProgress();
-  });
-  $('chart-mode-onerm').addEventListener('click', function () {
-    chartMode = 'oneRM';
-    this.classList.add('active');
-    $('chart-mode-weight').classList.remove('active');
-    $('chart-mode-volume').classList.remove('active');
-    $('chart-mode-sets').classList.remove('active');
     renderProgress();
   });
 
