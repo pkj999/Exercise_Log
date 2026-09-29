@@ -150,9 +150,13 @@
     try { await store.set(STORAGE_KEY, JSON.stringify(data)); }
     catch (e) {
       showError('저장에 실패했습니다.');
-      // 조용히 삼키지 않고 위로 알려준다 — 특히 GitHub 동기화 쪽에서 await persist()를 쓰는
-      // 곳들은, 이게 조용히 실패하면 "성공했다"는 메시지를 잘못 보여주고 실제로는 GitHub에
-      // 반영이 안 된 채로 넘어가는 사고로 이어질 수 있었음
+      // showError()는 기록(log) 탭의 #form-error에만 나타나서, 다른 탭(설정 등)에서
+      // persist()를 호출한 경우엔 사용자가 실패를 아예 못 볼 수 있었다. toast는 탭과
+      // 무관하게 항상 보이므로, 코드 곳곳에서 await/catch 없이 그냥 persist()만
+      // 호출해도(다크모드 전환 등) 실패가 조용히 묻히지 않도록 여기서 한 번 더 알린다.
+      toast('저장에 실패했습니다 — 인터넷 연결을 확인해주세요', 3500);
+      // 그래도 다시 던져서, 호출한 쪽이 await/catch로 더 구체적인 안내를 하고 싶다면
+      // 할 수 있게 둔다(예: GitHub 연결 화면의 개별 실패 메시지)
       throw e;
     }
   }
