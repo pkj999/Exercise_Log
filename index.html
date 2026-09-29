@@ -808,7 +808,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 12;
+  var APP_VERSION = 13;
   var APP_BUILD_DATE = '2026-09-29';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -1017,8 +1017,9 @@
   // ---------- [공용] 아이콘 정의 및 렌더링 ----------
   // 아래 8개(chest~other)는 부위별 장비/동작 픽토그램. 현재는 "부위 선택" 화면에서는
   // 쓰지 않고(텍스트 칩으로만 표시 — [입력] 부위 선택 섹션 참고), 기록 리스트의 작은
-  // 아이콘(wt-row-icon)에서만 쓰인다. CAT_META의 color 필드도 현재 화면엔 쓰이지 않고
-  // 정의만 되어 있음 — 부위별 색 구분을 없앤 디자인 방향(2026-09 리디자인)이라서다.
+  // 아이콘(wt-row-icon)에서만 쓰인다. CAT_META의 color 필드은 캘린더 점 표시와
+  // "부위별 볼륨 추이" 차트 선 색에 쓰인다 — 부위 구분이 실제로 필요한 곳에는 기능적
+  // 색상을 유지하는 방향(2026-09 리디자인에서 정리).
   var PATHS = {
     chest: '<path d="M3 10v4M6.5 7.5v9M6.5 12h11M17.5 7.5v9M21 10v4"/>',
     back: '<path d="M5 7l7 4 7-4"/><path d="M12 11v8"/>',
@@ -1101,9 +1102,8 @@
     '유산소': ['러닝머신', '사이클', '로잉머신'],
     '기타': []
   };
-  // icon은 [공용] 아이콘 섹션의 PATHS 키(기록 리스트 아이콘용). color는 현재 화면 어디에도
-  // 안 쓰이지만, 예전 디자인(부위별 색 구분)의 흔적이자 나중에 되살릴 수 있어 남겨둠 —
-  // 지우지 말고 그대로 둘 것.
+  // icon은 [공용] 아이콘 섹션의 PATHS 키(기록 리스트 아이콘용). color는 캘린더 점 표시와
+  // "부위별 볼륨 추이" 차트 선 색에 쓰인다.
   var CAT_META = {
     '가슴': { icon: 'chest', color: '#FF9270' },
     '등': { icon: 'back', color: '#4E9AE8' },
@@ -3338,7 +3338,7 @@
   //   2) renderProgress() — 종목 하나를 선택해 무게/볼륨/세트/1RM 추이
   var chartRetries = {};
   var chartAnimId = {};
-  function drawLineChart(canvasId, points, valueKey, labelFn) {
+  function drawLineChart(canvasId, points, valueKey, labelFn, lineColor) {
     var canvas = $(canvasId);
     if (!canvas) return;
     var parent = canvas.parentElement;
@@ -3373,7 +3373,7 @@
     ctx.clearRect(0, 0, rect.width, rect.height);
     if (!points.length) return;
 
-    var accent = cssVar('--wt-accent', '#5E6AD2');
+    var accent = lineColor || cssVar('--wt-accent', '#5E6AD2');
     var grid = cssVar('--wt-border', '#E2E8F0');
     var muted = cssVar('--wt-text-muted', '#64748B');
     var cardBg = cssVar('--wt-card', '#FFFFFF');
@@ -3512,7 +3512,7 @@
     empty.style.display = 'none';
     var s = series.find(function (x) { return x.cat === volCatSelected; });
     $('total-vol-caption').textContent = '최근 ' + s.points.length + '회';
-    drawLineChart('total-canvas', s.points, 'volume', fmtVol);
+    drawLineChart('total-canvas', s.points, 'volume', fmtVol, meta(volCatSelected).color);
   }
   $('vol-cat-select').addEventListener('change', function () {
     volCatSelected = this.value;
