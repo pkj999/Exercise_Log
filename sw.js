@@ -5,6 +5,7 @@ const CACHE_NAME = 'workout-log-shell-ver1';
 const APP_SHELL = [
   './',
   './index.html',
+  './styles.css',
   './manifest.json',
   './icon-192.png',
   './icon-192-maskable.png',
