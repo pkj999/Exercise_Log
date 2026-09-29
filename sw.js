@@ -1,7 +1,7 @@
 // 운동일지 — 간단한 앱 쉘 캐싱 서비스워커
 // 로컬 파일(index.html, manifest, 아이콘)만 캐시하고,
 // 외부 CDN(폰트 등)은 그대로 네트워크로 통과시킵니다.
-const CACHE_NAME = 'workout-log-shell-ver1';
+const CACHE_NAME = 'workout-log-shell-ver2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -10,7 +10,17 @@ const APP_SHELL = [
   './icon-192.png',
   './icon-192-maskable.png',
   './icon-512.png',
-  './icon-512-maskable.png'
+  './icon-512-maskable.png',
+  './js/core.js',
+  './js/calc.js',
+  './js/persist.js',
+  './js/alerts.js',
+  './js/entry-form.js',
+  './js/staging-protein.js',
+  './js/history-calendar.js',
+  './js/stats.js',
+  './js/settings-screen.js',
+  './js/main.js'
 ];
 
 self.addEventListener('install', event => {
