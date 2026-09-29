@@ -38,7 +38,7 @@
 
   <div id="unsaved-bar" role="button" tabindex="0">
     <span data-icon="barbell" data-size="14"></span>
-    <span id="unsaved-bar-text" style="flex: 1;">저장하지 않은 기록이 있습니다</span>
+    <span id="unsaved-bar-text" class="wt-flex1">저장하지 않은 기록이 있습니다</span>
     <span style="opacity: .85;">보기</span>
   </div>
 
@@ -48,7 +48,7 @@
   <div id="view-log" style="display: none; transition: margin-top .18s ease;">
 
     <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-      <input type="date" id="entry-date" class="wt-input" style="flex: 1; min-width: 0;" />
+      <input type="date" id="entry-date" class="wt-input wt-flex1-0" />
       <div class="wt-volume-badge">
         <span style="font-size: 10px; opacity: 0.85;">오늘 세트</span>
         <span id="today-volume" style="font-size: 14px; font-weight: 700;">0세트</span>
@@ -76,7 +76,7 @@
         <p id="ex-search-none" class="wt-ex-none" style="display: none;"></p>
         <p id="edit-hint" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: 8px 0 0;">삭제할 종목을 탭하면 목록에서 제거됩니다. 저장된 기록은 지워지지 않습니다.</p>
         <div id="add-exercise-form" style="display: none; gap: 6px; margin-top: 10px;">
-          <input type="text" id="add-exercise-input" class="wt-input" placeholder="운동 이름" style="flex: 1; min-width: 0;" />
+          <input type="text" id="add-exercise-input" class="wt-input wt-flex1-0" placeholder="운동 이름" />
           <button id="add-exercise-confirm" class="wt-btn-primary" style="padding: 10px 16px;">추가</button>
           <button id="add-exercise-cancel" class="wt-btn-secondary" style="padding: 10px 14px;">취소</button>
         </div>
@@ -102,7 +102,7 @@
         <p id="qe-bw-note" class="wt-bw-note" style="display: none;"></p>
 
         <div id="qe-strength-fields" style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
-          <div style="flex: 1; min-width: 0;">
+          <div class="wt-flex1-0">
             <p class="wt-mini-label" id="qe-weight-label">무게(kg)</p>
             <div style="display: flex; align-items: center; gap: 6px;">
               <button class="wt-stepper-btn" id="qe-weight-minus" aria-label="무게 감소">−</button>
@@ -110,7 +110,7 @@
               <button class="wt-stepper-btn" id="qe-weight-plus" aria-label="무게 증가">+</button>
             </div>
           </div>
-          <div style="flex: 1; min-width: 0;">
+          <div class="wt-flex1-0">
             <p class="wt-mini-label">횟수</p>
             <div style="display: flex; align-items: center; gap: 6px;">
               <button class="wt-stepper-btn" id="qe-reps-minus" aria-label="횟수 감소">−</button>
@@ -122,7 +122,7 @@
 
         <div id="qe-cardio-fields" style="display: none; margin-bottom: 10px;">
           <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
-            <div style="flex: 1; min-width: 0;">
+            <div class="wt-flex1-0">
               <p class="wt-mini-label">시간(분)</p>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <button class="wt-stepper-btn" id="qe-min-minus" aria-label="시간 감소">−</button>
@@ -130,7 +130,7 @@
                 <button class="wt-stepper-btn" id="qe-min-plus" aria-label="시간 증가">+</button>
               </div>
             </div>
-            <div style="flex: 1; min-width: 0;">
+            <div class="wt-flex1-0">
               <p class="wt-mini-label">강도(단계)</p>
               <div style="display: flex; align-items: center; gap: 6px;">
                 <button class="wt-stepper-btn" id="qe-int-minus" aria-label="강도 감소">−</button>
@@ -161,7 +161,7 @@
         </div>
 
         <div style="display: flex; gap: 8px;">
-          <button id="qe-add-set" class="wt-btn-primary" style="flex: 1;"><span data-icon="plus" data-size="15"></span><span id="qe-add-label">세트 추가</span></button>
+          <button id="qe-add-set" class="wt-btn-primary wt-flex1"><span data-icon="plus" data-size="15"></span><span id="qe-add-label">세트 추가</span></button>
           <button id="qe-cancel-edit" class="wt-btn-secondary" style="flex: 1; display: none;">수정 취소</button>
           <button id="qe-repeat-last" class="wt-btn-secondary" style="flex: 1; display: none;"><span data-icon="copy" data-size="14"></span>지난 세트 그대로</button>
         </div>
@@ -181,7 +181,7 @@
 
     <div id="staging-area" style="display: none; margin-bottom: 1rem;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
-        <div style="flex: 1; min-width: 0;">
+        <div class="wt-flex1-0">
           <p style="font-size: 13px; font-weight: 700; margin: 0; color: var(--wt-text);">오늘 추가할 기록<span class="wt-unsaved-tag">저장 전</span></p>
           <p id="draft-note" style="font-size: 11px; color: var(--wt-text-muted); margin: 2px 0 0;">임시 저장됨 — 앱을 닫아도 유지됩니다</p>
         </div>
@@ -224,13 +224,13 @@
       </div>
       <div id="protein-quick-chips" style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;"></div>
       <div id="protein-label-add-form" style="display: none; gap: 6px; margin-bottom: 8px;">
-        <input type="text" id="protein-label-add-input" class="wt-input" placeholder="새 항목 이름 (예: 게이너)" maxlength="10" style="flex: 1; min-width: 0;" />
+        <input type="text" id="protein-label-add-input" class="wt-input wt-flex1-0" placeholder="새 항목 이름 (예: 게이너)" maxlength="10" />
         <button id="protein-label-add-confirm" class="wt-btn-primary" style="padding: 10px 16px;">추가</button>
         <button id="protein-label-add-cancel" class="wt-btn-secondary" style="padding: 10px 14px;">취소</button>
       </div>
       <p id="protein-label-edit-hint" style="display: none; font-size: 11px; color: var(--wt-text-muted); margin: 0 0 8px;">삭제할 항목을 탭하면 목록에서 제거됩니다.</p>
       <div style="display: flex; gap: 6px;">
-        <input type="text" id="protein-label-input" class="wt-input" placeholder="끼니(선택)" maxlength="20" enterkeyhint="next" style="flex: 1; min-width: 0;" />
+        <input type="text" id="protein-label-input" class="wt-input wt-flex1-0" placeholder="끼니(선택)" maxlength="20" enterkeyhint="next" />
         <input type="number" id="protein-grams-input" class="wt-input" placeholder="g" inputmode="numeric" enterkeyhint="done" min="0" max="300" style="width: 68px; text-align: center; flex-shrink: 0;" />
         <button id="protein-add-btn" class="wt-btn-primary" style="padding: 11px 14px; flex-shrink: 0;">추가</button>
       </div>
@@ -240,7 +240,7 @@
 
   <!-- ===== 캘린더 ===== -->
   <div id="view-calendar" style="display: none;">
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
         <button id="cal-prev" class="wt-icon-btn-round" aria-label="이전 달"><span data-icon="chevron-left" data-size="16"></span></button>
         <p id="cal-title" style="font-size: 15px; font-weight: 700; margin: 0; color: var(--wt-text);"></p>
@@ -254,7 +254,7 @@
   <!-- ===== 통계 ===== -->
   <div id="view-progress" style="display: none;">
 
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 12px; color: var(--wt-text);">이번 주 요약</p>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 14px;">
         <div><p class="wt-stat-label">운동 일수</p><p class="wt-stat-value" id="wk-days">-</p><p id="wk-goal" style="font-size:11px;font-weight:700;margin:2px 0 0;color:var(--wt-text-muted);display:none;"></p></div>
@@ -265,7 +265,7 @@
       <div id="wk-balance"></div>
     </div>
 
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
         <p style="font-size: 13px; font-weight: 700; margin: 0; color: var(--wt-text);">단백질 섭취 추이</p>
         <p id="protein-stats-caption" style="font-size: 11px; color: var(--wt-text-muted); margin: 0;"></p>
@@ -280,7 +280,7 @@
       <p id="protein-stats-empty" style="display: none; font-size: 12px; color: var(--wt-text-muted); text-align: center; margin: 0;">기록이 쌓이면 표시됩니다.</p>
     </div>
 
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
         <p style="font-size: 13px; font-weight: 700; margin: 0; color: var(--wt-text);">부위별 볼륨 추이</p>
         <p id="total-vol-caption" style="font-size: 11px; color: var(--wt-text-muted); margin: 0;"></p>
@@ -292,9 +292,9 @@
       <p id="total-empty" style="display: none; font-size: 12px; color: var(--wt-text-muted); text-align: center; margin: 0;">기록이 쌓이면 표시됩니다.</p>
     </div>
 
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 10px; color: var(--wt-text);">종목별 추이</p>
-      <select id="progress-exercise" class="wt-input" style="width: 100%;"></select>
+      <select id="progress-exercise" class="wt-input wt-w100"></select>
     </div>
     <div id="progress-empty" style="font-size: 13px; color: var(--wt-text-muted); text-align: center; padding: 2rem 0; display: none;">기록된 운동이 없습니다.</div>
     <div id="progress-stats" style="display: none;">
@@ -325,14 +325,14 @@
   <!-- ===== 설정 ===== -->
   <div id="view-settings" style="display: none;">
     <p class="wt-settings-group-label"><span data-icon="user" data-size="12"></span>개인 정보</p>
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 8px; color: var(--wt-text);">신체 정보</p>
       <div style="display: flex; gap: 10px;">
-        <div style="flex: 1; min-width: 0;">
+        <div class="wt-flex1-0">
           <p class="wt-mini-label">키(cm)</p>
           <input type="number" id="body-height" step="0.1" min="0" max="260" inputmode="decimal" class="wt-input" style="width: 100%; text-align: center; font-weight: 700; padding: 11px 4px;" placeholder="-" />
         </div>
-        <div style="flex: 1; min-width: 0;">
+        <div class="wt-flex1-0">
           <p class="wt-mini-label">몸무게(kg)</p>
           <input type="number" id="body-weight" step="0.1" min="0" max="400" inputmode="decimal" class="wt-input" style="width: 100%; text-align: center; font-weight: 700; padding: 11px 4px;" placeholder="-" />
         </div>
@@ -340,13 +340,13 @@
       <p style="font-size: 11px; color: var(--wt-text-muted); margin: 9px 0 0; line-height: 1.5;">입력한 몸무게는 맨몸운동 볼륨 계산에 사용됩니다.</p>
     </div>
 
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 8px; color: var(--wt-text);">단백질 목표</p>
       <p class="wt-mini-label" style="margin-bottom: 6px;">목표 방향성</p>
       <div style="display: flex; gap: 6px; margin-bottom: 12px;">
-        <button id="protein-goal-cut" class="wt-seg-btn" data-goal="cut" style="flex: 1;">체중 감량</button>
-        <button id="protein-goal-maintain" class="wt-seg-btn" data-goal="maintain" style="flex: 1;">유지</button>
-        <button id="protein-goal-bulk" class="wt-seg-btn" data-goal="bulk" style="flex: 1;">증량</button>
+        <button id="protein-goal-cut" class="wt-seg-btn wt-flex1" data-goal="cut">체중 감량</button>
+        <button id="protein-goal-maintain" class="wt-seg-btn wt-flex1" data-goal="maintain">유지</button>
+        <button id="protein-goal-bulk" class="wt-seg-btn wt-flex1" data-goal="bulk">증량</button>
       </div>
       <p class="wt-mini-label" style="margin-bottom: 6px;">일일 목표 단백질(g)</p>
       <div style="display: flex; align-items: center; gap: 8px;">
@@ -357,7 +357,7 @@
     </div>
 
     <p class="wt-settings-group-label"><span data-icon="gear" data-size="12"></span>운동 옵션</p>
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">타이머 · 목표</p>
       <div class="wt-setting-row">
         <div>
@@ -380,7 +380,7 @@
       </div>
     </div>
 
-    <div class="wt-card" style="margin-bottom: 12px;">
+    <div class="wt-card wt-mb-12">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">알림</p>
       <div class="wt-setting-row">
         <span style="font-size: 13px; color: var(--wt-text);">알림음</span>
@@ -409,16 +409,16 @@
       <div id="gh-form" style="display: flex; flex-direction: column; gap: 6px;">
         <div>
           <p class="wt-mini-label">GitHub 계정명 (owner)</p>
-          <input type="text" id="gh-owner" class="wt-input" style="width: 100%;" placeholder="예: octocat" autocomplete="off" autocapitalize="off" />
+          <input type="text" id="gh-owner" class="wt-input wt-w100" placeholder="예: octocat" autocomplete="off" autocapitalize="off" />
         </div>
         <div>
           <p class="wt-mini-label">데이터 저장소 이름</p>
-          <input type="text" id="gh-repo" class="wt-input" style="width: 100%;" placeholder="예: my-workout-data" autocomplete="off" autocapitalize="off" />
+          <input type="text" id="gh-repo" class="wt-input wt-w100" placeholder="예: my-workout-data" autocomplete="off" autocapitalize="off" />
         </div>
         <button id="gh-advanced-toggle" type="button" class="wt-btn-ghost-sm" style="align-self: flex-start;">고급 설정</button>
         <div id="gh-advanced" style="display: none;">
           <p class="wt-mini-label">브랜치 — 보통 안 건드려도 됩니다, 기본값 main</p>
-          <input type="text" id="gh-branch" class="wt-input" style="width: 100%;" placeholder="main" autocomplete="off" autocapitalize="off" />
+          <input type="text" id="gh-branch" class="wt-input wt-w100" placeholder="main" autocomplete="off" autocapitalize="off" />
         </div>
         <div>
           <p class="wt-mini-label">Personal Access Token</p>
@@ -426,8 +426,8 @@
         </div>
         <p id="gh-test-msg" style="font-size: 12px; margin: 0; display: none;"></p>
         <div style="display: flex; gap: 6px; margin-top: 4px;">
-          <button id="gh-test-btn" class="wt-btn-secondary" style="flex: 1;">연결 테스트</button>
-          <button id="gh-connect-btn" class="wt-btn-primary" style="flex: 1;" disabled>저장하고 시작</button>
+          <button id="gh-test-btn" class="wt-btn-secondary wt-flex1">연결 테스트</button>
+          <button id="gh-connect-btn" class="wt-btn-primary wt-flex1" disabled>저장하고 시작</button>
         </div>
         <p id="gh-verify-hint" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: -2px 0 0; display: none;">먼저 "연결 테스트"를 통과해야 저장할 수 있습니다.</p>
       </div>
@@ -446,22 +446,22 @@
       <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 8px; line-height: 1.5;">파일로 저장해 두면 브라우저 데이터가 지워져도 복원할 수 있습니다. 한 달에 한 번 정도 저장해 두세요.</p>
       <p id="storage-mode" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 12px;"></p>
       <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-        <button id="download-btn" class="wt-btn-primary" style="flex: 1;"><span data-icon="download" data-size="15"></span>파일로 저장</button>
-        <button id="file-import-btn" class="wt-btn-secondary" style="flex: 1;">파일에서 복원</button>
+        <button id="download-btn" class="wt-btn-primary wt-flex1"><span data-icon="download" data-size="15"></span>파일로 저장</button>
+        <button id="file-import-btn" class="wt-btn-secondary wt-flex1">파일에서 복원</button>
       </div>
       <input type="file" id="file-input" accept=".json,application/json,text/plain" style="display: none;" />
       <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 8px;">파일 저장이 막힌 환경에서는 아래 텍스트 방식을 쓰세요.</p>
       <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-        <button id="export-btn" class="wt-btn-secondary" style="flex: 1;">텍스트로 내보내기</button>
-        <button id="import-btn" class="wt-btn-secondary" style="flex: 1;">텍스트로 가져오기</button>
+        <button id="export-btn" class="wt-btn-secondary wt-flex1">텍스트로 내보내기</button>
+        <button id="import-btn" class="wt-btn-secondary wt-flex1">텍스트로 가져오기</button>
       </div>
       <textarea id="backup-box" class="wt-input" style="display: none; width: 100%; height: 110px; font-size: 11px; font-family: monospace; resize: vertical;" placeholder="백업 내용을 여기에 붙여넣으세요"></textarea>
       <div id="import-actions" style="display: none; gap: 6px; margin-top: 8px;">
-        <button id="import-merge" class="wt-btn-primary" style="flex: 1;">기존 기록에 합치기</button>
+        <button id="import-merge" class="wt-btn-primary wt-flex1">기존 기록에 합치기</button>
         <button id="backup-close" class="wt-btn-secondary" style="padding: 12px 14px;">닫기</button>
       </div>
       <div id="export-actions" style="display: none; gap: 6px; margin-top: 8px;">
-        <button id="select-all-btn" class="wt-btn-primary" style="flex: 1;">전체 선택</button>
+        <button id="select-all-btn" class="wt-btn-primary wt-flex1">전체 선택</button>
         <button id="backup-close-2" class="wt-btn-secondary" style="padding: 12px 14px;">닫기</button>
       </div>
       <p id="backup-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
