@@ -37,7 +37,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 18;
+  var APP_VERSION = 19;
   var APP_BUILD_DATE = '2026-09-29';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -47,6 +47,14 @@
   var GH_CONFIG_KEY = 'wt-github-cfg';
   var GH_CACHE_KEY = 'wt-github-cache'; // GitHub 요청 실패(오프라인 등) 시 마지막으로 받았던 내용을 대신 보여주기 위한 로컬 사본
   var GH_CACHE_AT_KEY = 'wt-github-cache-at'; // 위 사본을 "내가 직접" 마지막으로 저장에 성공한 시각
+  // "이 기기에서 바꾼 내용을 아직 GitHub에 제대로 올리지 못했다"는 표시. GH_CACHE_KEY는
+  // GitHub 저장 성공/실패와 무관하게 항상 최신 내용으로 먼저 갱신해두는데(오프라인에서도
+  // 바로 반영되게 하려고), 만약 그 뒤 저장이 실제로는 실패했는데도 이 표시가 없으면 —
+  // 나중에 GitHub에서 새로 읽어올 때(새로고침, 다음 실행 등) 아직 안 올라간 변경사항이
+  // "예전 것"으로 취급되어 그 오래된 내용에 덮어써져 사라질 수 있다(실제로 겪은 사고).
+  // 그래서 PUT을 시도하기 직전에 이 값을 켜두고, 성공했을 때만 끈다 — 켜져 있는 동안은
+  // 네트워크에서 새로 읽어오더라도 로컬 내용을 절대 덮어쓰지 않는다.
+  var GH_PENDING_KEY = 'wt-github-pending';
   // GitHub Contents API는 커밋 자체는 바로 끝나도, 그 직후 다시 읽으면 몇 초~몇 분 정도 저장 전
   // 내용을 그대로 돌려주는 지연(읽기 일관성 지연)이 있을 수 있다. 그래서 "방금 내가 저장한 것"은
   // 이 시간 동안 무조건 로컬 사본을 그대로 믿고, 네트워크로 다시 확인하지 않는다 — 안 그러면
@@ -201,9 +209,12 @@
         var cfg = getGhConfig();
         if (!cfg || k !== STORAGE_KEY) return baseStore.get(k);
         try {
+          // 아직 GitHub에 못 올린 이 기기만의 변경사항이 있으면(GH_PENDING_KEY), 네트워크에서
+          // 새로 읽어와서 그걸 덮어쓰는 사고를 막기 위해 무조건 로컬 사본을 그대로 믿는다.
+          var pending = !!window.localStorage.getItem(GH_PENDING_KEY);
           var cachedAt = Number(window.localStorage.getItem(GH_CACHE_AT_KEY) || 0);
           var cached = window.localStorage.getItem(GH_CACHE_KEY);
-          if (cached && cachedAt && (Date.now() - cachedAt) < GH_WRITE_GRACE_MS) {
+          if (cached && (pending || (cachedAt && (Date.now() - cachedAt) < GH_WRITE_GRACE_MS))) {
             return Promise.resolve({ key: k, value: cached });
           }
         } catch (e) {}
@@ -224,7 +235,14 @@
         var cfg = getGhConfig();
         if (!cfg || k !== STORAGE_KEY) return baseStore.set(k, v);
         try { window.localStorage.setItem(GH_CACHE_KEY, v); } catch (e) {}
-        function markWritten() { try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); } catch (e) {} }
+        // PUT을 시도하기 전에 먼저 "아직 안 올라갔다"고 표시해둔다 — 이 시도가 실패로
+        // 끝나면(그 사이 앱이 꺼지거나 오프라인이 되는 경우 포함) 이 표시가 남아있어서,
+        // 다음에 GitHub에서 다시 읽어올 때 이 변경사항이 예전 것으로 취급되어 사라지지 않는다.
+        try { window.localStorage.setItem(GH_PENDING_KEY, '1'); } catch (e) {}
+        function markWritten() {
+          try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); } catch (e) {}
+          try { window.localStorage.removeItem(GH_PENDING_KEY); } catch (e) {}
+        }
         return ghPutData(cfg, v, ghSha).then(function (sha) {
           ghSha = sha;
           markWritten();

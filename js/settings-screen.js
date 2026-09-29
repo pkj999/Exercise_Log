@@ -311,6 +311,21 @@
     btn.disabled = true;
     if (icon) icon.classList.add('wt-spin');
     try {
+      // 이 기기에 아직 GitHub로 못 올린 변경사항이 남아있는 채로 여기서 그냥 네트워크
+      // 최신본을 덮어써버리면, 그 변경사항이 통째로 사라진다(실제로 겪은 사고). 그래서
+      // 새로고침 전에 먼저 그 변경사항부터 올리기를 한 번 시도하고, 그마저 실패하면
+      // 새로고침 자체를 하지 않는다 — "최신을 보고 싶다"는 요청이 "지금 내 기록을 지운다"로
+      // 이어지면 안 되기 때문.
+      var pending = false;
+      try { pending = !!window.localStorage.getItem(GH_PENDING_KEY); } catch (e) {}
+      if (pending) {
+        try { await persist(); }
+        catch (e) {
+          toast('아직 저장 안 된 내용이 있어 새로고침을 건너뛰었습니다');
+          ghMsg('이 기기에 GitHub로 못 올린 변경사항이 있어 새로고침을 하지 않았습니다 (' + (e.message || '알 수 없는 오류') + '). 다시 시도해주세요.', false);
+          return;
+        }
+      }
       // store.get은 방금 내가 저장한 직후엔 로컬 사본을 우선하는데(읽기 지연 방지),
       // 새로고침은 "다른 기기가 방금 바꾼 걸 지금 당장 확인하고 싶다"는 명시적 요청이므로
       // 그 우선순위를 건너뛰고 항상 네트워크에서 실제로 다시 받아온다
