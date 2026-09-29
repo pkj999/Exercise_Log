@@ -280,3 +280,13 @@
   html[data-theme="dark"] #wt-root .wt-bw-note { color: #93C5FD; }
   #wt-root .wt-bw-note.warn { color: var(--wt-text-muted); background: var(--wt-bg); }
 
+  /* ===== [4] 반복되는 인라인 스타일을 대체하는 유틸리티 클래스 =====
+     주의: display 관련 값은 JS가 el.style.display를 읽어서 상태를 판단하는
+     곳이 여러 군데 있어(예: 탭 전환, GitHub 고급설정 토글) 여기 포함하지 않는다.
+     이 클래스들은 JS가 .style로 직접 값을 쓰지도, 읽지도 않는 순수 정적
+     스타일만 모아둔 것. */
+  #wt-root .wt-flex1 { flex: 1; }
+  #wt-root .wt-flex1-0 { flex: 1; min-width: 0; }
+  #wt-root .wt-mb-12 { margin-bottom: 12px; }
+  #wt-root .wt-w100 { width: 100%; }
+
