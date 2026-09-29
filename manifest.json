@@ -1,6 +1,6 @@
 {
-  "name": "운동 기록",
-  "short_name": "운동기록",
+  "name": "운동일지",
+  "short_name": "운동일지",
   "description": "부위별 운동, 세트, 캘린더, 통계를 기록하는 개인 운동 트래커",
   "start_url": "./",
   "scope": "./",
