@@ -549,9 +549,13 @@
     });
     data.days.forEach(function (d) { d.exercises = mergeDupExercises(d.exercises); });
 
-    await persist();
     renderAll();
-    backupMsg('복원 완료 — 새 날짜 ' + addedDays + '일, 운동 ' + addedEx + '건 추가.' +
-      (skipped ? ' 형식이 맞지 않는 ' + skipped + '건은 건너뛰었습니다.' : ''), true);
+    try {
+      await persist();
+      backupMsg('복원 완료 — 새 날짜 ' + addedDays + '일, 운동 ' + addedEx + '건 추가.' +
+        (skipped ? ' 형식이 맞지 않는 ' + skipped + '건은 건너뛰었습니다.' : ''), true);
+    } catch (e) {
+      backupMsg('이 기기에는 반영했지만 GitHub 저장에는 실패했습니다 (' + (e.message || '알 수 없는 오류') + '). 네트워크 확인 후 다시 시도해주세요.', false);
+    }
   });
 

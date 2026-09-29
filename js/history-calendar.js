@@ -21,7 +21,11 @@
     day.exercises = mergeDupExercises(day.exercises);
     commitSessionDuration(day);
 
-    await persist();
+    // 이 시점부터는 이미 data.days에 실제로 반영된 상태다 — GitHub 저장이 뒤에서
+    // 실패하더라도 되돌리지 않는다. 되돌리지 않고 staging도 여기서 바로 비워야,
+    // 실패 후 사용자가 저장 버튼을 다시 눌렀을 때 같은 세트가 또 한 번 합쳐져
+    // 중복으로 쌓이는 걸 막을 수 있다(예전엔 여기서 persist() 실패 시 아래 정리
+    // 코드가 전혀 실행되지 않아서, 다시 누를 때마다 같은 내용이 계속 겹쳐 쌓였음).
     clearDraft();
     staging = [];
     closeQuickEntry();
@@ -31,7 +35,12 @@
     $('add-exercise-form').style.display = 'none';
     renderAll();
     safeScrollTop();
-    toast('오늘 기록을 저장했습니다');
+    try {
+      await persist();
+      toast('오늘 기록을 저장했습니다');
+    } catch (e) {
+      showError('이 기기에는 저장했지만 GitHub 저장에는 실패했습니다 (' + (e.message || '알 수 없는 오류') + '). 네트워크 확인 후 설정 탭에서 새로고침해주세요.');
+    }
   });
 
   // ---------- [조회] 저장된 기록 목록 및 날짜 카드 ----------
@@ -163,8 +172,9 @@
         armDelete(delBtn, '삭제?', async function () {
           day.exercises.splice(exIdx, 1);
           if (!day.exercises.length) data.days = data.days.filter(function (d) { return d !== day; });
-          await persist();
           renderAll();
+          try { await persist(); }
+          catch (e) { showError('이 기기에서는 삭제했지만 GitHub 저장에는 실패했습니다 (' + (e.message || '알 수 없는 오류') + ').'); }
         });
       });
 
