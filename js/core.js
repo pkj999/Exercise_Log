@@ -37,7 +37,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 19;
+  var APP_VERSION = 20;
   var APP_BUILD_DATE = '2026-09-29';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -121,10 +121,33 @@
     }
   }
 
+  // Contents API는 "저장소는 있는데 그 안에 파일이 아직 없음"과 "저장소 이름 자체가
+  // 틀렸거나 토큰이 그 저장소를 못 봄"을 똑같이 404로 돌려줘서 구분이 안 된다. 그래서
+  // 404가 나오면 저장소 자체가 실제로 있는지(/repos/{owner}/{repo})를 따로 한 번 더
+  // 확인해서, "저장소 이름이 틀렸는데도 성공이라고 잘못 알려주는" 일이 없게 한다.
+  async function ghRepoExists(cfg) {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, 20000);
+    try {
+      var res = await fetch(GH_API + '/repos/' + cfg.owner + '/' + cfg.repo, {
+        headers: { Authorization: 'Bearer ' + cfg.token, Accept: 'application/vnd.github+json' },
+        signal: controller.signal
+      });
+      return res.status !== 404;
+    } catch (e) {
+      return true; // 이 확인 자체가 실패하면(네트워크 등) 기존 동작을 막지 않는다 — 판단을 보류
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   async function ghGetData(cfg) {
     var res = await ghFetch(cfg, { query: '?ref=' + (cfg.branch || 'main') });
     var tokenExpiresAt = res.headers.get('github-authentication-token-expiration') || null;
-    if (res.status === 404) return { value: null, sha: null, tokenExpiresAt: tokenExpiresAt };
+    if (res.status === 404) {
+      if (!(await ghRepoExists(cfg))) throw new Error('저장소 "' + cfg.owner + '/' + cfg.repo + '"를 찾을 수 없습니다. 이름을 확인해주세요.');
+      return { value: null, sha: null, tokenExpiresAt: tokenExpiresAt };
+    }
     if (!res.ok) {
       var body = await res.json().catch(function () { return {}; });
       throw new Error(body.message || 'GitHub 읽기 실패 (' + res.status + ')');
@@ -148,7 +171,10 @@
     if (res.status === 401) throw new Error('토큰이 올바르지 않거나 만료되었습니다.');
     if (res.status === 403) throw new Error('접근이 거부되었습니다. 토큰 권한(Contents: Read and write)을 확인해주세요.');
     var tokenExpiresAt = res.headers.get('github-authentication-token-expiration') || null;
-    if (res.status === 404) return { tokenExpiresAt: tokenExpiresAt }; // 저장소는 있지만 아직 기록 파일이 없음 — 처음 연결할 때는 정상
+    if (res.status === 404) {
+      if (!(await ghRepoExists(cfg))) throw new Error('저장소 "' + cfg.owner + '/' + cfg.repo + '"를 찾을 수 없습니다. 계정명과 저장소 이름을 확인해주세요.');
+      return { tokenExpiresAt: tokenExpiresAt }; // 저장소는 있지만 아직 기록 파일이 없음 — 처음 연결할 때는 정상
+    }
     if (!res.ok) {
       var body = await res.json().catch(function () { return {}; });
       throw new Error(body.message || '연결 실패 (' + res.status + ')');
