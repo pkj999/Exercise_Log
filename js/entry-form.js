@@ -627,9 +627,13 @@
     }
     closeQuickEntry();
     selectedCategory = null;
-    await persist();
     renderAll();
-    toast('수정을 저장했습니다');
+    try {
+      await persist();
+      toast('수정을 저장했습니다');
+    } catch (e) {
+      showError('이 기기에는 저장했지만 GitHub 저장에는 실패했습니다 (' + (e.message || '알 수 없는 오류') + '). 네트워크 확인 후 설정 탭에서 새로고침해주세요.');
+    }
   });
   $('qe-cancel-edit').addEventListener('click', exitEditMode);
   $('qe-warmup').addEventListener('click', function () { setWarmup(!warmupOn); });
