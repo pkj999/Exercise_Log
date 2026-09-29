@@ -704,6 +704,7 @@
         </div>
         <p id="gh-verify-hint" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: -2px 0 0; display: none;">먼저 "연결 테스트"를 통과해야 저장할 수 있습니다.</p>
       </div>
+      <button id="gh-recover-btn" class="wt-btn-secondary" style="width: 100%; display: none; margin-bottom: 6px;">이 기기에 남은 예전 로컬 기록 확인·합치기</button>
       <button id="gh-disconnect-btn" class="wt-btn-secondary" style="width: 100%; display: none;">연결 해제 (이 기기에서 설정 삭제)</button>
       <p id="gh-help" style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: 10px 0 0; line-height: 1.6;">아직 비공개 저장소나 토큰을 안 만드셨다면, 먼저 GitHub에서<br>① 새 비공개 저장소 생성(README 포함) → ② Settings → Developer settings →<br>Fine-grained tokens에서 그 저장소만 골라 Contents 권한 Read/Write로 토큰 발급</p>
       <p id="gh-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
@@ -793,7 +794,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 6;
+  var APP_VERSION = 7;
   var APP_BUILD_DATE = '2026-09-28';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -3880,6 +3881,7 @@
       $('gh-status').textContent = '연결됨 — ' + cfg.owner + '/' + cfg.repo + (cfg.branch && cfg.branch !== 'main' ? ' (브랜치: ' + cfg.branch + ')' : '') + '. 이 기기에서 저장하면 GitHub에도 함께 저장됩니다.';
       $('gh-form').style.display = 'none';
       $('gh-refresh-header-btn').style.display = '';
+      $('gh-recover-btn').style.display = '';
       $('gh-disconnect-btn').style.display = '';
       $('gh-help').style.display = 'none';
       if (cfg.tokenExpiresAt) {
@@ -3892,6 +3894,7 @@
       $('gh-status').textContent = '연결 안 됨 — 이 기기에만 저장됩니다.';
       $('gh-form').style.display = 'flex';
       $('gh-refresh-header-btn').style.display = 'none';
+      $('gh-recover-btn').style.display = 'none';
       $('gh-disconnect-btn').style.display = 'none';
       $('gh-help').style.display = '';
       expEl.style.display = 'none';
@@ -4022,6 +4025,29 @@
     } finally {
       btn.disabled = false;
       if (icon) icon.classList.remove('wt-spin');
+    }
+  });
+  // GitHub 연결 이전에(혹은 연결 없이) 이 기기에만 저장돼 있던 기록을 확인해서 지금 기록에 합침.
+  // 연결·병합 로직은 항상 GH_CACHE_KEY/원격 값만 다루고 이 기기의 원래 로컬 저장 키(STORAGE_KEY)는
+  // 건드리지 않으므로, 연결 전에 쓴 기록이 있었다면 이 기기 안에 그대로 남아있을 가능성이 높음.
+  $('gh-recover-btn').addEventListener('click', async function () {
+    var raw = null;
+    try { raw = window.localStorage.getItem(STORAGE_KEY); } catch (e) {}
+    if (!raw) { ghMsg('이 기기에 남은 예전 로컬 기록을 찾지 못했습니다.', false); return; }
+    var orphan;
+    try { orphan = JSON.parse(raw); } catch (e) { ghMsg('로컬 기록을 읽지 못했습니다.', false); return; }
+    if (!orphan || !Array.isArray(orphan.days) || !orphan.days.length) {
+      ghMsg('합칠 만한 예전 로컬 기록이 없습니다.', false);
+      return;
+    }
+    var result = mergeLocalDaysInto(data.days, orphan.days);
+    if (result.addedDays || result.addedEx) {
+      await persist();
+      renderAll();
+      ghMsg('이 기기에 남아있던 예전 로컬 기록을 합쳤습니다 (새 날짜 ' + result.addedDays + '일 · 운동 ' + result.addedEx + '건).', true);
+      toast('예전 로컬 기록을 합쳤습니다');
+    } else {
+      ghMsg('찾아본 로컬 기록은 이미 다 반영되어 있어서, 새로 합칠 기록은 없었습니다.', true);
     }
   });
   $('gh-disconnect-btn').addEventListener('click', function () {
