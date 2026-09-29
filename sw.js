@@ -1,4 +1,4 @@
-// 운동 기록 — 간단한 앱 쉘 캐싱 서비스워커
+// 운동일지 — 간단한 앱 쉘 캐싱 서비스워커
 // 로컬 파일(index.html, manifest, 아이콘)만 캐시하고,
 // 외부 CDN(폰트 등)은 그대로 네트워크로 통과시킵니다.
 const CACHE_NAME = 'workout-log-shell-ver1';

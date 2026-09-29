@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="운동 기록">
+<meta name="apple-mobile-web-app-title" content="운동일지">
 <meta name="theme-color" id="theme-color-meta" content="#F7F7F9">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.json">
@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<title>운동 기록</title>
+<title>운동일지</title>
 <style>
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -307,7 +307,7 @@
 <div id="wt-root">
 
   <div id="top-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 1.1rem;">
-    <h1 id="screen-title" style="font-size: 20px; font-weight: 700; margin: 0; color: var(--wt-text);">운동 기록<span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--wt-text-muted); margin-left: 8px; vertical-align: 2px;">Exercise_Log</span></h1>
+    <h1 id="screen-title" style="font-size: 20px; font-weight: 700; margin: 0; color: var(--wt-text);">운동일지<span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--wt-text-muted); margin-left: 8px; vertical-align: 2px;">Exercise_Log</span></h1>
     <div style="display: flex; align-items: center; gap: 8px;">
       <div id="rest-timer-pill" style="display: none; align-items: center; gap: 8px; background: var(--wt-accent); color: #fff; border-radius: 10px; padding: 6px 8px 6px 14px; box-shadow: var(--wt-shadow-accent);">
         <span data-icon="clock" data-size="15"></span>
@@ -772,7 +772,7 @@
   'use strict';
 
   /* =========================================================================
-   * 운동 기록 트래커 — 단일 파일 웹앱 (HTML + CSS + JS)
+   * 운동일지 트래커 — 단일 파일 웹앱 (HTML + CSS + JS)
    *
    * [구조 안내]
    *   이 파일은 <style> · <body 마크업> · <script> 세 부분으로 되어 있습니다.
@@ -808,7 +808,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 10;
+  var APP_VERSION = 11;
   var APP_BUILD_DATE = '2026-09-29';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -4296,7 +4296,7 @@
   });
 
   // ---------- [화면] 하단 탭 전환 ----------
-  var TITLES = { log: '운동 기록', calendar: '캘린더', progress: '통계', settings: '설정' };
+  var TITLES = { log: '운동일지', calendar: '캘린더', progress: '통계', settings: '설정' };
   var currentTab = 'log';
   var TAB_ORDER = ['log', 'calendar', 'progress', 'settings'];
   function switchTab(tab) {
@@ -4385,7 +4385,7 @@
   window.addEventListener('resize', syncTabbarSpace);
 
   (async function init() {
-    $('app-version').textContent = '운동 기록 ver.' + APP_VERSION + ' · ' + APP_BUILD_DATE;
+    $('app-version').textContent = '운동일지 ver.' + APP_VERSION + ' · ' + APP_BUILD_DATE;
     hydrateIcons();
     await loadData();
     applyTheme();
