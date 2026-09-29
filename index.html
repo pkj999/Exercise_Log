@@ -80,7 +80,7 @@
   #wt-root svg { display: block; flex-shrink: 0; }
   #wt-root .wt-label { font-size: 12px; color: var(--wt-text-muted); margin: 0 0 8px; font-weight: 600; }
   #wt-root .wt-mini-label { font-size: 11px; color: var(--wt-text-muted); margin: 0 0 6px; font-weight: 600; }
-  #wt-root .wt-settings-group-label { font-size: 11px; font-weight: 700; color: var(--wt-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 4px 2px 8px; }
+  #wt-root .wt-settings-group-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--wt-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 4px 2px 8px; }
   #wt-root .wt-settings-group-label:not(:first-child) { margin-top: 20px; }
   #wt-root .wt-card { background: var(--wt-card); border-radius: 12px; padding: 1.1rem 1.25rem; border: 1.5px solid var(--wt-border-strong); }
   #wt-root .wt-input { border: 1.5px solid var(--wt-border-strong); background: var(--wt-bg); border-radius: 8px; padding: 11px 12px; }
@@ -607,7 +607,7 @@
 
   <!-- ===== 설정 ===== -->
   <div id="view-settings" style="display: none;">
-    <p class="wt-settings-group-label">개인 정보</p>
+    <p class="wt-settings-group-label"><span data-icon="user" data-size="12"></span>개인 정보</p>
     <div class="wt-card" style="margin-bottom: 12px;">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 8px; color: var(--wt-text);">신체 정보</p>
       <div style="display: flex; gap: 10px;">
@@ -639,7 +639,7 @@
       <p id="protein-target-note" style="font-size: 11px; color: var(--wt-text-muted); margin: 9px 0 0; line-height: 1.5;"></p>
     </div>
 
-    <p class="wt-settings-group-label">운동 옵션</p>
+    <p class="wt-settings-group-label"><span data-icon="gear" data-size="12"></span>운동 옵션</p>
     <div class="wt-card" style="margin-bottom: 12px;">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">타이머 · 목표</p>
       <div class="wt-setting-row">
@@ -679,7 +679,7 @@
       <button id="test-alert-btn" class="wt-btn-secondary" style="width: 100%; margin-top: 10px;">알림 테스트</button>
     </div>
 
-    <p class="wt-settings-group-label">데이터</p>
+    <p class="wt-settings-group-label"><span data-icon="download" data-size="12"></span>데이터</p>
     <button id="gh-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="gh-body">
       <span class="wt-section-title">GitHub 동기화</span>
       <span id="gh-head-status" class="wt-section-count">미연결</span>
@@ -720,8 +720,12 @@
       <p id="gh-msg" style="font-size: 12px; margin: 8px 0 0; display: none;"></p>
     </div>
 
-    <div class="wt-card" style="margin-bottom: 12px;">
-      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">데이터 백업</p>
+    <button id="backup-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="backup-body">
+      <span class="wt-section-title">데이터 백업</span>
+      <span class="wt-section-line"></span>
+      <span class="wt-section-caret" data-icon="chevron-down" data-size="16"></span>
+    </button>
+    <div id="backup-body" class="wt-card" style="display: none; margin-top: 8px; margin-bottom: 12px;">
       <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 8px; line-height: 1.5;">파일로 저장해 두면 브라우저 데이터가 지워져도 복원할 수 있습니다. 한 달에 한 번 정도 저장해 두세요.</p>
       <p id="storage-mode" style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 12px;"></p>
       <div style="display: flex; gap: 6px; margin-bottom: 8px;">
@@ -804,7 +808,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 8;
+  var APP_VERSION = 9;
   var APP_BUILD_DATE = '2026-09-28';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -1046,7 +1050,8 @@
     'chevron-right': '<path d="M9 5l7 7-7 7"/>',
     'arrow-up': '<path d="M12 19V5M6 11l6-6 6 6"/>',
     'arrow-down': '<path d="M12 5v14M6 13l6 6 6-6"/>',
-    'refresh-cw': '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'
+    'refresh-cw': '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'
   };
 
   function svg(name, size) {
@@ -3730,6 +3735,15 @@
   });
 
   // ---------- [설정] 설정 화면 ----------
+  // 데이터 백업 카드도 아코디언으로 — 자주 안 쓰는 기능이라 기본은 접어둠(상태는 저장 안 하고
+  // 매번 접힌 채로 시작).
+  $('backup-head').addEventListener('click', function () {
+    var head = $('backup-head'), body = $('backup-body');
+    var open = !head.classList.contains('open');
+    head.classList.toggle('open', open);
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    body.style.display = open ? '' : 'none';
+  });
   function renderSettings() {
     $('rest-display').textContent = fmtMinSec(data.restSeconds);
     $('sound-switch').classList.toggle('on', data.sound);
