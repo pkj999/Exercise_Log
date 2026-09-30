@@ -37,8 +37,8 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 20;
-  var APP_BUILD_DATE = '2026-09-29';
+  var APP_VERSION = 21;
+  var APP_BUILD_DATE = '2026-09-30';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
   var SCHEMA = 5; // day.durationMin/startedAt/endedAt(운동 소요시간) 추가. 마이그레이션 분기는 없음 — applyLoaded()가 항상 방어적으로 필드를 재구성하므로 구버전 데이터는 해당 필드가 0/미설정으로 채워짐
@@ -229,6 +229,20 @@
     // 운동 기록 본문(STORAGE_KEY)만 GitHub로 라우팅한다. 임시저장(draft)·타이머 같은 건
     // 기기마다 다르고 자주 바뀌는 값이라 그대로 이 기기 로컬에만 둔다(매번 GitHub에 커밋하면
     // API 호출도 과하고 커밋 기록도 지저분해짐).
+
+    // 기록을 연달아 빠르게 지우거나 추가하면 persist()가 짧은 간격으로 여러 번 겹쳐 불릴 수
+    // 있는데, 그때마다 store.set이 곧바로 PUT을 쏘면 서로 다른 요청이 같은(오래된) ghSha를
+    // 들고 동시에 시작돼서 뒤늦게 도착한 쪽이 충돌(409)로 실패할 수 있다(1회 재시도로도 세
+    // 번째 이상 겹치면 못 따라잡음). 그래서 실제 GitHub 쓰기는 한 번에 하나씩만, 앞선 쓰기가
+    // 끝난 뒤에 이어서 실행되도록 큐로 순서를 강제한다 — 화면/로컬 반영은 이미 즉시 끝나
+    // 있으므로 사용자 입장에서 느려지는 건 없고, 뒤에서 GitHub에 순서대로 쌓이기만 한다.
+    var ghWriteQueue = Promise.resolve();
+    function queueGhWrite(fn) {
+      var result = ghWriteQueue.then(fn, fn);
+      ghWriteQueue = result.catch(function () {});
+      return result;
+    }
+
     return {
       get mode() { return getGhConfig() ? 'github' : baseStore.mode; },
       get: function (k) {
@@ -269,19 +283,23 @@
           try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); } catch (e) {}
           try { window.localStorage.removeItem(GH_PENDING_KEY); } catch (e) {}
         }
-        return ghPutData(cfg, v, ghSha).then(function (sha) {
-          ghSha = sha;
-          markWritten();
-          return { key: k, value: v };
-        }).catch(function (err) {
-          if (err.status === 409) {
-            // 다른 기기가 먼저 저장해서 sha가 어긋남 — 최신 sha로 다시 한 번만 시도
-            return ghGetData(cfg).then(function (r) {
-              ghSha = r.sha;
-              return ghPutData(cfg, v, ghSha).then(function (sha) { ghSha = sha; markWritten(); return { key: k, value: v }; });
-            });
-          }
-          throw err;
+        return queueGhWrite(function () {
+          return ghPutData(cfg, v, ghSha).then(function (sha) {
+            ghSha = sha;
+            markWritten();
+            return { key: k, value: v };
+          }).catch(function (err) {
+            if (err.status === 409) {
+              // sha가 어긋남(충돌) — 최신 sha로 다시 한 번만 시도. 쓰기가 이제 큐로 한 번에
+              // 하나씩만 실행되므로, 남은 충돌 가능성은 사실상 다른 기기가 동시에 저장한
+              // 경우뿐이라 재시도 한 번이면 충분하다.
+              return ghGetData(cfg).then(function (r) {
+                ghSha = r.sha;
+                return ghPutData(cfg, v, ghSha).then(function (sha) { ghSha = sha; markWritten(); return { key: k, value: v }; });
+              });
+            }
+            throw err;
+          });
         });
       }
     };
