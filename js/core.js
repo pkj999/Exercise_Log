@@ -37,7 +37,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 23;
+  var APP_VERSION = 24;
   var APP_BUILD_DATE = '2026-10-01';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -289,12 +289,21 @@
           try { window.localStorage.removeItem(GH_PENDING_KEY); } catch (e) {}
         }
         return queueGhWrite(function () {
-          return ghPutData(cfg, v, ghSha).then(function (sha) {
+          // ghSha는 메모리 변수라 새로고침/앱 재실행 시 null로 초기화되는데, "아직 못 올린
+          // 변경사항이 있다(pending)" 표시 때문에 store.get()이 네트워크 조회를 건너뛰면
+          // ghSha가 계속 null로 남는다. null인 채로 PUT하면 "파일이 이미 있는데 sha가
+          // 없다"며 GitHub가 거부하고, 실패하니 pending도 안 꺼져서 — 영원히 같은 이유로
+          // 실패만 반복하는 고리에 빠진다(실제로 겪은 사고). 그래서 쓰기 전에 ghSha가 없으면
+          // 먼저 최신 sha만 확인해서 채워둔다.
+          var ensureSha = ghSha ? Promise.resolve(ghSha) : ghGetData(cfg).then(function (r) { ghSha = r.sha; return ghSha; });
+          return ensureSha.then(function () {
+            return ghPutData(cfg, v, ghSha);
+          }).then(function (sha) {
             ghSha = sha;
             markWritten();
             return { key: k, value: v };
           }).catch(function (err) {
-            if (err.status === 409) {
+            if (err.status === 409 || err.status === 422) {
               // sha가 어긋남(충돌) — 최신 sha로 다시 한 번만 시도. 쓰기가 이제 큐로 한 번에
               // 하나씩만 실행되므로, 남은 충돌 가능성은 사실상 다른 기기가 동시에 저장한
               // 경우뿐이라 재시도 한 번이면 충분하다.
