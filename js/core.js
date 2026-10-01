@@ -37,7 +37,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 22;
+  var APP_VERSION = 23;
   var APP_BUILD_DATE = '2026-10-01';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -115,6 +115,11 @@
       return res;
     } catch (e) {
       if (e.name === 'AbortError') throw new Error('요청 시간이 초과됐습니다. 네트워크 상태를 확인해주세요.');
+      // fetch() 자체가 응답조차 못 받고 실패하면(오프라인, DNS 실패, 연결 끊김 등) 브라우저가
+      // "Failed to fetch" 같은 뭉뚱그린 영문 메시지만 준다 — 이 경우만 진짜 연결 문제이므로
+      // 안내를 한국어로 바꿔준다. (GitHub가 응답은 했지만 거부한 경우(401/403/429 등)는 위에서
+      // 이미 구체적인 메시지로 처리되거나, 호출한 쪽에서 응답 본문의 실제 메시지를 그대로 쓴다.)
+      if (e instanceof TypeError) throw new Error('네트워크 연결에 실패했습니다. 인터넷 연결 상태를 확인해주세요.');
       throw e;
     } finally {
       clearTimeout(timeoutId);
