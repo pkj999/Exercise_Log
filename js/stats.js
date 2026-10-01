@@ -53,12 +53,13 @@
       .sort(function (a, b) { return b.sets - a.sets; })
       .map(function (e) {
         var pct = Math.round(e.sets / totalSets * 100);
+        var color = meta(e.cat).color;
         return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">' +
-          '<span style="display:flex;align-items:center;gap:4px;width:54px;flex-shrink:0;color:var(--wt-text-muted);">' +
+          '<span style="display:flex;align-items:center;gap:4px;width:54px;flex-shrink:0;color:' + color + ';">' +
           svg(meta(e.cat).icon, 15) +
           '<span style="font-size:11px;font-weight:600;color:var(--wt-text);">' + e.cat + '</span></span>' +
           '<span style="flex:1;height:6px;background:var(--wt-bg);border-radius:999px;overflow:hidden;">' +
-          '<span style="display:block;height:100%;width:' + pct + '%;background:var(--wt-text-muted);border-radius:999px;"></span></span>' +
+          '<span style="display:block;height:100%;width:' + pct + '%;background:' + color + ';border-radius:999px;"></span></span>' +
           '<span style="font-size:11px;color:var(--wt-text-muted);width:64px;text-align:right;flex-shrink:0;">' + e.sets + '세트 ' + pct + '%</span></div>';
       }).join('');
   }
