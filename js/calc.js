@@ -158,7 +158,7 @@
 
   // ---------- [계산] 운동 세션 소요시간 ----------
   // 화면별 실제 호출 위치:
-  //   - 세트 추가 시 활동 기록:        [입력] qe-add-set / qe-repeat-same 클릭 핸들러 (recordSetActivity 호출)
+  //   - 세트 추가 시 활동 기록:        [입력] qe-add-set 클릭 핸들러 (recordSetActivity 호출)
   //   - 저장(commit) 시 하루 기록에 반영: [저장] save-entry-btn 클릭 핸들러 (commitSessionDuration 호출)
   //   - 로그 화면 상단 "진행 중" 표시:  [입력] renderProteinToday 부근 (liveSessionMinutes 호출) — 실제로는 updateTodayVolume 근처에서 호출
   //   - 캘린더 상세 소요시간:          [조회] buildDayCard()

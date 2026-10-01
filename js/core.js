@@ -37,8 +37,8 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 21;
-  var APP_BUILD_DATE = '2026-09-30';
+  var APP_VERSION = 22;
+  var APP_BUILD_DATE = '2026-10-01';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
   var SCHEMA = 5; // day.durationMin/startedAt/endedAt(운동 소요시간) 추가. 마이그레이션 분기는 없음 — applyLoaded()가 항상 방어적으로 필드를 재구성하므로 구버전 데이터는 해당 필드가 0/미설정으로 채워짐
@@ -423,9 +423,6 @@
   // ---------- [데이터] 입력 상한값 (오타 방지) ----------
   var LIMITS = { weight: 500, reps: 100, minutes: 600, intensity: 20, distance: 200, proteinMeal: 300, proteinTarget: 400 };
 
-  // ---------- [데이터] 특이사항 태그 ----------
-  var TAGS = ['컨디션 좋음', '수면 부족', '어깨 통증', '허리 통증', '무릎 통증', '폼 무너짐', '보조 받음', '실패 세트'];
-
   // ---------- [데이터] 단백질 목표 방향성별 g/kg 계수 ----------
   // 체중(kg) × 계수 = 일일 목표 단백질(g). 운동하는 성인 기준 일반적으로 알려진 참고 범위이며,
   // 정밀한 영양 처방이 아니므로 개인차·질환 여부에 따라 조정이 필요할 수 있습니다.
@@ -484,8 +481,6 @@
   var calSelected = null;
   var editMode = false;
   var exSearch = '';
-  var tagsSelected = [];
-  var tagPanelOpen = false;
   var timerId = null, timerRemaining = 0;
   var audioCtx = null;
 

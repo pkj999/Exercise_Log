@@ -259,10 +259,6 @@
   html[data-theme="dark"] #wt-root .wt-plateau-badge { background: var(--wt-accent-soft); color: var(--wt-accent); }
 
   /* ===== [C] 특이사항 태그 ===== */
-  #wt-root .wt-tag-chip { border: 1.5px solid var(--wt-border-strong); background: var(--wt-card); color: var(--wt-text-muted); font-size: 12px; font-weight: 600; padding: 10px 12px; min-height: 40px; border-radius: 8px; cursor: pointer; transition: transform .08s ease, filter .12s ease; }
-  #wt-root .wt-tag-chip:active { transform: scale(.94); }
-  #wt-root .wt-tag-chip.on { background: var(--wt-accent-soft); color: var(--wt-accent-dark); border-color: var(--wt-accent-soft); }
-  html[data-theme="dark"] #wt-root .wt-tag-chip.on { color: #93C5FD; }
   #wt-root .wt-tag-mini { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 4px; background: var(--wt-accent-soft); color: var(--wt-accent-dark); }
   html[data-theme="dark"] #wt-root .wt-tag-mini { color: #93C5FD; }
   #wt-root .wt-note-row { padding: 9px 0; font-size: 12px; color: var(--wt-text); }
