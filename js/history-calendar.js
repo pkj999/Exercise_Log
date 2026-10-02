@@ -220,10 +220,25 @@
     var total = new Date(y, mo + 1, 0).getDate();
     var todayIso = fmtDate(new Date());
 
+    // 맨 앞/뒤 빈 칸도 그냥 비워두지 않고, 흔한 달력들처럼 전/다음 달 날짜를 옅게 채워 보여준다 —
+    // 안 그러면 "이번 달 1일이 속한 주"의 나머지 요일(지난달 말)이 통째로 안 보여서, 주 목표
+    // 달성 배지는 그 요일들까지 계산에 넣는데(workoutDaysIn은 월 구분 없이 날짜로만 계산) 정작
+    // 화면에는 그 근거가 안 보이는 모순이 생긴다.
+    function outsideCell(dateObj) {
+      var iso = fmtDate(dateObj);
+      var day = data.days.find(function (d) { return d.date === iso; });
+      var cell = document.createElement('button');
+      cell.className = 'wt-cal-cell outside' + (iso === calSelected ? ' selected' : '');
+      cell.innerHTML = '<span>' + dateObj.getDate() + '</span>' + (day ? '<span class="wt-cal-dots">' + dayCategoryDots(day) + '</span>' : '');
+      cell.addEventListener('click', function () {
+        calSelected = (calSelected === iso) ? null : iso;
+        renderCalendar();
+        renderCalDetail();
+      });
+      return cell;
+    }
     for (var i = 0; i < first; i++) {
-      var blank = document.createElement('div');
-      blank.className = 'wt-cal-cell empty';
-      grid.appendChild(blank);
+      grid.appendChild(outsideCell(new Date(y, mo, i - first + 1)));
     }
     for (var n = 1; n <= total; n++) {
       (function (n) {
@@ -243,9 +258,7 @@
     }
     var tailBlanks = (7 - ((first + total) % 7)) % 7;
     for (var t = 0; t < tailBlanks; t++) {
-      var tb = document.createElement('div');
-      tb.className = 'wt-cal-cell empty';
-      grid.appendChild(tb);
+      grid.appendChild(outsideCell(new Date(y, mo + 1, t + 1)));
     }
     if (tailBlanks > 0) appendWeekFlag(new Date(y, mo, total));
 
