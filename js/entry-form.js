@@ -312,8 +312,11 @@
       btn.className = 'wt-rpe-chip';
       btn.innerHTML = r.label + '<span style="display:block;font-size:10px;font-weight:400;opacity:0.85;">' + r.desc + '</span>';
       if (QEState.rpeSelected === r.key) {
-        btn.style.background = r.color;
-        btn.style.color = '#fff';
+        // 앱 전체의 "선택 상태 = 테두리+옅은 배경" 규칙을 따르되, 여유/적정/한계를 색으로
+        // 구분하는 기능적 목적은 유지 — 꽉 찬 원색 배경 대신 그 색을 옅게 깔아준다.
+        btn.style.borderColor = r.color;
+        btn.style.background = r.color + '20';
+        btn.style.color = r.color;
       }
       btn.addEventListener('click', function () {
         setRpe(QEState.rpeSelected === r.key ? null : r.key);

@@ -126,11 +126,11 @@
   #wt-root .wt-set-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; background: var(--wt-bg); border-radius: 8px; padding: 7px 8px 7px 10px; color: var(--wt-text); }
   #wt-root .wt-set-row.editing { outline: 2px solid var(--wt-accent); }
   #wt-root .wt-rpe-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; }
-  #wt-root .wt-rpe-chip { flex: 1; border: none; border-radius: 8px; padding: 9px 8px; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--wt-bg); color: var(--wt-text-muted); }
+  #wt-root .wt-rpe-chip { flex: 1; border: 1.5px solid transparent; border-radius: 8px; padding: 9px 8px; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--wt-bg); color: var(--wt-text-muted); }
   #wt-root .wt-warm-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--wt-warm-text); background: var(--wt-warm-bg); border-radius: 5px; padding: 1px 5px; margin-left: 5px; }
 
   #wt-root .wt-cal-cell { aspect-ratio: 1; border-radius: 8px; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font-size: 12px; color: var(--wt-text); padding: 0; }
-  #wt-root .wt-cal-cell.empty { visibility: hidden; }
+  #wt-root .wt-cal-cell.outside { color: var(--wt-text-muted); opacity: .45; }
   #wt-root .wt-cal-cell.today { background: var(--wt-accent-soft); font-weight: 700; }
   #wt-root .wt-cal-cell.selected { outline: 2px solid var(--wt-accent); }
   #wt-root .wt-cal-dots { display: flex; align-items: center; gap: 2px; }
