@@ -33,6 +33,19 @@
     --wt-shadow-sm: 0 1px 0 rgba(15,23,42,0.04);
     --wt-shadow-md: 0 2px 4px rgba(15,23,42,0.05);
     --wt-shadow-accent: 0 4px 10px rgba(94,106,210,0.22);
+    /* 보조색 토큰: 연한 배경 위에 올라가는 텍스트/뱃지 색. 라이트/다크 모드마다
+       여기서만 값을 바꾸면 되고, 개별 클래스에 하드코딩하지 않는다. */
+    --wt-accent-text: var(--wt-accent-dark);
+    --wt-warm-bg: #FFE9C2;
+    --wt-warm-text: #8A5A12;
+    --wt-plan-bg: #E7EBF1;
+    --wt-plan-text: #57606E;
+    --wt-pr-bg: #FFF1C2;
+    --wt-pr-text: #8A5A12;
+    /* 버튼 눌림(active) 축소율: 요소 크기별 3단계로만 구분한다 */
+    --wt-press-lg: .96;
+    --wt-press-round: .88;
+    --wt-press-tiny: .93;
     background: var(--wt-bg);
   }
   html[data-theme="dark"] #wt-root {
@@ -51,6 +64,13 @@
     --wt-shadow-sm: 0 0 0 rgba(0,0,0,0);
     --wt-shadow-md: 0 2px 8px rgba(0,0,0,0.3);
     --wt-shadow-accent: 0 4px 12px rgba(110,86,207,0.3);
+    --wt-accent-text: #93C5FD;
+    --wt-warm-bg: #43341A;
+    --wt-warm-text: #FFD48A;
+    --wt-plan-bg: #2A2E36;
+    --wt-plan-text: #A7AFBC;
+    --wt-pr-bg: #4A3A12;
+    --wt-pr-text: #FFD97D;
   }
 
   #wt-root input, #wt-root select, #wt-root textarea {
@@ -79,8 +99,8 @@
   #wt-root .wt-chip.active { border-color: var(--wt-accent); background: var(--wt-accent-soft); color: var(--wt-accent); }
   #wt-root .wt-chip.deletable { background: var(--wt-danger-bg); color: var(--wt-danger); }
 
-  #wt-root .wt-seg-btn { border: none; background: var(--wt-bg); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--wt-text-muted); }
-  #wt-root .wt-seg-btn.active { background: var(--wt-accent); color: #fff; }
+  #wt-root .wt-seg-btn { border: 1.5px solid transparent; background: var(--wt-bg); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--wt-text-muted); }
+  #wt-root .wt-seg-btn.active { border-color: var(--wt-accent); background: var(--wt-accent-soft); color: var(--wt-accent); }
 
   #wt-root .wt-stepper-btn { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--wt-border-strong); background: var(--wt-bg); font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; color: var(--wt-text); }
   #wt-root .wt-stepper-btn::before { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
@@ -101,14 +121,13 @@
   #wt-root .wt-stat-card { background: var(--wt-card); border-radius: 12px; padding: 14px; border: 1.5px solid var(--wt-border-strong); }
 
   #wt-root .wt-row-card { background: var(--wt-card); border-radius: 12px; padding: 10px 14px; border: 1.5px solid var(--wt-border-strong); display: flex; align-items: center; gap: 12px; }
-  #wt-root .wt-row-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  #wt-root .wt-row-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--wt-bg); color: var(--wt-text-muted); }
 
   #wt-root .wt-set-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; background: var(--wt-bg); border-radius: 8px; padding: 7px 8px 7px 10px; color: var(--wt-text); }
   #wt-root .wt-set-row.editing { outline: 2px solid var(--wt-accent); }
   #wt-root .wt-rpe-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; }
   #wt-root .wt-rpe-chip { flex: 1; border: none; border-radius: 8px; padding: 9px 8px; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--wt-bg); color: var(--wt-text-muted); }
-  #wt-root .wt-warm-badge { display: inline-block; font-size: 10px; font-weight: 700; color: #8A5A12; background: #FFE9C2; border-radius: 5px; padding: 1px 5px; margin-left: 5px; }
-  html[data-theme="dark"] #wt-root .wt-warm-badge { color: #FFD48A; background: #43341A; }
+  #wt-root .wt-warm-badge { display: inline-block; font-size: 10px; font-weight: 700; color: var(--wt-warm-text); background: var(--wt-warm-bg); border-radius: 5px; padding: 1px 5px; margin-left: 5px; }
 
   #wt-root .wt-cal-cell { aspect-ratio: 1; border-radius: 8px; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font-size: 12px; color: var(--wt-text); padding: 0; }
   #wt-root .wt-cal-cell.empty { visibility: hidden; }
@@ -137,16 +156,16 @@
   #wt-root .wt-cat-btn {
     transition: transform .08s ease, filter .12s ease, box-shadow .12s ease;
   }
-  #wt-root .wt-btn-primary:active { transform: scale(.955); filter: brightness(.9); box-shadow: none; }
+  #wt-root .wt-btn-primary:active { transform: scale(var(--wt-press-lg)); filter: brightness(.9); box-shadow: none; }
   #wt-root .wt-btn-secondary:active, #wt-root .wt-btn-ghost-sm:active,
   #wt-root .wt-rpe-chip:active, #wt-root .wt-seg-btn:active,
-  #wt-root .wt-chip:active, #wt-root .wt-row-card:active { transform: scale(.96); filter: brightness(.93); }
-  #wt-root .wt-cat-btn:active { transform: scale(.96); filter: brightness(.95); }
+  #wt-root .wt-chip:active, #wt-root .wt-row-card:active { transform: scale(var(--wt-press-lg)); filter: brightness(.93); }
+  #wt-root .wt-cat-btn:active { transform: scale(var(--wt-press-lg)); filter: brightness(.95); }
   #wt-root .wt-icon-btn-sm:active, #wt-root .wt-icon-btn-round:active,
-  #wt-root .wt-stepper-btn:active { transform: scale(.86); filter: brightness(.88); }
-  #wt-root .wt-cal-cell:active { transform: scale(.88); }
-  #wt-root .wt-switch:active { transform: scale(.93); }
-  #wt-root .wt-tabbar-btn:active { transform: scale(.9); }
+  #wt-root .wt-stepper-btn:active { transform: scale(var(--wt-press-round)); filter: brightness(.88); }
+  #wt-root .wt-cal-cell:active { transform: scale(var(--wt-press-round)); }
+  #wt-root .wt-switch:active { transform: scale(var(--wt-press-tiny)); }
+  #wt-root .wt-tabbar-btn:active { transform: scale(var(--wt-press-tiny)); }
   html[data-theme="dark"] #wt-root .wt-btn-secondary:active,
   html[data-theme="dark"] #wt-root .wt-btn-ghost-sm:active,
   html[data-theme="dark"] #wt-root .wt-rpe-chip:active,
@@ -194,15 +213,12 @@
   /* ===== [5] 지난 기록 강조 카드 ===== */
   #wt-root .wt-last-card { background: var(--wt-accent-soft); border-radius: 10px; padding: 11px 13px; margin: 0 0 12px; }
   #wt-root .wt-last-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-  #wt-root .wt-last-title { font-size: 11px; font-weight: 800; color: var(--wt-accent-dark); }
-  html[data-theme="dark"] #wt-root .wt-last-title { color: #93C5FD; }
-  #wt-root .wt-last-date { font-size: 11px; font-weight: 600; color: var(--wt-accent-dark); opacity: .7; }
-  html[data-theme="dark"] #wt-root .wt-last-date { color: #93C5FD; }
+  #wt-root .wt-last-title { font-size: 11px; font-weight: 800; color: var(--wt-accent-text); }
+  #wt-root .wt-last-date { font-size: 11px; font-weight: 600; color: var(--wt-accent-text); opacity: .7; }
   #wt-root .wt-last-sets { display: flex; flex-wrap: wrap; gap: 5px; }
   #wt-root .wt-last-set { font-size: 13px; font-weight: 700; color: var(--wt-text); background: var(--wt-card); border-radius: 8px; padding: 5px 9px; font-variant-numeric: tabular-nums; }
   #wt-root .wt-last-set.warm { opacity: .5; font-weight: 600; }
-  #wt-root .wt-last-sum { display: block; font-size: 11px; font-weight: 700; color: var(--wt-accent-dark); margin-top: 8px; }
-  html[data-theme="dark"] #wt-root .wt-last-sum { color: #93C5FD; }
+  #wt-root .wt-last-sum { display: block; font-size: 11px; font-weight: 700; color: var(--wt-accent-text); margin-top: 8px; }
   #wt-root .wt-last-empty { font-size: 12px; color: var(--wt-text-muted); margin: 0 0 12px; }
 
   /* ===== [A] 종목 검색 ===== */
@@ -215,7 +231,7 @@
 
   /* ===== 오늘 추가할 기록의 순서 바꾸기 버튼(위/아래) ===== */
   #wt-root .wt-rm-ord { width: 26px; height: 26px; border-radius: 8px; border: none; background: var(--wt-card); color: var(--wt-text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: transform .08s ease, filter .12s ease; }
-  #wt-root .wt-rm-ord:active { transform: scale(.88); filter: brightness(.9); }
+  #wt-root .wt-rm-ord:active { transform: scale(var(--wt-press-round)); filter: brightness(.9); }
   #wt-root .wt-rm-ord:disabled { opacity: .3; cursor: default; }
   #wt-root #rest-timer-stop::before { content: ''; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 
@@ -251,16 +267,13 @@
   #wt-root #unsaved-bar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   /* ===== 회색 보조 뱃지 (종목 변형 등) ===== */
-  #wt-root .wt-plan-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: #E7EBF1; color: #57606E; }
-  html[data-theme="dark"] #wt-root .wt-plan-badge { background: #2A2E36; color: #A7AFBC; }
-  #wt-root .wt-pr-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: #FFF1C2; color: #8A5A12; }
-  html[data-theme="dark"] #wt-root .wt-pr-badge { background: #4A3A12; color: #FFD97D; }
+  #wt-root .wt-plan-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: var(--wt-plan-bg); color: var(--wt-plan-text); }
+  #wt-root .wt-pr-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 5px; background: var(--wt-pr-bg); color: var(--wt-pr-text); }
   #wt-root .wt-plateau-badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 3px 9px; margin: -4px 0 10px; background: var(--wt-accent-soft); color: var(--wt-accent); }
   html[data-theme="dark"] #wt-root .wt-plateau-badge { background: var(--wt-accent-soft); color: var(--wt-accent); }
 
   /* ===== [C] 특이사항 태그 ===== */
-  #wt-root .wt-tag-mini { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 4px; background: var(--wt-accent-soft); color: var(--wt-accent-dark); }
-  html[data-theme="dark"] #wt-root .wt-tag-mini { color: #93C5FD; }
+  #wt-root .wt-tag-mini { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 5px; padding: 1px 6px; margin-left: 4px; background: var(--wt-accent-soft); color: var(--wt-accent-text); }
   #wt-root .wt-note-row { padding: 9px 0; font-size: 12px; color: var(--wt-text); }
   #wt-root .wt-note-row + .wt-note-row { border-top: 1px solid var(--wt-border); }
   #wt-root .wt-note-date { font-size: 11px; font-weight: 700; color: var(--wt-text-muted); }
@@ -272,8 +285,7 @@
   #wt-root .wt-goal-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--wt-good); background: color-mix(in srgb, var(--wt-good) 14%, transparent); border-radius: 6px; padding: 2px 8px; margin-left: 6px; vertical-align: middle; }
 
   /* ===== [3] 맨몸운동 안내 ===== */
-  #wt-root .wt-bw-note { font-size: 11px; font-weight: 600; line-height: 1.5; color: var(--wt-accent-dark); background: var(--wt-accent-soft); border-radius: 8px; padding: 8px 10px; margin: 0 0 10px; }
-  html[data-theme="dark"] #wt-root .wt-bw-note { color: #93C5FD; }
+  #wt-root .wt-bw-note { font-size: 11px; font-weight: 600; line-height: 1.5; color: var(--wt-accent-text); background: var(--wt-accent-soft); border-radius: 8px; padding: 8px 10px; margin: 0 0 10px; }
   #wt-root .wt-bw-note.warn { color: var(--wt-text-muted); background: var(--wt-bg); }
 
   /* ===== [4] 반복되는 인라인 스타일을 대체하는 유틸리티 클래스 =====
@@ -285,4 +297,19 @@
   #wt-root .wt-flex1-0 { flex: 1; min-width: 0; }
   #wt-root .wt-mb-12 { margin-bottom: 12px; }
   #wt-root .wt-w100 { width: 100%; }
+  /* JS에서 매번 style.cssText로 반복 조립하던 레이아웃 패턴들을 모아둔 유틸리티.
+     조합해서 쓴다(예: class="wt-row wt-row-sb wt-gap-8"). */
+  #wt-root .wt-row { display: flex; align-items: center; }
+  #wt-root .wt-row-sb { display: flex; align-items: center; justify-content: space-between; }
+  #wt-root .wt-row-start { display: flex; align-items: flex-start; }
+  #wt-root .wt-col { display: flex; flex-direction: column; }
+  #wt-root .wt-shrink0 { flex-shrink: 0; }
+  #wt-root .wt-gap-3 { gap: 3px; }
+  #wt-root .wt-gap-4 { gap: 4px; }
+  #wt-root .wt-gap-6 { gap: 6px; }
+  #wt-root .wt-gap-8 { gap: 8px; }
+  #wt-root .wt-gap-10 { gap: 10px; }
+  #wt-root .wt-gap-12 { gap: 12px; }
+  /* 연한 배경의 리스트 줄 (단백질 기록 등 — wt-set-row와 비슷하지만 세트 전용 폰트/패딩이 없는 범용 버전) */
+  #wt-root .wt-soft-row { display: flex; align-items: center; justify-content: space-between; background: var(--wt-bg); border-radius: 8px; padding: 8px 10px; }
 

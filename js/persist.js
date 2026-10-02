@@ -95,6 +95,7 @@
     data.restSeconds = Number(obj.restSeconds) > 0 ? Number(obj.restSeconds) : 90;
     data.sound = obj.sound !== false;
     data.vibrate = obj.vibrate !== false;
+    data.flash = obj.flash !== false;
     data.dark = !!obj.dark;
     data.heightCm = Number(obj.heightCm) > 0 ? Number(obj.heightCm) : 0;
     data.weightKg = Number(obj.weightKg) > 0 ? Number(obj.weightKg) : 0;

@@ -1,5 +1,18 @@
 'use strict';
 
+  // ---------- [입력] +/- 스테퍼 버튼 공통 처리 ----------
+  // decimals가 있으면(무게) 소수 입력으로, 없으면(횟수·분·강도) 정수 입력으로 다룬다.
+  function bindStepper(elId, minusId, plusId, step, max, decimals) {
+    var mul = decimals ? Math.pow(10, decimals) : 1;
+    function clamp(v) { return Math.max(0, Math.min(max, Math.round(v * mul) / mul)); }
+    function current() {
+      var el = $(elId);
+      return decimals ? (parseFloat(el.value) || 0) : (parseInt(el.value, 10) || 0);
+    }
+    $(minusId).addEventListener('click', function () { $(elId).value = clamp(current() - step); });
+    $(plusId).addEventListener('click', function () { $(elId).value = clamp(current() + step); });
+  }
+
   // ---------- [입력] 부위 선택 및 종목 고르기 ----------
   function exercisesFor(cat) {
     var base = CATALOG[cat] || [];
@@ -474,7 +487,8 @@
       if (s.warmup) tailInfo = '<span class="wt-warm-badge">W</span>';
 
       var label = document.createElement('div');
-      label.style.cssText = 'flex:1; min-width:0; cursor:pointer;';
+      label.className = 'wt-flex1-0';
+      label.style.cursor = 'pointer';
       label.innerHTML = '<span>' + (i + 1) + '. ' + setLabel(s) + tailInfo +
         prBadgeHtml(s.pr) +
         rpeBadge(s) + tagMini(s) + '</span>' +
@@ -551,19 +565,8 @@
   $('qe-cancel-edit').addEventListener('click', exitEditMode);
   $('qe-warmup').addEventListener('click', function () { setWarmup(!warmupOn); });
 
-  $('qe-weight-minus').addEventListener('click', function () {
-    var el = $('qe-weight'); el.value = Math.max(0, Math.round(((parseFloat(el.value) || 0) - 2.5) * 100) / 100);
-  });
-  $('qe-weight-plus').addEventListener('click', function () {
-    var el = $('qe-weight');
-    el.value = Math.min(LIMITS.weight, Math.round(((parseFloat(el.value) || 0) + 2.5) * 100) / 100);
-  });
-  $('qe-reps-minus').addEventListener('click', function () {
-    var el = $('qe-reps'); el.value = Math.max(0, (parseInt(el.value, 10) || 0) - 1);
-  });
-  $('qe-reps-plus').addEventListener('click', function () {
-    var el = $('qe-reps'); el.value = Math.min(LIMITS.reps, (parseInt(el.value, 10) || 0) + 1);
-  });
+  bindStepper('qe-weight', 'qe-weight-minus', 'qe-weight-plus', STEPS.weight, LIMITS.weight, 2);
+  bindStepper('qe-reps', 'qe-reps-minus', 'qe-reps-plus', STEPS.reps, LIMITS.reps);
   // 변형(그립·기구)을 바꿔 입력하면, "지난 기록" 카드를 그 변형 기준으로 다시 찾아 보여줌
   // (무게/횟수 입력칸은 그대로 둠 — 이미 타이핑 중인 값을 지우지 않기 위해)
   $('qe-variant').addEventListener('input', function () {
@@ -575,18 +578,8 @@
     var last = lastPerformance(currentQE.name, $('entry-date').value, currentQE.variant);
     renderLastRecord(last);
   });
-  $('qe-min-minus').addEventListener('click', function () {
-    var el = $('qe-minutes'); el.value = Math.max(0, (parseInt(el.value, 10) || 0) - 5);
-  });
-  $('qe-min-plus').addEventListener('click', function () {
-    var el = $('qe-minutes'); el.value = Math.min(LIMITS.minutes, (parseInt(el.value, 10) || 0) + 5);
-  });
-  $('qe-int-minus').addEventListener('click', function () {
-    var el = $('qe-intensity'); el.value = Math.max(0, (parseInt(el.value, 10) || 0) - 1);
-  });
-  $('qe-int-plus').addEventListener('click', function () {
-    var el = $('qe-intensity'); el.value = Math.min(LIMITS.intensity, (parseInt(el.value, 10) || 0) + 1);
-  });
+  bindStepper('qe-minutes', 'qe-min-minus', 'qe-min-plus', STEPS.minutes, LIMITS.minutes);
+  bindStepper('qe-intensity', 'qe-int-minus', 'qe-int-plus', STEPS.intensity, LIMITS.intensity);
 
   $('qe-add-set').addEventListener('click', function () {
     unlockAudio();

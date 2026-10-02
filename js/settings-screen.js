@@ -16,6 +16,7 @@
     $('vibe-switch').classList.toggle('on', data.vibrate && canVibrate);
     $('vibe-support').textContent = canVibrate ? '' : '이 브라우저는 진동을 지원하지 않습니다';
     $('vibe-switch').style.opacity = canVibrate ? '1' : '0.4';
+    $('flash-switch').classList.toggle('on', data.flash);
     $('goal-display').textContent = data.weeklyGoal > 0 ? '주 ' + data.weeklyGoal + '일' : '사용 안 함';
     $('goal-hint').textContent = data.weeklyGoal > 0 ? '채운 주는 캘린더에 체크 표시' : '';
     renderBody();
@@ -130,6 +131,11 @@
     renderSettings();
     persist();
   });
+  $('flash-switch').addEventListener('click', function () {
+    data.flash = !data.flash;
+    renderSettings();
+    persist();
+  });
   $('theme-toggle').addEventListener('click', function () {
     data.dark = !data.dark;
     applyTheme();
@@ -139,6 +145,7 @@
   $('test-alert-btn').addEventListener('click', function () {
     unlockAudio();
     fireAlert();
+    flashScreen();
   });
 
   // ---------- [저장] GitHub 동기화 화면 ----------
