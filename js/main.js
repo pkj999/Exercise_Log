@@ -45,7 +45,7 @@
     renderProteinToday();
     checkFutureDate();
     saveDraft();
-    if (currentQE) openQuickEntry(currentQE.category, currentQE.name);
+    if (QEState.current) openQuickEntry(QEState.current.category, QEState.current.name);
   });
 
   window.addEventListener('resize', function () {

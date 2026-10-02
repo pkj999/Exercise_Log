@@ -93,7 +93,7 @@
       del.addEventListener('click', function () {
         armDelete(del, '삭제?', function () {
           removeStaging(item);
-          if (currentQE === item) closeQuickEntry();
+          if (QEState.current === item) closeQuickEntry();
           renderStaging();
           saveDraft();
         });

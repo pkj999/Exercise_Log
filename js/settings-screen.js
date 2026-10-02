@@ -66,7 +66,7 @@
     var v = parseFloat(this.value);
     data.weightKg = (isFinite(v) && v > 0 && v <= 400) ? v : 0;
     if (!data.weightKg) this.value = '';
-    if (currentQE) applyBodyweightMode(isCardio(currentQE.category) ? null : currentQE.name);
+    if (QEState.current) applyBodyweightMode(isCardio(QEState.current.category) ? null : QEState.current.name);
     recalcProteinTargetIfAuto();
     renderProteinSettings();
     renderProteinToday();

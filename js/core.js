@@ -37,13 +37,13 @@
    * [수정 시 주의]
    *   · 워밍업(warmup) 세트는 볼륨·최고무게·PR 계산에서 제외됩니다.
    *   · 유산소(category === '유산소')는 무게/횟수 대신 시간/강도/거리를 씁니다.
-   *   · 저장된 기록 수정 중에는 editingRecordCtx가 설정되며,
+   *   · 저장된 기록 수정 중에는 QEState.editingRecordCtx가 설정되며,
    *     이때 commitStaging()은 동작하지 않습니다(임시 목록 오염 방지).
    * ========================================================================= */
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 30;
+  var APP_VERSION = 32;
   var APP_BUILD_DATE = '2026-10-02';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -217,11 +217,15 @@
   var sessionStartAt = null;   // 이번 세션에서 첫 세트를 추가한 시각(ms)
   var sessionLastAt = null;    // 가장 최근 세트를 추가한 시각(ms)
   var sessionAccumMs = 0;      // 세트 사이 텀이 SESSION_GAP_MS 이내였던 구간만 누적한 소요시간(ms)
-  var currentQE = null;
-  var editingRecordCtx = null; // { day, exIdx } — 저장된 기록을 수정 중일 때만 설정됨
-  var editingSetIndex = -1;
-  var warmupOn = false;
-  var rpeSelected = null;
+  // "빠른 입력" 화면(entry-form.js)이 지금 작성 중인 종목/세트에 관한 상태를 한데 묶어둔 것.
+  // QEState.current가 null이면 입력 화면이 닫혀 있다는 뜻.
+  var QEState = {
+    current: null,           // 지금 입력 중인 종목 { category, name, variant, sets } — staging에 들어가기 전 임시본
+    editingRecordCtx: null,  // { day, exIdx } — 저장된 기록을 수정 중일 때만 설정됨
+    editingSetIndex: -1,     // current.sets 중 지금 고쳐쓰는 세트의 인덱스 (-1이면 새 세트 추가 중)
+    warmupOn: false,         // 다음에 추가할 세트에 워밍업 표시를 붙일지
+    rpeSelected: null        // 다음에 추가할 세트의 강도(easy/mid/limit), 선택 안 하면 null
+  };
   var DRAFT_KEY = 'workout-tracker-draft';
   var TIMER_KEY = 'workout-tracker-timer-end';
   var chartMode = 'weight';

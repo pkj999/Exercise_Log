@@ -173,7 +173,7 @@
   var SESSION_GAP_MS = 20 * 60 * 1000;
   var SESSION_MAX_ACCUM_MS = 6 * 60 * 60 * 1000;
 
-  // 저장된 기록을 수정하는 중(editingRecordCtx)에는 호출하지 않는다 — 그건 과거 기록을 고치는
+  // 저장된 기록을 수정하는 중(QEState.editingRecordCtx)에는 호출하지 않는다 — 그건 과거 기록을 고치는
   // 것이지 "지금 운동 중"이 아니므로 세션 시간에 반영되면 안 된다. 호출부에서 그 가드를 건다.
   function recordSetActivity() {
     var now = Date.now();

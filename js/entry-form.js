@@ -158,7 +158,7 @@
             }
           }
           persist();
-          if (currentQE && currentQE.name === name) closeQuickEntry();
+          if (QEState.current && QEState.current.name === name) closeQuickEntry();
           renderExercisePicker();
           return;
         }
@@ -290,8 +290,8 @@
 
   // ---------- [입력] 빠른 입력 패널 (세트 추가/수정) ----------
   function setWarmup(on) {
-    warmupOn = !!on;
-    $('qe-warmup').classList.toggle('active', warmupOn);
+    QEState.warmupOn = !!on;
+    $('qe-warmup').classList.toggle('active', QEState.warmupOn);
   }
 
   function tagMini(s) {
@@ -300,7 +300,7 @@
   }
 
   function setRpe(key) {
-    rpeSelected = key || null;
+    QEState.rpeSelected = key || null;
     renderRpeChips();
   }
   function renderRpeChips() {
@@ -311,12 +311,12 @@
       btn.type = 'button';
       btn.className = 'wt-rpe-chip';
       btn.innerHTML = r.label + '<span style="display:block;font-size:10px;font-weight:400;opacity:0.85;">' + r.desc + '</span>';
-      if (rpeSelected === r.key) {
+      if (QEState.rpeSelected === r.key) {
         btn.style.background = r.color;
         btn.style.color = '#fff';
       }
       btn.addEventListener('click', function () {
-        setRpe(rpeSelected === r.key ? null : r.key);
+        setRpe(QEState.rpeSelected === r.key ? null : r.key);
       });
       wrap.appendChild(btn);
     });
@@ -359,8 +359,8 @@
   }
 
   $('qe-bw-toggle').addEventListener('click', function () {
-    if (!currentQE || isCardio(currentQE.category)) return;
-    var name = currentQE.name;
+    if (!QEState.current || isCardio(QEState.current.category)) return;
+    var name = QEState.current.name;
     var on = bwPercent(name) > 0;
     setBwPercent(name, on ? 0 : 100);
     if (!on) $('qe-weight').value = 0;
@@ -368,8 +368,8 @@
     toast(on ? '맨몸운동 해제' : '맨몸운동으로 지정');
   });
   function nudgeBw(delta) {
-    if (!currentQE) return;
-    var name = currentQE.name;
+    if (!QEState.current) return;
+    var name = QEState.current.name;
     var cur = bwPercent(name);
     if (!cur) return;
     setBwPercent(name, cur + delta);
@@ -378,8 +378,8 @@
   $('qe-bw-minus').addEventListener('click', function () { nudgeBw(-5); });
   $('qe-bw-plus').addEventListener('click', function () { nudgeBw(5); });
   function exitEditMode() {
-    editingSetIndex = -1;
-    $('qe-add-label').textContent = (currentQE && isCardio(currentQE.category)) ? '기록 추가' : '세트 추가';
+    QEState.editingSetIndex = -1;
+    $('qe-add-label').textContent = (QEState.current && isCardio(QEState.current.category)) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
     renderQESetList();
   }
@@ -387,23 +387,23 @@
   function openQuickEntry(category, name) {
     var dateVal = $('entry-date').value;
     var existing = staging.find(function (s) { return s.name === name && s.category === category; });
-    currentQE = existing || { category: category, name: name, variant: lastVariantFor(name), sets: [] };
-    if (currentQE.variant === undefined) currentQE.variant = '';
+    QEState.current = existing || { category: category, name: name, variant: lastVariantFor(name), sets: [] };
+    if (QEState.current.variant === undefined) QEState.current.variant = '';
 
-    editingSetIndex = -1;
+    QEState.editingSetIndex = -1;
     setWarmup(false);
     setRpe(null);
     applyModeFields(category, name);
     $('quick-entry').style.display = '';
     $('qe-name').textContent = name;
-    $('qe-variant').value = currentQE.variant || '';
-    renderVariantChips(name, currentQE.variant || '');
+    $('qe-variant').value = QEState.current.variant || '';
+    renderVariantChips(name, QEState.current.variant || '');
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
 
     var cardio = isCardio(category);
-    var last = lastPerformance(name, dateVal, currentQE.variant);
+    var last = lastPerformance(name, dateVal, QEState.current.variant);
 
     if (last) {
       renderLastRecord(last);
@@ -431,13 +431,13 @@
     var ex = day.exercises[exIdx];
     if (!ex) return;
     if (currentTab !== 'log') switchTab('log');
-    editingRecordCtx = { day: day, exIdx: exIdx };
+    QEState.editingRecordCtx = { day: day, exIdx: exIdx };
     selectedCategory = ex.category;
     editMode = false;
     renderCategoryChips();
     renderExercisePicker();
 
-    currentQE = {
+    QEState.current = {
       category: ex.category,
       name: ex.name,
       variant: ex.variant || '',
@@ -448,14 +448,14 @@
         return copy;
       })
     };
-    editingSetIndex = -1;
+    QEState.editingSetIndex = -1;
     setWarmup(false);
     setRpe(null);
     applyModeFields(ex.category, ex.name);
     $('quick-entry').style.display = '';
     $('qe-name').textContent = ex.name + ' — 기록 수정';
-    $('qe-variant').value = currentQE.variant || '';
-    renderVariantChips(ex.name, currentQE.variant || '');
+    $('qe-variant').value = QEState.current.variant || '';
+    renderVariantChips(ex.name, QEState.current.variant || '');
     $('qe-note').value = '';
     $('qe-add-label').textContent = isCardio(ex.category) ? '기록 추가' : '세트 추가';
     $('qe-cancel-edit').style.display = 'none';
@@ -466,9 +466,9 @@
   }
 
   function closeQuickEntry() {
-    currentQE = null;
-    editingSetIndex = -1;
-    editingRecordCtx = null;
+    QEState.current = null;
+    QEState.editingSetIndex = -1;
+    QEState.editingRecordCtx = null;
     $('qe-finish-edit').style.display = 'none';
     $('quick-entry').style.display = 'none';
   }
@@ -476,12 +476,12 @@
   function renderQESetList() {
     var wrap = $('qe-set-list');
     wrap.innerHTML = '';
-    if (!currentQE) { $('qe-hint').style.display = 'none'; return; }
-    $('qe-hint').style.display = currentQE.sets.length ? '' : 'none';
+    if (!QEState.current) { $('qe-hint').style.display = 'none'; return; }
+    $('qe-hint').style.display = QEState.current.sets.length ? '' : 'none';
 
-    currentQE.sets.forEach(function (s, i) {
+    QEState.current.sets.forEach(function (s, i) {
       var row = document.createElement('div');
-      row.className = 'wt-set-row' + (editingSetIndex === i ? ' editing' : '');
+      row.className = 'wt-set-row' + (QEState.editingSetIndex === i ? ' editing' : '');
 
       var tailInfo = '';
       if (s.warmup) tailInfo = '<span class="wt-warm-badge">W</span>';
@@ -502,10 +502,10 @@
       del.innerHTML = svg('trash', 13);
       del.addEventListener('click', function () {
         armDelete(del, '삭제?', function () {
-          currentQE.sets.splice(i, 1);
-          if (editingSetIndex === i) exitEditMode();
-          else if (editingSetIndex > i) editingSetIndex -= 1;
-          if (currentQE.sets.length === 0) removeStaging(currentQE);
+          QEState.current.sets.splice(i, 1);
+          if (QEState.editingSetIndex === i) exitEditMode();
+          else if (QEState.editingSetIndex > i) QEState.editingSetIndex -= 1;
+          if (QEState.current.sets.length === 0) removeStaging(QEState.current);
           renderQESetList();
           renderStaging();
           saveDraft();
@@ -519,9 +519,9 @@
   }
 
   function beginEditSet(i) {
-    if (!currentQE || !currentQE.sets[i]) return;
-    var s = currentQE.sets[i];
-    editingSetIndex = i;
+    if (!QEState.current || !QEState.current.sets[i]) return;
+    var s = QEState.current.sets[i];
+    QEState.editingSetIndex = i;
     if (s.cardio) {
       $('qe-minutes').value = s.minutes || 0;
       $('qe-intensity').value = s.intensity || 0;
@@ -533,24 +533,24 @@
     $('qe-note').value = s.note || '';
     setWarmup(!!s.warmup);
     setRpe(s.rpe || null);
-    $('qe-add-label').textContent = (i + 1) + '번 ' + (isCardio(currentQE.category) ? '기록' : '세트') + ' 수정';
+    $('qe-add-label').textContent = (i + 1) + '번 ' + (isCardio(QEState.current.category) ? '기록' : '세트') + ' 수정';
     $('qe-cancel-edit').style.display = '';
     renderQESetList();
   }
 
-  function commitStaging() { if (currentQE && !editingRecordCtx && staging.indexOf(currentQE) === -1) staging.push(currentQE); }
+  function commitStaging() { if (QEState.current && !QEState.editingRecordCtx && staging.indexOf(QEState.current) === -1) staging.push(QEState.current); }
   function removeStaging(item) { staging = staging.filter(function (s) { return s !== item; }); }
 
   $('qe-close').addEventListener('click', closeQuickEntry);
   $('qe-finish-edit').addEventListener('click', async function () {
-    if (!editingRecordCtx || !currentQE) return;
-    var day = editingRecordCtx.day, exIdx = editingRecordCtx.exIdx;
-    if (!currentQE.sets.length) {
+    if (!QEState.editingRecordCtx || !QEState.current) return;
+    var day = QEState.editingRecordCtx.day, exIdx = QEState.editingRecordCtx.exIdx;
+    if (!QEState.current.sets.length) {
       day.exercises.splice(exIdx, 1);
       if (!day.exercises.length) data.days = data.days.filter(function (d) { return d !== day; });
     } else {
-      day.exercises[exIdx].sets = currentQE.sets;
-      day.exercises[exIdx].variant = currentQE.variant || '';
+      day.exercises[exIdx].sets = QEState.current.sets;
+      day.exercises[exIdx].variant = QEState.current.variant || '';
     }
     closeQuickEntry();
     selectedCategory = null;
@@ -563,19 +563,19 @@
     }
   });
   $('qe-cancel-edit').addEventListener('click', exitEditMode);
-  $('qe-warmup').addEventListener('click', function () { setWarmup(!warmupOn); });
+  $('qe-warmup').addEventListener('click', function () { setWarmup(!QEState.warmupOn); });
 
   bindStepper('qe-weight', 'qe-weight-minus', 'qe-weight-plus', STEPS.weight, LIMITS.weight, 2);
   bindStepper('qe-reps', 'qe-reps-minus', 'qe-reps-plus', STEPS.reps, LIMITS.reps);
   // 변형(그립·기구)을 바꿔 입력하면, "지난 기록" 카드를 그 변형 기준으로 다시 찾아 보여줌
   // (무게/횟수 입력칸은 그대로 둠 — 이미 타이핑 중인 값을 지우지 않기 위해)
   $('qe-variant').addEventListener('input', function () {
-    if (!currentQE) return;
-    currentQE.variant = this.value.trim().slice(0, 16);
+    if (!QEState.current) return;
+    QEState.current.variant = this.value.trim().slice(0, 16);
     document.querySelectorAll('#qe-variant-chips .wt-chip').forEach(function (chip) {
-      chip.classList.toggle('active', chip.textContent === currentQE.variant);
+      chip.classList.toggle('active', chip.textContent === QEState.current.variant);
     });
-    var last = lastPerformance(currentQE.name, $('entry-date').value, currentQE.variant);
+    var last = lastPerformance(QEState.current.name, $('entry-date').value, QEState.current.variant);
     renderLastRecord(last);
   });
   bindStepper('qe-minutes', 'qe-min-minus', 'qe-min-plus', STEPS.minutes, LIMITS.minutes);
@@ -583,11 +583,11 @@
 
   $('qe-add-set').addEventListener('click', function () {
     unlockAudio();
-    if (!currentQE) return;
+    if (!QEState.current) return;
     var note = ($('qe-note').value || '').trim();
     var entry;
 
-    if (isCardio(currentQE.category)) {
+    if (isCardio(QEState.current.category)) {
       var mins = parseInt($('qe-minutes').value, 10);
       var inten = parseInt($('qe-intensity').value, 10);
       var distRaw = ($('qe-distance').value || '').trim();
@@ -607,45 +607,45 @@
       if (w > LIMITS.weight) { showError('무게는 ' + LIMITS.weight + 'kg까지 입력할 수 있습니다. 숫자를 확인해 주세요.'); return; }
       if (isNaN(r) || r <= 0) { showError('횟수를 입력해 주세요.'); return; }
       if (r > LIMITS.reps) { showError('횟수는 ' + LIMITS.reps + '회까지 입력할 수 있습니다. 숫자를 확인해 주세요.'); return; }
-      entry = { weight: w, reps: r, warmup: warmupOn };
-      var bwl = bwLoadFor(currentQE.name);
+      entry = { weight: w, reps: r, warmup: QEState.warmupOn };
+      var bwl = bwLoadFor(QEState.current.name);
       if (bwl > 0) { entry.bw = true; entry.bwLoad = bwl; }
     }
 
     if (note) entry.note = note;
-    if (rpeSelected) entry.rpe = rpeSelected;
+    if (QEState.rpeSelected) entry.rpe = QEState.rpeSelected;
     clearError();
 
     // 개인 최고기록(PR) 판정: 판정 기준은 [계산] judgeAndMarkPR()에 모아둠
-    var baselineSets = editingSetIndex >= 0
-      ? currentQE.sets.filter(function (_, idx) { return idx !== editingSetIndex; })
-      : currentQE.sets;
-    var prResult = judgeAndMarkPR(currentQE.name, entry, baselineSets, currentQE.variant);
+    var baselineSets = QEState.editingSetIndex >= 0
+      ? QEState.current.sets.filter(function (_, idx) { return idx !== QEState.editingSetIndex; })
+      : QEState.current.sets;
+    var prResult = judgeAndMarkPR(QEState.current.name, entry, baselineSets, QEState.current.variant);
     var isPR = prResult.isPR, newOneRM = prResult.oneRM;
 
-    if (editingSetIndex >= 0) {
-      currentQE.sets[editingSetIndex] = entry;
+    if (QEState.editingSetIndex >= 0) {
+      QEState.current.sets[QEState.editingSetIndex] = entry;
       exitEditMode();
       $('qe-note').value = '';
       setWarmup(false);
       setRpe(null);
       renderStaging();
       saveDraft();
-      if (isPR) toast(prToastMessage(currentQE.name, newOneRM), 2600);
+      if (isPR) toast(prToastMessage(QEState.current.name, newOneRM), 2600);
       return;
     }
 
-    currentQE.sets.push(entry);
+    QEState.current.sets.push(entry);
     $('qe-note').value = '';
     setWarmup(false);
     setRpe(null);
     commitStaging();
-    if (!editingRecordCtx) recordSetActivity();
+    if (!QEState.editingRecordCtx) recordSetActivity();
     renderQESetList();
     renderStaging();
     saveDraft();
     startRestTimer();
-    if (isPR) toast(prToastMessage(currentQE.name, newOneRM), 2600);
+    if (isPR) toast(prToastMessage(QEState.current.name, newOneRM), 2600);
   });
 
   // ---------- [입력] 저장 전 기록 알림줄 ----------
@@ -700,5 +700,13 @@
     safeScrollIntoView($('staging-area'));
     setTimeout(updateUnsavedBar, 400);
   });
-  window.addEventListener('scroll', updateUnsavedBar, { passive: true });
+  // 스크롤 이벤트는 한 프레임에도 여러 번 발생할 수 있는데, updateUnsavedBar()는 매번
+  // getBoundingClientRect()로 레이아웃을 읽는다 — 이벤트가 올 때마다 바로 실행하면 저사양
+  // 기기에서 스크롤 중 버벅일 수 있어, requestAnimationFrame으로 프레임당 최대 1번만 돌린다.
+  var unsavedBarTicking = false;
+  window.addEventListener('scroll', function () {
+    if (unsavedBarTicking) return;
+    unsavedBarTicking = true;
+    requestAnimationFrame(function () { unsavedBarTicking = false; updateUnsavedBar(); });
+  }, { passive: true });
 
