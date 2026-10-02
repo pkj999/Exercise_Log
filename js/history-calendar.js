@@ -84,14 +84,15 @@
     if (daySets > 0) headBits.push(daySets + '세트');
     if (dayMin > 0) headBits.push(dayMin + '분');
     var header = document.createElement('div');
-    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;';
+    header.className = 'wt-row-sb wt-gap-8';
+    header.style.marginBottom = '10px';
     var isToday = day.date === $('entry-date').value;
     var dateP = document.createElement('p');
     dateP.style.cssText = 'font-size:12px;color:var(--wt-text-muted);margin:0;font-weight:700;';
     dateP.innerHTML = fmtDisplayDate(day.date) + (isToday ? '<span class="wt-saved-tag">저장됨</span>' : '');
 
     var rightWrap = document.createElement('div');
-    rightWrap.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;';
+    rightWrap.className = 'wt-row wt-gap-6 wt-shrink0';
     var volP = document.createElement('p');
     volP.style.cssText = 'font-size:12px;margin:0;font-weight:700;color:var(--wt-accent);white-space:nowrap;';
     volP.textContent = headBits.join(' · ') || '-';
@@ -108,17 +109,15 @@
     }
 
     var list = document.createElement('div');
-    list.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+    list.className = 'wt-col wt-gap-10';
 
     day.exercises.forEach(function (ex, exIdx) {
       var m = meta(ex.category);
       var exRow = document.createElement('div');
-      exRow.style.cssText = 'display:flex;align-items:flex-start;gap:12px;';
+      exRow.className = 'wt-row-start wt-gap-12';
 
       var icon = document.createElement('div');
       icon.className = 'wt-row-icon';
-      icon.style.background = 'var(--wt-bg)';
-      icon.style.color = 'var(--wt-text-muted)';
       icon.innerHTML = svg(m.icon, 21);
 
       var setLines = [];
@@ -151,12 +150,12 @@
 
       var exVariantBadge = ex.variant ? '<span class="wt-plan-badge">' + escapeHtml(ex.variant) + '</span>' : '';
       var mid = document.createElement('div');
-      mid.style.cssText = 'flex:1;min-width:0;';
+      mid.className = 'wt-flex1-0';
       mid.innerHTML = '<p style="font-size:14px;font-weight:700;margin:0 0 2px;color:var(--wt-text);">' + escapeHtml(ex.name) + exVariantBadge + '</p>' +
         '<div style="font-size:13px;color:var(--wt-text-muted);">' + setsHtml + exTail + '</div>' + notes;
 
       var btnGroup = document.createElement('div');
-      btnGroup.style.cssText = 'display:flex;gap:4px;flex-shrink:0;';
+      btnGroup.className = 'wt-row wt-gap-4 wt-shrink0';
 
       var editBtn = document.createElement('button');
       editBtn.className = 'wt-icon-btn-sm';

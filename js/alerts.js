@@ -51,6 +51,7 @@
   }
   function fireAlert() { beep(); buzz(); }
   function flashScreen() {
+    if (!data.flash) return;
     var el = $('wt-flash-overlay');
     if (!el) return;
     el.classList.remove('show');

@@ -34,8 +34,6 @@
 
       var icon = document.createElement('div');
       icon.className = 'wt-row-icon';
-      icon.style.background = 'var(--wt-bg)';
-      icon.style.color = 'var(--wt-text-muted)';
       icon.innerHTML = svg(m.icon, 21);
 
       var warmCount = (item.sets || []).filter(function (s) { return s.warmup; }).length;
@@ -50,7 +48,8 @@
       }
       var variantBadge = item.variant ? '<span class="wt-plan-badge">' + escapeHtml(item.variant) + '</span>' : '';
       var mid = document.createElement('div');
-      mid.style.cssText = 'flex:1;cursor:pointer;min-width:0;';
+      mid.className = 'wt-flex1-0';
+      mid.style.cursor = 'pointer';
       mid.innerHTML = '<p style="font-size:13px;font-weight:700;margin:0;color:var(--wt-text);">' + escapeHtml(item.name) + variantBadge + trend + '</p>' +
         '<p style="font-size:12px;color:var(--wt-text-muted);margin:2px 0 0;">' + summary + '</p>';
       mid.addEventListener('click', function () {
@@ -62,7 +61,7 @@
       });
 
       var ordWrap = document.createElement('div');
-      ordWrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;flex-shrink:0;';
+      ordWrap.className = 'wt-col wt-gap-3 wt-shrink0';
       var up = document.createElement('button');
       up.type = 'button'; up.className = 'wt-rm-ord'; up.setAttribute('aria-label', item.name + ' 위로 이동');
       up.innerHTML = svg('chevron-up', 14);
@@ -173,7 +172,7 @@
     $('protein-log-empty').style.display = logs.length ? 'none' : '';
     logs.forEach(function (it) {
       var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:var(--wt-bg);border-radius:8px;padding:8px 10px;';
+      row.className = 'wt-soft-row';
       var label = document.createElement('span');
       label.style.cssText = 'font-size:13px;color:var(--wt-text);';
       label.innerHTML = escapeHtml(it.label) + ' · <b>' + it.grams + 'g</b>';
