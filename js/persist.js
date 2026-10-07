@@ -60,6 +60,7 @@
         durationMin: (isFinite(Number(d.durationMin)) && Number(d.durationMin) > 0) ? Math.min(1440, Math.round(Number(d.durationMin))) : 0,
         startedAt: Number(d.startedAt) > 0 ? Number(d.startedAt) : 0,
         endedAt: Number(d.endedAt) > 0 ? Number(d.endedAt) : 0,
+        routineDay: typeof d.routineDay === 'string' ? d.routineDay : '',
         exercises: (d.exercises || []).map(function (ex) {
           return {
             name: ex.name,
@@ -145,6 +146,26 @@
         if (isFinite(g) && g > 0 && g <= LIMITS.proteinMeal) data.proteinLabelGrams[l.slice(0, 10)] = Math.round(g);
       });
     }
+    data.exerciseSubgroups = {};
+    if (obj.exerciseSubgroups && typeof obj.exerciseSubgroups === 'object') {
+      Object.keys(obj.exerciseSubgroups).forEach(function (k) {
+        var v = obj.exerciseSubgroups[k];
+        if (typeof v === 'string' && v.trim()) data.exerciseSubgroups[k] = v.trim().slice(0, 20);
+      });
+    }
+    data.routines = Array.isArray(obj.routines) ? obj.routines.map(function (r) {
+      return {
+        id: (r && typeof r.id === 'string' && r.id) ? r.id : uid(),
+        name: (r && typeof r.name === 'string') ? r.name.trim().slice(0, 4) : '',
+        label: (r && typeof r.label === 'string') ? r.label.trim().slice(0, 30) : '',
+        items: (r && Array.isArray(r.items)) ? r.items.map(function (it) {
+          return {
+            subgroup: String((it && it.subgroup) || '').trim().slice(0, 20),
+            count: Math.max(1, Math.min(20, Math.round(Number(it && it.count) || 1)))
+          };
+        }).filter(function (it) { return it.subgroup; }) : []
+      };
+    }).filter(function (r) { return r.name; }) : [];
     data.schema = SCHEMA;
   }
   async function persist() {

@@ -43,8 +43,8 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 34;
-  var APP_BUILD_DATE = '2026-10-02';
+  var APP_VERSION = 35;
+  var APP_BUILD_DATE = '2026-10-07';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
   var SCHEMA = 5; // day.durationMin/startedAt/endedAt(운동 소요시간) 추가. 마이그레이션 분기는 없음 — applyLoaded()가 항상 방어적으로 필드를 재구성하므로 구버전 데이터는 해당 필드가 0/미설정으로 채워짐
@@ -209,7 +209,8 @@
     restSeconds: 90, sound: true, vibrate: true, flash: true, dark: false,
     heightCm: 0, weightKg: 0, weeklyGoal: 0, historyOpen: false, bwExercises: {}, schema: SCHEMA,
     protein: { targetG: 0, targetAuto: true, goalDirection: 'maintain', logs: {} }, proteinOpen: false,
-    customProteinLabels: [], hiddenProteinLabels: [], proteinLabelGrams: {}
+    customProteinLabels: [], hiddenProteinLabels: [], proteinLabelGrams: {},
+    exerciseSubgroups: {}, routines: []
   };
   var staging = [];
   var selectedCategory = null;

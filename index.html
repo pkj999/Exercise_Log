@@ -58,6 +58,15 @@
 
     <p id="future-note" style="display: none; font-size: 12px; font-weight: 600; color: var(--wt-accent-dark); background: var(--wt-accent-soft); border-radius: 8px; padding: 9px 12px; margin: 0 0 14px;">오늘보다 뒤의 날짜입니다. 날짜가 맞는지 확인해 주세요.</p>
 
+    <div id="routine-card" class="wt-card" style="display: none; margin-bottom: 14px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <span style="font-size: 12px; font-weight: 700; color: var(--wt-text-muted);">오늘의 루틴</span>
+        <select id="routine-select" class="wt-input" style="width: auto; font-size: 11px; font-weight: 700; padding: 5px 8px; color: var(--wt-accent-dark); border-color: var(--wt-accent-soft);"></select>
+      </div>
+      <div id="routine-timeline" style="position: relative; padding: 0 4px 6px; margin-bottom: 12px;"></div>
+      <div id="routine-items" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"></div>
+    </div>
+
     <div class="wt-card" style="margin-bottom: 14px;">
       <p class="wt-label">부위 선택</p>
       <div id="category-chips" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
@@ -393,6 +402,41 @@
       <button id="test-alert-btn" class="wt-btn-secondary" style="width: 100%; margin-top: 10px;">알림 테스트</button>
     </div>
 
+    <p class="wt-settings-group-label"><span data-icon="refresh-cw" data-size="12"></span>루틴 분할</p>
+    <div class="wt-card wt-mb-12">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 8px; color: var(--wt-text);">종목 소그룹</p>
+      <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; line-height: 1.5;">루틴 구성에 쓸 수 있도록, 종목마다 소그룹을 지정해두세요. (예: 벤치프레스 → 프레스류)</p>
+      <datalist id="subgroup-datalist"></datalist>
+      <div id="subgroup-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+    </div>
+
+    <button id="routine-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="routine-body">
+      <span class="wt-section-title">루틴 분할 구성</span>
+      <span id="routine-head-status" class="wt-section-count">사용 안 함</span>
+      <span class="wt-section-line"></span>
+      <span class="wt-section-caret" data-icon="chevron-down" data-size="16"></span>
+    </button>
+    <div id="routine-body" class="wt-card" style="display: none; margin-top: 8px; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <div id="routine-tabs" style="display: flex; gap: 6px; flex: 1; background: var(--wt-bg); padding: 4px; border-radius: 10px;"></div>
+        <button id="routine-view-toggle" class="wt-btn-ghost-sm" style="flex-shrink: 0; margin-left: 8px;">표로 보기</button>
+      </div>
+
+      <div id="routine-editor">
+        <input type="text" id="routine-label-input" class="wt-input wt-w100" placeholder="예: 가슴 · 측면어깨 · 삼두" style="margin-bottom: 10px;" />
+        <div id="routine-item-rows" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;"></div>
+        <div style="display: flex; gap: 6px; margin-bottom: 4px;">
+          <input type="text" id="routine-item-subgroup-input" class="wt-input wt-flex1-0" list="subgroup-datalist" placeholder="소그룹 이름" />
+          <button id="routine-item-add-btn" class="wt-btn-secondary" style="padding: 10px 14px;">+ 항목</button>
+        </div>
+        <button id="routine-delete-btn" class="wt-btn-secondary" style="width: 100%; margin-top: 10px; color: var(--wt-danger);">이 루틴 삭제</button>
+      </div>
+
+      <div id="routine-matrix" style="display: none; overflow-x: auto;"></div>
+
+      <button id="routine-add-btn" class="wt-btn-secondary" style="width: 100%; margin-top: 12px;">+ 루틴 추가</button>
+    </div>
+
     <p class="wt-settings-group-label"><span data-icon="download" data-size="12"></span>데이터</p>
     <button id="gh-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="gh-body">
       <span class="wt-section-title">GitHub 동기화</span>
@@ -491,6 +535,7 @@
 <script src="js/history-calendar.js"></script>
 <script src="js/stats.js"></script>
 <script src="js/settings-screen.js"></script>
+<script src="js/routine.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

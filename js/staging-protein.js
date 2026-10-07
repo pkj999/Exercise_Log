@@ -12,6 +12,7 @@
   function renderStaging() {
     var area = $('staging-area'), list = $('staging-list');
     updateTodayVolume();
+    renderTodayRoutineCard();
     if (staging.length === 0) { area.style.display = 'none'; updateUnsavedBar(); return; }
     area.style.display = '';
     list.innerHTML = '';

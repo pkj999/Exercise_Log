@@ -20,6 +20,7 @@
     });
     day.exercises = mergeDupExercises(day.exercises);
     commitSessionDuration(day);
+    applyRoutineDayOnSave(day);
 
     // 이 시점부터는 이미 data.days에 실제로 반영된 상태다 — GitHub 저장이 뒤에서
     // 실패하더라도 되돌리지 않는다. 되돌리지 않고 staging도 여기서 바로 비워야,

@@ -22,6 +22,8 @@
     renderBody();
     renderProteinSettings();
     renderGithubSync();
+    renderExerciseSubgroups();
+    renderRoutines();
   }
 
   function renderProteinSettings() {
