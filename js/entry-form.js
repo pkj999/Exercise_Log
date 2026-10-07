@@ -149,17 +149,20 @@
       btn.addEventListener('click', function () {
         if (editMode) {
           var custom = data.customExercises[selectedCategory] || [];
-          var ci = custom.indexOf(name);
-          if (ci !== -1) custom.splice(ci, 1);
-          else {
-            data.hiddenExercises[selectedCategory] = data.hiddenExercises[selectedCategory] || [];
-            if (data.hiddenExercises[selectedCategory].indexOf(name) === -1) {
-              data.hiddenExercises[selectedCategory].push(name);
+          var isCustom = custom.indexOf(name) !== -1;
+          armDelete(btn, "'" + name + "'를 " + (isCustom ? '삭제할까요?' : '목록에서 숨길까요?'), function () {
+            var ci = custom.indexOf(name);
+            if (ci !== -1) custom.splice(ci, 1);
+            else {
+              data.hiddenExercises[selectedCategory] = data.hiddenExercises[selectedCategory] || [];
+              if (data.hiddenExercises[selectedCategory].indexOf(name) === -1) {
+                data.hiddenExercises[selectedCategory].push(name);
+              }
             }
-          }
-          persist();
-          if (QEState.current && QEState.current.name === name) closeQuickEntry();
-          renderExercisePicker();
+            persist();
+            if (QEState.current && QEState.current.name === name) closeQuickEntry();
+            renderExercisePicker();
+          });
           return;
         }
         openQuickEntry(selectedCategory, name);
