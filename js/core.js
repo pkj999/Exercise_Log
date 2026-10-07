@@ -43,7 +43,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 38;
+  var APP_VERSION = 39;
   var APP_BUILD_DATE = '2026-10-07';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -111,7 +111,7 @@
   // 화면 아래에서 올라오는 확인 대화상자로 전부 바꿈 — 취소/삭제를 명확히 분리된 버튼으로.
   var confirmDialogOnConfirm = null;
   function armDelete(btn, label, onConfirm) {
-    $('confirm-dialog-text').textContent = label || '삭제하시겠습니까?';
+    $('confirm-dialog-text').textContent = label || '삭제할까요?';
     $('confirm-dialog').style.display = 'flex';
     confirmDialogOnConfirm = onConfirm;
   }

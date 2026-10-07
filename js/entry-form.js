@@ -504,7 +504,7 @@
       del.setAttribute('aria-label', (i + 1) + '번 세트 삭제');
       del.innerHTML = svg('trash', 13);
       del.addEventListener('click', function () {
-        armDelete(del, '삭제?', function () {
+        armDelete(del, '삭제할까요?', function () {
           QEState.current.sets.splice(i, 1);
           if (QEState.editingSetIndex === i) exitEditMode();
           else if (QEState.editingSetIndex > i) QEState.editingSetIndex -= 1;

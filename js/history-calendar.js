@@ -169,7 +169,7 @@
       delBtn.setAttribute('aria-label', ex.name + ' 기록 삭제');
       delBtn.innerHTML = svg('trash', 14);
       delBtn.addEventListener('click', function () {
-        armDelete(delBtn, '삭제?', async function () {
+        armDelete(delBtn, '삭제할까요?', async function () {
           day.exercises.splice(exIdx, 1);
           if (!day.exercises.length) data.days = data.days.filter(function (d) { return d !== day; });
           renderAll();

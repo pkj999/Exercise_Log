@@ -92,7 +92,7 @@
       del.setAttribute('aria-label', item.name + ' 삭제');
       del.innerHTML = svg('trash', 14);
       del.addEventListener('click', function () {
-        armDelete(del, '삭제?', function () {
+        armDelete(del, '삭제할까요?', function () {
           removeStaging(item);
           if (QEState.current === item) closeQuickEntry();
           renderStaging();

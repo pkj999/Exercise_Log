@@ -104,7 +104,7 @@
       delBtn.style.cssText = 'border:none;background:transparent;color:var(--wt-text-muted);cursor:pointer;display:flex;';
       delBtn.innerHTML = svg('trash', 14);
       delBtn.addEventListener('click', function () {
-        armDelete(delBtn, '삭제?', function () {
+        armDelete(delBtn, '삭제할까요?', function () {
           exercisesInSubgroup(sg).forEach(function (n) { assignSubgroup(n, ''); });
           delete pendingEmptyGroups[sg];
           if (subgroupAddOpenFor === sg) subgroupAddOpenFor = null;
@@ -257,7 +257,7 @@
   });
 
   $('routine-delete-btn').addEventListener('click', function () {
-    armDelete($('routine-delete-btn'), '삭제?', function () {
+    armDelete($('routine-delete-btn'), '삭제할까요?', function () {
       var r = (data.routines || [])[routineEditIndex];
       if (!r) return;
       data.routines.splice(routineEditIndex, 1);
