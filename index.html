@@ -403,9 +403,15 @@
     </div>
 
     <p class="wt-settings-group-label"><span data-icon="refresh-cw" data-size="12"></span>루틴 분할</p>
-    <div class="wt-card wt-mb-12">
-      <p style="font-size: 13px; font-weight: 700; margin: 0 0 8px; color: var(--wt-text);">종목 소그룹</p>
-      <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; line-height: 1.5;">루틴 구성에 쓸 수 있도록, 종목마다 소그룹을 지정해두세요. (예: 벤치프레스 → 프레스류)</p>
+
+    <button id="subgroup-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="subgroup-body">
+      <span class="wt-section-title">종목 소그룹</span>
+      <span id="subgroup-head-status" class="wt-section-count">사용 안 함</span>
+      <span class="wt-section-line"></span>
+      <span class="wt-section-caret" data-icon="chevron-down" data-size="16"></span>
+    </button>
+    <div id="subgroup-body" class="wt-card" style="display: none; margin-top: 8px; margin-bottom: 12px;">
+      <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; line-height: 1.5;">루틴 구성에 쓸 수 있도록, 종목들을 소그룹으로 묶어두세요. 기록 탭에서 실제로 기록한 종목만 추가할 수 있어요.</p>
       <datalist id="subgroup-datalist"></datalist>
       <div id="subgroup-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
     </div>
