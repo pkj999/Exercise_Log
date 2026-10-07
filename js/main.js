@@ -45,6 +45,8 @@
     renderProteinToday();
     checkFutureDate();
     saveDraft();
+    routineOverrideId = null;
+    renderTodayRoutineCard();
     if (QEState.current) openQuickEntry(QEState.current.category, QEState.current.name);
   });
 
@@ -67,6 +69,7 @@
   function renderAll() {
     renderCategoryChips();
     renderExercisePicker();
+    renderTodayRoutineCard();
     renderStaging();
     renderHistory();
     renderProgressSelect();
