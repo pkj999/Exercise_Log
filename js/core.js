@@ -43,7 +43,7 @@
 
   // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
   // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 37;
+  var APP_VERSION = 38;
   var APP_BUILD_DATE = '2026-10-07';
   var STORAGE_KEY = 'workout-tracker-data';
   var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
@@ -104,28 +104,30 @@
     });
   }
 
-  // ---------- [공용] 두 번 눌러 삭제 (오터치 방지) ----------
-  var armedBtn = null, armTimer = null;
+  // ---------- [공용] 삭제 확인 대화상자 ----------
+  // 예전엔 버튼을 두 번 눌러서 확인했는데("삭제?"로 글자가 바뀌었다가 다시 누르면 삭제),
+  // 같은 자리를 두 번 눌러야 하는 방식이라 오히려 실수로 연달아 눌러버리기 쉬웠다(특히
+  // 목록이 다시 그려지며 버튼 위치/크기가 바뀌는 경우). 그래서 버튼 자체를 바꾸는 대신
+  // 화면 아래에서 올라오는 확인 대화상자로 전부 바꿈 — 취소/삭제를 명확히 분리된 버튼으로.
+  var confirmDialogOnConfirm = null;
   function armDelete(btn, label, onConfirm) {
-    if (armedBtn === btn) { disarm(); onConfirm(); return; }
-    disarm();
-    armedBtn = btn;
-    btn.dataset.prevHtml = btn.innerHTML;
-    btn.innerHTML = '<span style="font-size:13px;font-weight:700;white-space:nowrap;">' + (label || '삭제?') + '</span>';
-    btn.style.width = 'auto';
-    btn.style.padding = '0 10px';
-    armTimer = setTimeout(disarm, 3000);
+    $('confirm-dialog-text').textContent = label || '삭제하시겠습니까?';
+    $('confirm-dialog').style.display = 'flex';
+    confirmDialogOnConfirm = onConfirm;
   }
   function disarm() {
-    if (armTimer) { clearTimeout(armTimer); armTimer = null; }
-    if (armedBtn && armedBtn.dataset.prevHtml !== undefined) {
-      armedBtn.innerHTML = armedBtn.dataset.prevHtml;
-      armedBtn.style.width = '';
-      armedBtn.style.padding = '';
-      delete armedBtn.dataset.prevHtml;
-    }
-    armedBtn = null;
+    $('confirm-dialog').style.display = 'none';
+    confirmDialogOnConfirm = null;
   }
+  // core.js는 가장 먼저 로드되는 스크립트라 아직 calc.js의 $() 헬퍼가 없다 — 여기서만
+  // document.getElementById를 직접 쓴다.
+  document.getElementById('confirm-dialog-cancel').addEventListener('click', disarm);
+  document.getElementById('confirm-dialog-backdrop').addEventListener('click', disarm);
+  document.getElementById('confirm-dialog-ok').addEventListener('click', function () {
+    var fn = confirmDialogOnConfirm;
+    disarm();
+    if (fn) fn();
+  });
 
   // ---------- [데이터] 부위·종목 기본 목록 ----------
   var CATALOG = {

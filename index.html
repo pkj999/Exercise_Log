@@ -521,6 +521,17 @@
 
   <div id="wt-flash-overlay"></div>
 
+  <div id="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-text" style="display: none; position: fixed; inset: 0; z-index: 10000; align-items: flex-end; justify-content: center;">
+    <div id="confirm-dialog-backdrop" style="position: absolute; inset: 0; background: rgba(0,0,0,.45);"></div>
+    <div style="position: relative; width: 100%; max-width: 480px; background: var(--wt-card); border-radius: 18px 18px 0 0; padding: 22px 20px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -6px 28px rgba(0,0,0,.22);">
+      <p id="confirm-dialog-text" style="font-size: 15px; font-weight: 700; color: var(--wt-text); margin: 0 0 18px; text-align: center; line-height: 1.5;"></p>
+      <div style="display: flex; gap: 8px;">
+        <button id="confirm-dialog-cancel" class="wt-btn-secondary" style="flex: 1;">취소</button>
+        <button id="confirm-dialog-ok" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 10px; background: var(--wt-danger); color: #fff; font-weight: 700; padding: 12px 18px; font-size: 13px; cursor: pointer;">삭제</button>
+      </div>
+    </div>
+  </div>
+
   <div id="tabbar" style="display: none; position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 480px; padding: 8px 1rem calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--wt-card); border-radius: 20px 20px 0 0; border-top: 1.5px solid var(--wt-border); box-shadow: none; z-index: 20;">
     <div style="display: flex; justify-content: space-around;">
       <button class="wt-tabbar-btn active" data-tab="log"><span data-icon="barbell" data-size="21"></span><span>기록</span></button>
