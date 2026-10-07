@@ -391,7 +391,7 @@
     }
   });
   $('gh-disconnect-btn').addEventListener('click', function () {
-    armDelete($('gh-disconnect-btn'), '연결 해제?', async function () {
+    armDelete($('gh-disconnect-btn'), '연결을 해제할까요?', async function () {
       clearGhConfig();
       ghSha = null;
       // 연결을 끊은 뒤에도 지금까지 GitHub에서 보고 있던 최신 기록이 이 기기에 그대로 이어지도록,
