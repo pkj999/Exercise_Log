@@ -31,48 +31,178 @@
     return (d.getMonth() + 1) + '/' + d.getDate();
   }
 
-  // ---------- [설정] 종목 소그룹 ----------
+  // ---------- [설정] 종목 소그룹 (소그룹 카드 안에 종목을 칩으로 넣는 방식) ----------
   function renderSubgroupDatalist() {
     $('subgroup-datalist').innerHTML = distinctSubgroups().map(function (s) {
       return '<option value="' + escapeHtml(s) + '"></option>';
     }).join('');
   }
 
+  function exercisesInSubgroup(sg) {
+    return allKnownExerciseNames().filter(function (n) { return subgroupOf(n) === sg; });
+  }
+
+  function assignSubgroup(name, sg) {
+    data.exerciseSubgroups = data.exerciseSubgroups || {};
+    if (sg) data.exerciseSubgroups[name] = sg; else delete data.exerciseSubgroups[name];
+    persist();
+  }
+
+  // "+ 종목 추가" 피커가 지금 열려 있는 소그룹명(없으면 null) — 한 번에 하나만 열림
+  var subgroupAddOpenFor = null;
+  var subgroupAddSearch = '';
+  // 막 만들었지만 아직 종목을 하나도 안 넣은 소그룹 — distinctSubgroups()는 실제로 쓰인
+  // 소그룹만 찾아내므로, 종목을 넣기 전까지는 이 목록에 임시로 담아둬야 카드가 안 사라진다.
+  var pendingEmptyGroups = {};
+
+  function allSubgroupCards() {
+    var set = {};
+    distinctSubgroups().forEach(function (s) { set[s] = true; });
+    Object.keys(pendingEmptyGroups).forEach(function (s) { set[s] = true; });
+    return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'ko'); });
+  }
+
   function renderExerciseSubgroups() {
     renderSubgroupDatalist();
     var wrap = $('subgroup-list');
-    var names = allKnownExerciseNames();
     wrap.innerHTML = '';
-    if (!names.length) {
-      wrap.innerHTML = '<p style="font-size:12px;color:var(--wt-text-muted);text-align:center;padding:1rem 0;">아직 등록된 종목이 없습니다.</p>';
-      return;
-    }
-    names.forEach(function (name) {
-      var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--wt-bg);border-radius:10px;';
-      var label = document.createElement('span');
-      label.className = 'wt-flex1-0';
-      label.style.cssText = 'font-size:13px;font-weight:600;color:var(--wt-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-      label.textContent = name;
-      var input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'wt-input';
-      input.setAttribute('list', 'subgroup-datalist');
-      input.placeholder = '소그룹 없음';
-      input.value = subgroupOf(name);
-      input.maxLength = 20;
-      input.style.cssText = 'width:128px;flex-shrink:0;font-size:12px;padding:6px 8px;text-align:center;';
-      input.addEventListener('change', function () {
-        var v = input.value.trim().slice(0, 20);
-        data.exerciseSubgroups = data.exerciseSubgroups || {};
-        if (v) data.exerciseSubgroups[name] = v; else delete data.exerciseSubgroups[name];
-        persist();
-        renderSubgroupDatalist();
+    var groups = allSubgroupCards();
+
+    groups.forEach(function (sg) {
+      var card = document.createElement('div');
+      card.style.cssText = 'border:1.5px solid var(--wt-border);border-radius:12px;padding:12px;margin-bottom:8px;';
+
+      var head = document.createElement('div');
+      head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;';
+      var title = document.createElement('span');
+      title.style.cssText = 'font-size:13px;font-weight:700;color:var(--wt-text);';
+      title.textContent = sg;
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.setAttribute('aria-label', sg + ' 소그룹 삭제');
+      delBtn.style.cssText = 'border:none;background:transparent;color:var(--wt-text-muted);cursor:pointer;display:flex;';
+      delBtn.innerHTML = svg('trash', 14);
+      delBtn.addEventListener('click', function () {
+        armDelete(delBtn, '삭제?', function () {
+          exercisesInSubgroup(sg).forEach(function (n) { assignSubgroup(n, ''); });
+          delete pendingEmptyGroups[sg];
+          if (subgroupAddOpenFor === sg) subgroupAddOpenFor = null;
+          renderExerciseSubgroups();
+        });
       });
-      row.appendChild(label);
-      row.appendChild(input);
-      wrap.appendChild(row);
+      head.appendChild(title);
+      head.appendChild(delBtn);
+      card.appendChild(head);
+
+      var chipsWrap = document.createElement('div');
+      chipsWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+      exercisesInSubgroup(sg).forEach(function (name) {
+        var chip = document.createElement('span');
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:var(--wt-accent-soft);color:var(--wt-accent-dark);font-size:12px;font-weight:600;padding:6px 6px 6px 10px;border-radius:999px;';
+        chip.textContent = name;
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.setAttribute('aria-label', name + ' 제거');
+        x.style.cssText = 'border:none;background:transparent;color:inherit;display:flex;cursor:pointer;padding:2px;';
+        x.innerHTML = svg('x', 11);
+        x.addEventListener('click', function () { assignSubgroup(name, ''); renderExerciseSubgroups(); });
+        chip.appendChild(x);
+        chipsWrap.appendChild(chip);
+      });
+
+      var addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.textContent = '+ 종목 추가';
+      addBtn.style.cssText = 'font-size:12px;font-weight:700;color:var(--wt-accent);background:transparent;border:1.5px dashed var(--wt-border-strong);padding:6px 10px;border-radius:999px;cursor:pointer;';
+      addBtn.addEventListener('click', function () {
+        subgroupAddOpenFor = subgroupAddOpenFor === sg ? null : sg;
+        subgroupAddSearch = '';
+        renderExerciseSubgroups();
+      });
+      chipsWrap.appendChild(addBtn);
+      card.appendChild(chipsWrap);
+
+      if (subgroupAddOpenFor === sg) {
+        var picker = document.createElement('div');
+        picker.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid var(--wt-border);';
+        var search = document.createElement('input');
+        search.type = 'text';
+        search.className = 'wt-input';
+        search.placeholder = '종목 검색';
+        search.value = subgroupAddSearch;
+        search.style.cssText = 'width:100%;font-size:12px;padding:7px 10px;margin-bottom:8px;';
+        var listWrap = document.createElement('div');
+        listWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;';
+
+        function renderPickerList() {
+          var q = subgroupAddSearch.trim().toLowerCase();
+          var candidates = allKnownExerciseNames().filter(function (n) {
+            return subgroupOf(n) !== sg && (!q || n.toLowerCase().indexOf(q) !== -1);
+          });
+          listWrap.innerHTML = '';
+          if (!candidates.length) {
+            listWrap.innerHTML = '<p style="font-size:12px;color:var(--wt-text-muted);margin:0;">' + (q ? '검색 결과가 없습니다.' : '추가할 종목이 없습니다.') + '</p>';
+            return;
+          }
+          candidates.forEach(function (name) {
+            var already = subgroupOf(name);
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = name + (already ? ' (' + already + ')' : '');
+            if (already) btn.title = '지금 "' + already + '"에 있어요 — 누르면 여기로 옮겨집니다.';
+            btn.style.cssText = 'font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;cursor:pointer;' +
+              (already ? 'background:var(--wt-bg);color:var(--wt-text-muted);border:1px solid var(--wt-border);' : 'background:transparent;color:var(--wt-text);border:1.5px solid var(--wt-border-strong);');
+            btn.addEventListener('click', function () {
+              assignSubgroup(name, sg);
+              delete pendingEmptyGroups[sg];
+              renderExerciseSubgroups();
+            });
+            listWrap.appendChild(btn);
+          });
+        }
+        search.addEventListener('input', function () { subgroupAddSearch = search.value; renderPickerList(); });
+        picker.appendChild(search);
+        picker.appendChild(listWrap);
+        card.appendChild(picker);
+        renderPickerList();
+        setTimeout(function () { search.focus(); }, 0);
+      }
+
+      wrap.appendChild(card);
     });
+
+    if (!groups.length) {
+      var empty = document.createElement('p');
+      empty.style.cssText = 'font-size:12px;color:var(--wt-text-muted);text-align:center;padding:0.5rem 0 1rem;';
+      empty.textContent = '아직 소그룹이 없습니다. 아래에서 먼저 만들어보세요.';
+      wrap.appendChild(empty);
+    }
+
+    var addGroupRow = document.createElement('div');
+    addGroupRow.style.cssText = 'display:flex;gap:6px;';
+    var nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'wt-input wt-flex1-0';
+    nameInput.placeholder = '새 소그룹 이름 (예: 프레스류)';
+    nameInput.maxLength = 20;
+    var addGroupBtn = document.createElement('button');
+    addGroupBtn.type = 'button';
+    addGroupBtn.className = 'wt-btn-secondary';
+    addGroupBtn.style.padding = '10px 14px';
+    addGroupBtn.textContent = '+ 소그룹';
+    function submitNewGroup() {
+      var v = nameInput.value.trim().slice(0, 20);
+      if (!v || allSubgroupCards().indexOf(v) !== -1) return;
+      pendingEmptyGroups[v] = true;
+      subgroupAddOpenFor = v;
+      subgroupAddSearch = '';
+      renderExerciseSubgroups();
+    }
+    addGroupBtn.addEventListener('click', submitNewGroup);
+    nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitNewGroup(); } });
+    addGroupRow.appendChild(nameInput);
+    addGroupRow.appendChild(addGroupBtn);
+    wrap.appendChild(addGroupRow);
   }
 
   // ---------- [설정] 루틴 분할 구성 ----------
