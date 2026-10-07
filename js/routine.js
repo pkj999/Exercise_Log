@@ -19,17 +19,6 @@
     return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'ko'); });
   }
 
-  // 종목 소그룹에 "추가"할 수 있는 후보는 종목 전체 목록이 아니라, 기록 탭에서
-  // 실제로 기록해본 종목만으로 좁힌다 — 그래야 한 번도 안 써본 종목까지 다 뒤져야
-  // 하는 부담 없이, 내가 진짜 쓰는 종목만 빠르게 묶을 수 있다.
-  function usedExerciseNames() {
-    var set = {};
-    (data.days || []).forEach(function (day) {
-      (day.exercises || []).forEach(function (ex) { set[ex.name] = true; });
-    });
-    return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'ko'); });
-  }
-
   function distinctSubgroups() {
     var set = {};
     Object.keys(data.exerciseSubgroups || {}).forEach(function (k) { if (data.exerciseSubgroups[k]) set[data.exerciseSubgroups[k]] = true; });
@@ -157,13 +146,13 @@
 
         function renderPickerList() {
           var q = subgroupAddSearch.trim().toLowerCase();
-          var candidates = usedExerciseNames().filter(function (n) {
+          var candidates = allKnownExerciseNames().filter(function (n) {
             return subgroupOf(n) !== sg && (!q || n.toLowerCase().indexOf(q) !== -1);
           });
           listWrap.innerHTML = '';
           if (!candidates.length) {
             listWrap.innerHTML = '<p style="font-size:12px;color:var(--wt-text-muted);margin:0;">' +
-              (q ? '검색 결과가 없습니다.' : '기록 탭에서 기록해본 종목이 아직 없습니다. 먼저 기록부터 추가해주세요.') + '</p>';
+              (q ? '검색 결과가 없습니다.' : '추가할 종목이 없습니다.') + '</p>';
             return;
           }
           candidates.forEach(function (name) {
