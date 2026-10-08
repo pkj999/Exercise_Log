@@ -32,12 +32,6 @@
   }
 
   // ---------- [설정] 종목 소그룹 (소그룹 카드 안에 종목을 칩으로 넣는 방식) ----------
-  function renderSubgroupDatalist() {
-    $('subgroup-datalist').innerHTML = distinctSubgroups().map(function (s) {
-      return '<option value="' + escapeHtml(s) + '"></option>';
-    }).join('');
-  }
-
   function exercisesInSubgroup(sg) {
     return allKnownExerciseNames().filter(function (n) { return subgroupOf(n) === sg; });
   }
@@ -71,7 +65,6 @@
   });
 
   function renderExerciseSubgroups() {
-    renderSubgroupDatalist();
     var groupCount = allSubgroupCards().length;
     $('subgroup-head-status').textContent = groupCount ? groupCount + '개' : '사용 안 함';
     var wrap = $('subgroup-list');
@@ -266,7 +259,30 @@
     renderTodayRoutineCard();
   });
 
-  $('routine-item-add-btn').addEventListener('click', function () {
+  // 모바일 브라우저에서 <input list="..."> 네이티브 자동완성 말풍선이 엉뚱한 위치(좌측 상단
+  // 등)에 뜨면서 터치가 안 먹는 문제가 있어(PC에서만 정상 동작), datalist 대신 직접 그리는
+  // 칩 목록으로 자동완성을 구현한다.
+  function renderRoutineItemSuggestions() {
+    var box = $('routine-item-suggestions');
+    var q = $('routine-item-subgroup-input').value.trim().toLowerCase();
+    var options = distinctSubgroups().filter(function (s) { return !q || s.toLowerCase().indexOf(q) !== -1; });
+    box.innerHTML = '';
+    if (!options.length) { box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    options.forEach(function (s) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.textContent = s;
+      chip.style.cssText = 'font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;border:1.5px solid var(--wt-border-strong);background:var(--wt-bg);color:var(--wt-text);cursor:pointer;';
+      chip.addEventListener('click', function () {
+        $('routine-item-subgroup-input').value = s;
+        addRoutineItemFromInput();
+      });
+      box.appendChild(chip);
+    });
+  }
+
+  function addRoutineItemFromInput() {
     var r = (data.routines || [])[routineEditIndex];
     if (!r) return;
     var v = $('routine-item-subgroup-input').value.trim().slice(0, 20);
@@ -278,9 +294,12 @@
     $('routine-item-subgroup-input').value = '';
     persist();
     renderRoutineItemRows();
-    renderSubgroupDatalist();
+    renderRoutineItemSuggestions();
     renderTodayRoutineCard();
-  });
+  }
+  $('routine-item-add-btn').addEventListener('click', addRoutineItemFromInput);
+  $('routine-item-subgroup-input').addEventListener('input', renderRoutineItemSuggestions);
+  $('routine-item-subgroup-input').addEventListener('focus', renderRoutineItemSuggestions);
 
   $('routine-view-toggle').addEventListener('click', function () {
     routineViewMode = routineViewMode === 'list' ? 'matrix' : 'list';
@@ -380,7 +399,7 @@
     } else {
       renderRoutineMatrix();
     }
-    renderSubgroupDatalist();
+    renderRoutineItemSuggestions();
   }
 
   // ---------- [기록] 오늘의 루틴 카드 ----------
