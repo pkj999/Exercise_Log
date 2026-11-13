@@ -61,6 +61,7 @@
         startedAt: Number(d.startedAt) > 0 ? Number(d.startedAt) : 0,
         endedAt: Number(d.endedAt) > 0 ? Number(d.endedAt) : 0,
         routineDay: typeof d.routineDay === 'string' ? d.routineDay : '',
+        gym: typeof d.gym === 'string' ? d.gym.trim().slice(0, 20) : '',
         exercises: (d.exercises || []).map(function (ex) {
           return {
             name: ex.name,
@@ -166,6 +167,7 @@
         }).filter(function (it) { return it.subgroup; }) : []
       };
     }).filter(function (r) { return r.name; }) : [];
+    data.currentGym = typeof obj.currentGym === 'string' ? obj.currentGym.trim().slice(0, 20) : '';
     data.schema = SCHEMA;
   }
   async function persist() {

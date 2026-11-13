@@ -58,6 +58,11 @@
     persist();
   });
 
+  $('current-gym-input').addEventListener('change', function () {
+    data.currentGym = this.value.trim().slice(0, 20);
+    this.value = data.currentGym;
+    persist();
+  });
   $('body-height').addEventListener('change', function () {
     var v = parseFloat(this.value);
     data.heightCm = (isFinite(v) && v > 0 && v <= 260) ? v : 0;

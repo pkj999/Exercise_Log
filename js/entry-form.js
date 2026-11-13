@@ -650,7 +650,8 @@
     renderQESetList();
     renderStaging();
     saveDraft();
-    startRestTimer();
+    // 휴식 타이머는 당분간 비활성화(백그라운드/화면 잠금 중엔 알림이 전혀 안 울려 사실상
+    // 못 쓴다는 피드백) — 더 나은 방식을 고민할 때까지 세트 추가 시 자동 시작하지 않음.
     if (isPR) toast(prToastMessage(QEState.current.name, newOneRM), 2600);
   });
 

@@ -9,7 +9,7 @@
     clearError();
 
     var day = data.days.find(function (d) { return d.date === dateVal; });
-    if (!day) { day = { date: dateVal, exercises: [] }; data.days.push(day); }
+    if (!day) { day = { date: dateVal, exercises: [], gym: data.currentGym || '' }; data.days.push(day); }
     valid.forEach(function (item) {
       var cleaned = item.sets.map(function (st) {
         var c = {};
@@ -90,7 +90,8 @@
     var isToday = day.date === $('entry-date').value;
     var dateP = document.createElement('p');
     dateP.style.cssText = 'font-size:12px;color:var(--wt-text-muted);margin:0;font-weight:700;';
-    dateP.innerHTML = fmtDisplayDate(day.date) + (isToday ? '<span class="wt-saved-tag">저장됨</span>' : '');
+    dateP.innerHTML = fmtDisplayDate(day.date) + (isToday ? '<span class="wt-saved-tag">저장됨</span>' : '') +
+      (day.gym ? '<span class="wt-plan-badge">' + escapeHtml(day.gym) + '</span>' : '');
 
     var rightWrap = document.createElement('div');
     rightWrap.className = 'wt-row wt-gap-6 wt-shrink0';

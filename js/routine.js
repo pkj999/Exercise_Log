@@ -19,6 +19,109 @@
     return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, 'ko'); });
   }
 
+  // ---------- [설정] 종목 병합 ----------
+  // 같은 운동을 "케이블 해머컬"/"해머컬"처럼 이름만 다르게 기록해온 경우, 과거 기록을
+  // 하나의 이름으로 합쳐서 무게 추이가 끊기지 않게 한다.
+  function mergeExerciseInto(fromName, toName) {
+    data.days.forEach(function (day) {
+      var changed = false;
+      day.exercises.forEach(function (ex) { if (ex.name === fromName) { ex.name = toName; changed = true; } });
+      if (changed) day.exercises = mergeDupExercises(day.exercises);
+    });
+    // toName이 카탈로그/커스텀 어디에도 없는 새 이름이면, 종목을 실제로 기록했던 부위에
+    // 커스텀 종목으로 등록해서 앞으로도 종목 선택 화면에서 계속 고를 수 있게 한다.
+    if (allKnownExerciseNames().indexOf(toName) === -1) {
+      var cat = null;
+      for (var i = 0; i < data.days.length && !cat; i++) {
+        var found = data.days[i].exercises.find(function (ex) { return ex.name === toName; });
+        if (found) cat = found.category;
+      }
+      if (cat) {
+        data.customExercises[cat] = data.customExercises[cat] || [];
+        if (data.customExercises[cat].indexOf(toName) === -1) data.customExercises[cat].push(toName);
+      }
+    }
+    Object.keys(data.customExercises || {}).forEach(function (cat) {
+      var idx = (data.customExercises[cat] || []).indexOf(fromName);
+      if (idx !== -1) data.customExercises[cat].splice(idx, 1);
+    });
+    Object.keys(data.hiddenExercises || {}).forEach(function (cat) {
+      var idx = (data.hiddenExercises[cat] || []).indexOf(fromName);
+      if (idx !== -1) data.hiddenExercises[cat].splice(idx, 1);
+    });
+    if (data.exerciseSubgroups[fromName] && !data.exerciseSubgroups[toName]) {
+      data.exerciseSubgroups[toName] = data.exerciseSubgroups[fromName];
+    }
+    delete data.exerciseSubgroups[fromName];
+    if (data.bwExercises[fromName] && !data.bwExercises[toName]) {
+      data.bwExercises[toName] = data.bwExercises[fromName];
+    }
+    delete data.bwExercises[fromName];
+    persist();
+  }
+
+  function renderMergeSuggestions(inputId, boxId, excludeValue) {
+    var input = $(inputId), box = $(boxId);
+    var q = input.value.trim().toLowerCase();
+    var options = allKnownExerciseNames().filter(function (n) {
+      return n !== excludeValue && (!q || n.toLowerCase().indexOf(q) !== -1);
+    });
+    box.innerHTML = '';
+    if (!options.length) { box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    options.slice(0, 30).forEach(function (n) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.textContent = n;
+      chip.style.cssText = 'font-size:12px;font-weight:600;padding:6px 10px;border-radius:999px;border:1.5px solid var(--wt-border-strong);background:var(--wt-bg);color:var(--wt-text);cursor:pointer;';
+      chip.addEventListener('click', function () {
+        input.value = n;
+        box.style.display = 'none';
+        updateMergeButtonState();
+      });
+      box.appendChild(chip);
+    });
+  }
+
+  function updateMergeButtonState() {
+    var from = $('merge-from-input').value.trim();
+    var to = $('merge-to-input').value.trim();
+    $('merge-exercises-btn').disabled = !from || !to || from === to;
+  }
+
+  $('merge-from-input').addEventListener('input', function () {
+    renderMergeSuggestions('merge-from-input', 'merge-from-suggestions', $('merge-to-input').value.trim());
+    updateMergeButtonState();
+  });
+  $('merge-from-input').addEventListener('focus', function () {
+    renderMergeSuggestions('merge-from-input', 'merge-from-suggestions', $('merge-to-input').value.trim());
+  });
+  $('merge-to-input').addEventListener('input', function () {
+    renderMergeSuggestions('merge-to-input', 'merge-to-suggestions', $('merge-from-input').value.trim());
+    updateMergeButtonState();
+  });
+  $('merge-to-input').addEventListener('focus', function () {
+    renderMergeSuggestions('merge-to-input', 'merge-to-suggestions', $('merge-from-input').value.trim());
+  });
+  $('merge-exercises-btn').addEventListener('click', function () {
+    var from = $('merge-from-input').value.trim();
+    var to = $('merge-to-input').value.trim();
+    if (!from || !to || from === to) return;
+    armDelete($('merge-exercises-btn'), "'" + from + "' 기록을 전부 '" + to + "'로 합칠까요?", function () {
+      mergeExerciseInto(from, to);
+      $('merge-from-input').value = '';
+      $('merge-to-input').value = '';
+      $('merge-from-suggestions').style.display = 'none';
+      $('merge-to-suggestions').style.display = 'none';
+      updateMergeButtonState();
+      var msg = $('merge-msg');
+      msg.textContent = "'" + from + "' 기록을 '" + to + "'로 합쳤습니다.";
+      msg.style.color = 'var(--wt-good)';
+      msg.style.display = '';
+      renderAll();
+    });
+  });
+
   function distinctSubgroups() {
     var set = {};
     Object.keys(data.exerciseSubgroups || {}).forEach(function (k) { if (data.exerciseSubgroups[k]) set[data.exerciseSubgroups[k]] = true; });

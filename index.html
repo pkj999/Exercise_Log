@@ -198,7 +198,7 @@
     </button>
     <div id="history-list" style="display: none;"></div>
 
-    <button id="protein-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="protein-body">
+    <button id="protein-head" class="wt-section-head wt-card-head" type="button" aria-expanded="false" aria-controls="protein-body" style="display: none;">
       <span class="wt-section-title">오늘 섭취한 단백질</span>
       <span id="protein-count" class="wt-section-count"></span>
       <span class="wt-section-line"></span>
@@ -264,7 +264,7 @@
       <div id="wk-balance"></div>
     </div>
 
-    <div class="wt-card wt-mb-12">
+    <div class="wt-card wt-mb-12" style="display: none;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
         <p style="font-size: 13px; font-weight: 700; margin: 0; color: var(--wt-text);">단백질 섭취 추이</p>
         <p id="protein-stats-caption" style="font-size: 11px; color: var(--wt-text-muted); margin: 0;"></p>
@@ -311,6 +311,7 @@
         <div style="position: relative; height: 190px;">
           <canvas id="progress-canvas"></canvas>
         </div>
+        <p style="font-size: 11px; color: var(--wt-text-muted); text-align: center; margin: 8px 0 0;">그래프의 점을 누르면 아래 표에서 그 날 기록을 바로 볼 수 있어요.</p>
       </div>
       <div id="progress-table" class="wt-card" style="margin-top: 12px; padding: 0.5rem 1.25rem;"></div>
       <div id="progress-notes" class="wt-card" style="margin-top: 12px; display: none;">
@@ -340,6 +341,13 @@
     </div>
 
     <div class="wt-card wt-mb-12">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 8px; color: var(--wt-text);">운동 장소</p>
+      <p class="wt-mini-label" style="margin-bottom: 6px;">현재 다니는 곳</p>
+      <input type="text" id="current-gym-input" class="wt-input wt-w100" placeholder="예: 신헬스장" maxlength="20" />
+      <p style="font-size: 11px; color: var(--wt-text-muted); margin: 9px 0 0; line-height: 1.5;">여기 적어두면, 이제부터 저장하는 기록에 자동으로 태그가 붙어요. 나중에 또 옮기시면 여기만 바꿔주세요 — 예전 기록의 태그는 그대로 남아요.</p>
+    </div>
+
+    <div class="wt-card wt-mb-12" style="display: none;">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 8px; color: var(--wt-text);">단백질 목표</p>
       <p class="wt-mini-label" style="margin-bottom: 6px;">목표 방향성</p>
       <div style="display: flex; gap: 6px; margin-bottom: 12px;">
@@ -369,7 +377,7 @@
           <button class="wt-stepper-btn" id="goal-plus" aria-label="주 목표 증가">+</button>
         </div>
       </div>
-      <div class="wt-setting-row">
+      <div class="wt-setting-row" style="display: none;">
         <span style="font-size: 13px; color: var(--wt-text);">휴식 시간</span>
         <div style="display: flex; align-items: center; gap: 8px;">
           <button class="wt-stepper-btn" id="rest-minus" aria-label="휴식 시간 감소">−</button>
@@ -379,7 +387,7 @@
       </div>
     </div>
 
-    <div class="wt-card wt-mb-12">
+    <div class="wt-card wt-mb-12" style="display: none;">
       <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">알림</p>
       <div class="wt-setting-row">
         <span style="font-size: 13px; color: var(--wt-text);">알림음</span>
@@ -400,6 +408,20 @@
         <button id="flash-switch" class="wt-switch" role="switch" aria-label="화면 플래시"></button>
       </div>
       <button id="test-alert-btn" class="wt-btn-secondary" style="width: 100%; margin-top: 10px;">알림 테스트</button>
+    </div>
+
+    <p class="wt-settings-group-label"><span data-icon="copy" data-size="12"></span>종목 관리</p>
+    <div class="wt-card wt-mb-12">
+      <p style="font-size: 13px; font-weight: 700; margin: 0 0 4px; color: var(--wt-text);">종목 병합</p>
+      <p style="font-size: 11px; color: var(--wt-text-muted); margin: 0 0 10px; line-height: 1.5;">이름만 다르게 기록해온 같은 운동을 하나로 합쳐요. (예: 케이블 해머컬 → 해머컬) 무게 기록은 그대로 이어집니다.</p>
+      <p class="wt-mini-label" style="margin-bottom: 6px;">합칠 종목 (없어질 이름)</p>
+      <input type="text" id="merge-from-input" class="wt-input wt-w100" placeholder="종목 검색" autocomplete="off" />
+      <div id="merge-from-suggestions" style="display: none; flex-wrap: wrap; gap: 6px; margin-top: 6px;"></div>
+      <p class="wt-mini-label" style="margin: 10px 0 6px;">합쳐질 이름 (남을 이름)</p>
+      <input type="text" id="merge-to-input" class="wt-input wt-w100" placeholder="종목 검색 또는 새 이름" autocomplete="off" />
+      <div id="merge-to-suggestions" style="display: none; flex-wrap: wrap; gap: 6px; margin-top: 6px;"></div>
+      <button id="merge-exercises-btn" class="wt-btn-primary" style="width: 100%; margin-top: 12px;" disabled>병합하기</button>
+      <p id="merge-msg" style="display: none; font-size: 12px; margin: 8px 0 0;"></p>
     </div>
 
     <p class="wt-settings-group-label"><span data-icon="refresh-cw" data-size="12"></span>루틴 분할</p>

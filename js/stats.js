@@ -70,6 +70,7 @@
   //   2) renderProgress() — 종목 하나를 선택해 무게/볼륨/세트/1RM 추이
   var chartRetries = {};
   var chartAnimId = {};
+  var chartLayouts = {}; // canvasId -> 클릭 시 가장 가까운 점을 찾기 위한 좌표 정보
   function drawLineChart(canvasId, points, valueKey, labelFn, lineColor) {
     var canvas = $(canvasId);
     if (!canvas) return;
@@ -121,6 +122,8 @@
 
     function xAt(i) { return padL + (points.length === 1 ? w / 2 : (w * i / (points.length - 1))); }
     function yAt(v) { return padT + h - ((v - minV) / range) * h; }
+
+    chartLayouts[canvasId] = { points: points, xAt: xAt };
 
     function drawStatic() {
       ctx.clearRect(0, 0, rect.width, rect.height);
@@ -452,12 +455,33 @@
           ? p.minutes + '분' + (p.distance ? ' · ' + (Math.round(p.distance * 100) / 100) + 'km' : '')
           : p.sets + '세트';
         var main = cardio ? '강도 ' + p.weight : p.weight + 'kg';
-        return '<tr><td style="padding:8px 0;font-size:13px;color:var(--wt-text-muted);border-top:1px solid var(--wt-border);">' +
+        return '<tr data-date="' + p.date + '"><td style="padding:8px 0;font-size:13px;color:var(--wt-text-muted);border-top:1px solid var(--wt-border);">' +
           fmtDisplayDate(p.date) + '<span style="font-size:11px;margin-left:6px;">' + sub + '</span></td>' +
           '<td style="padding:8px 0;font-size:13px;font-weight:700;text-align:right;color:var(--wt-text);border-top:1px solid var(--wt-border);">' +
           main + deltaHtml + '</td></tr>';
       }).join('') + '</tbody></table>';
   }
+
+  // 그래프의 점을 누르면, 그 날짜가 "그 때 내가 어떻게 기록했는지"를 바로 볼 수 있도록
+  // 아래 종목별 추이 표에서 해당 행으로 스크롤하고 잠깐 강조한다.
+  $('progress-canvas').style.cursor = 'pointer';
+  $('progress-canvas').addEventListener('click', function (e) {
+    var layout = chartLayouts['progress-canvas'];
+    if (!layout || !layout.points.length) return;
+    var rect = this.getBoundingClientRect();
+    var clickX = e.clientX - rect.left;
+    var best = 0, bestDist = Infinity;
+    layout.points.forEach(function (p, i) {
+      var dist = Math.abs(layout.xAt(i) - clickX);
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    });
+    var row = document.querySelector('#progress-table tr[data-date="' + layout.points[best].date + '"]');
+    if (!row) return;
+    safeScrollIntoView(row);
+    row.classList.remove('wt-row-highlight');
+    void row.offsetWidth; // 애니메이션 재시작을 위한 강제 리플로우
+    row.classList.add('wt-row-highlight');
+  });
 
   $('chart-mode-weight').addEventListener('click', function () {
     chartMode = 'weight';

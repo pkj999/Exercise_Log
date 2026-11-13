@@ -86,26 +86,11 @@
     runTimerTick();
   }
   // 새로고침·재접속 시 저장해둔 종료 예정 시각을 읽어 타이머를 이어서 표시
+  // 휴식 타이머는 당분간 비활성화(백그라운드/화면 잠금 중엔 알림이 전혀 안 울려 사실상
+  // 못 쓴다는 피드백) — 더 나은 방식을 고민할 때까지, 예전에 저장된 값이 있어도 이어서
+  // 띄우지 않는다.
   function resumeRestTimerIfAny() {
-    return store.get(TIMER_KEY).then(function (res) {
-      var endAt = res && res.value ? parseInt(res.value, 10) : 0;
-      if (!endAt) return;
-      var remaining = Math.round((endAt - Date.now()) / 1000);
-      if (remaining > 0) {
-        timerRemaining = remaining;
-        $('rest-timer-pill').style.display = 'flex';
-        updateUnsavedBar();
-        $('rest-timer-value').textContent = fmtMinSec(timerRemaining);
-        runTimerTick();
-      } else {
-        // 자리를 비운 사이 이미 끝난 경우: 소리·진동 없이 종료 상태만 표시
-        $('rest-timer-pill').style.display = 'flex';
-        $('rest-timer-pill').classList.add('wt-timer-ended');
-        $('rest-timer-value').textContent = '휴식 끝';
-        updateUnsavedBar();
-        persistTimerEnd(null);
-      }
-    }).catch(function () {});
+    return Promise.resolve();
   }
   // 휴식 종료: 사용자가 직접 닫기 전까지 진동/화면 플래시를 반복해 알아차리기 쉽게 함
   function onRestTimerEnd() {
