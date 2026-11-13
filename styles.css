@@ -175,6 +175,9 @@
 
   /* 값이 바뀐 입력칸 순간 강조 */
   @keyframes wt-flash { 0% { background: var(--wt-accent-soft); } 100% { background: var(--wt-bg); } }
+  /* 그래프의 점을 눌렀을 때, 아래 표에서 그 날짜 행을 순간 강조 */
+  @keyframes wt-row-flash { 0% { background: var(--wt-accent-soft); } 100% { background: transparent; } }
+  #wt-root .wt-row-highlight { animation: wt-row-flash 1.6s ease-out; }
   @keyframes wt-tab-in-fwd { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes wt-tab-in-back { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
   #wt-root .wt-tab-anim-fwd { animation: wt-tab-in-fwd .22s ease-out; }

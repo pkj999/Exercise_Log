@@ -297,6 +297,7 @@
   function renderBody() {
     $('body-height').value = data.heightCm > 0 ? data.heightCm : '';
     $('body-weight').value = data.weightKg > 0 ? data.weightKg : '';
+    $('current-gym-input').value = data.currentGym || '';
   }
 
   // ---------- [단백질] 목표량 계산 및 오늘 섭취 기록 ----------
