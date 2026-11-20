@@ -109,6 +109,22 @@
     renderRpeChips();
     renderAll();
     if ('serviceWorker' in navigator) {
-      try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+      try {
+        // updateViaCache:'none' 없이는, 브라우저가 sw.js 파일 자체를 자기 HTTP 캐시에서
+        // 꺼내 "바뀐 게 없다"고 판단해버릴 수 있다 — 그러면 서비스워커 안의 네트워크 우선
+        // 전략을 고쳐도 그 수정된 sw.js 자체를 영영 못 받아오는 모순이 생긴다(실제로 겪은
+        // 사고: 코드를 고쳐도 "반영 안 됐다"는 보고가 계속 들어옴). 매번 새 버전 여부를
+        // 네트워크로 직접 확인하도록 강제하고, 새 버전이 넘겨받으면 한 번 자동 새로고침해서
+        // 사용자가 수동으로 몇 번씩 새로고침할 필요가 없게 한다.
+        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+          reg.update().catch(function () {});
+        });
+        var swReloading = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (swReloading) return;
+          swReloading = true;
+          window.location.reload();
+        });
+      } catch (e) {}
     }
   })();
