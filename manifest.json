@@ -1,13 +1,13 @@
 {
   "name": "운동일지",
   "short_name": "운동일지",
-  "description": "부위별 운동, 세트, 캘린더, 통계를 기록하는 개인 운동 트래커",
+  "description": "루틴·세트·기록을 간단하게 관리하는 개인 운동 일지",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F7F7F9",
-  "theme_color": "#5E6AD2",
+  "background_color": "#F4F5F7",
+  "theme_color": "#2F7BF6",
   "lang": "ko",
   "icons": [
     {

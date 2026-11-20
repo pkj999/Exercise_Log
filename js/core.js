@@ -1,241 +1,388 @@
 'use strict';
+/* =========================================================================
+ * 운동일지 — Hevy를 참고해 재설계한 가벼운 개인 운동 기록 앱 (2026-11)
+ *
+ * [파일 구성] (index.html의 로드 순서)
+ *   core.js     상태·스키마·공용 유틸·화면(페이지) 스택·시트
+ *   store.js    저장소 어댑터 (로컬 / GitHub 동기화)
+ *   editor.js   운동 편집기 — 진행 중 운동 · 지난 운동 추가/수정 · 루틴 편집을 한 화면으로 처리
+ *   picker.js   종목 선택/생성
+ *   screens.js  탭 화면 — 운동(루틴) · 기록 · 종목 · 설정
+ *   main.js     초기화
+ *
+ * [데이터 구조]  (STORAGE_KEY 하나에 전부 저장)
+ *   exercises = [{ id, name, muscle, type }]        type: wr(무게×횟수) r(횟수) t(시간) dt(거리+시간)
+ *   routines  = [{ id, name, exercises: [Block] }]
+ *   workouts  = [{ id, name, routineId, start, end, note, exercises: [Block] }]   start/end = ms
+ *   Block     = { exId, note, rest, sets: [Set] }
+ *   Set       = { t, w, r, s, d }   t: n(일반) w(워밍업) d(드롭) f(실패)
+ *               w=kg, r=횟수, s=초, d=km — 종목 type에 맞는 값만 채움
+ *   settings  = { rest, sound, vibrate, theme }
+ *   진행 중인 운동은 ACTIVE_KEY(이 기기 로컬)에만 두고, 완료할 때 workouts에 들어간다.
+ * ========================================================================= */
 
-  /* =========================================================================
-   * 운동일지 트래커 — 단일 파일 웹앱 (HTML + CSS + JS)
-   *
-   * [구조 안내]
-   *   이 파일은 <style> · <body 마크업> · <script> 세 부분으로 되어 있습니다.
-   *   아래 스크립트는 다음 섹션 순서로 배치되어 있으며,
-   *   각 섹션은 `// ---------- [분류] 제목 ----------` 주석으로 구분됩니다.
-   *   특정 기능을 찾을 때는 아래 분류 태그로 검색하세요.
-   *
-   * [파일 구성]
-   *   core.js → github-sync.js → calc.js → persist.js → alerts.js → entry-form.js
-   *   → staging-protein.js → history-calendar.js → stats.js → settings-screen.js → main.js
-   *   (index.html의 <script> 로드 순서와 동일. github-sync.js는 GitHub 동기화 저장소
-   *   어댑터(store)와 GH_ 상수·gh 함수 전용이고, 이 파일(core.js)은 상태·상수·계산·공용 유틸만 담는다.)
-   *
-   * [분류 태그]
-   *   [저장]  데이터 보관 — 불러오기/저장, 백업·복원 (GitHub 동기화 어댑터는 github-sync.js)
-   *   [데이터] 고정 데이터 — 부위·종목 목록, 입력 상한값, 태그
-   *   [계산]  순수 계산 — 볼륨, 최고무게, 예상 1RM, PR 판정
-   *   [상태]  앱 전역 상태 변수
-   *   [공용]  여러 화면에서 함께 쓰는 도구 — 아이콘, 토스트, 삭제 확인
-   *   [입력]  기록 입력 흐름 — 부위/종목 선택 → 빠른 입력 → 임시 목록
-   *   [조회]  기록 보기 — 저장된 기록 목록, 캘린더, 지난 기록
-   *   [통계]  주간 요약 및 그래프
-   *   [알림]  휴식 타이머, 소리·진동·화면 플래시
-   *   [설정]  테마, 신체 정보, 주간 목표 등 설정 화면
-   *   [화면]  탭 전환, 스와이프, 레이아웃 여백
-   *
-   * [데이터 구조 요약]
-   *   data.days      = [{ date:'YYYY-MM-DD', exercises:[{ category, name, sets:[...] }] }]
-   *   세트(set)      = { weight, reps, warmup, rpe?, tags?, note?, pr?,
-   *                      bw?/bwLoad? (맨몸운동), cardio?/minutes?/intensity?/distance? (유산소) }
-   *   staging        = 저장 버튼을 누르기 전의 임시 목록 (data에 들어가기 전 단계)
-   *
-   * [수정 시 주의]
-   *   · 워밍업(warmup) 세트는 볼륨·최고무게·PR 계산에서 제외됩니다.
-   *   · 유산소(category === '유산소')는 무게/횟수 대신 시간/강도/거리를 씁니다.
-   *   · 저장된 기록 수정 중에는 QEState.editingRecordCtx가 설정되며,
-   *     이때 commitStaging()은 동작하지 않습니다(임시 목록 오염 방지).
-   * ========================================================================= */
+// 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시)
+var APP_VERSION = 46;
+var APP_BUILD_DATE = '2026-11-20';
 
-  // 클로드가 파일을 보내줄 때마다 최신본인지 구분할 수 있도록, 코드를 수정할 때는 이 값도 함께 갱신한다
-  // (버전은 수정할 때마다 1씩 올리고, 날짜는 그 수정이 반영된 날짜로 갱신)
-  var APP_VERSION = 45;
-  var APP_BUILD_DATE = '2026-11-20';
-  var STORAGE_KEY = 'workout-tracker-data';
-  var LEGACY_KEYS = ['workout-log-v3', 'workout-log-v2', 'workout-log'];
-  var SCHEMA = 5; // day.durationMin/startedAt/endedAt(운동 소요시간) 추가. 마이그레이션 분기는 없음 — applyLoaded()가 항상 방어적으로 필드를 재구성하므로 구버전 데이터는 해당 필드가 0/미설정으로 채워짐
+var STORAGE_KEY = 'exercise-log-v1';
+var ACTIVE_KEY = 'exercise-log-active';
+// 재설계 전 구버전 앱이 쓰던 로컬 키 — 첫 실행 때 지워서 저장 공간을 비운다 (GitHub 연결 정보 wt-github-cfg는 유지)
+var OLD_KEYS = ['workout-tracker-data', 'workout-tracker-draft', 'workout-tracker-timer-end',
+  'workout-log-v3', 'workout-log-v2', 'workout-log', 'wt-github-cache', 'wt-github-cache-at', 'wt-github-pending'];
 
-  // GitHub 동기화 어댑터(store)와 관련 설정/함수(GH_*, gh*)는 js/github-sync.js로 분리됨 — 이 파일 바로 다음에 로드된다.
-  // ---------- [공용] 아이콘 정의 및 렌더링 ----------
-  // 아래 8개(chest~other)는 부위별 장비/동작 픽토그램. 현재는 "부위 선택" 화면에서는
-  // 쓰지 않고(텍스트 칩으로만 표시 — [입력] 부위 선택 섹션 참고), 기록 리스트의 작은
-  // 아이콘(wt-row-icon)에서만 쓰인다. CAT_META의 color 필드은 캘린더 점 표시와
-  // "부위별 볼륨 추이" 차트 선 색에 쓰인다 — 부위 구분이 실제로 필요한 곳에는 기능적
-  // 색상을 유지하는 방향(2026-09 리디자인에서 정리).
-  var PATHS = {
-    chest: '<path d="M3 10v4M6.5 7.5v9M6.5 12h11M17.5 7.5v9M21 10v4"/>',
-    back: '<path d="M5 7l7 4 7-4"/><path d="M12 11v8"/>',
-    shoulder: '<path d="M6 7h12"/><path d="M8 7v4M16 7v4"/><path d="M6 18c2-3 4-3.5 6-3.5s4 .5 6 3.5"/>',
-    arms: '<path d="M4 12h1.6M18.4 12H20"/><path d="M7 9v6M17 9v6"/><path d="M7 12h10"/>',
-    legs: '<path d="M9 4v13"/><path d="M6 19h6"/><path d="M15 4v13"/><path d="M12 19h6"/>',
-    core: '<g fill="currentColor" stroke="none"><rect x="7" y="7.5" width="10" height="2" rx="1"/><rect x="7" y="11" width="10" height="2" rx="1"/><rect x="7" y="14.5" width="10" height="2" rx="1"/></g>',
-    cardio: '<path d="M3 12h3.2l1.8-4.5 2.6 9 2-6.5 1.4 2h4.8"/>',
-    other: '<circle cx="5" cy="12" r="2.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="2.1" fill="currentColor" stroke="none"/>',
-    barbell: '<path d="M3 10v4M6.5 7.5v9M6.5 12h11M17.5 7.5v9M21 10v4"/>',
-    x: '<path d="M6 6l12 12M18 6L6 18"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>',
-    trash: '<path d="M4 7h16"/><path d="M9.5 4h5"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/>',
-    check: '<path d="M5 13l4.5 4.5L19 7"/>',
-    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/>',
-    download: '<path d="M12 4v11"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/>',
-    copy: '<rect x="9" y="9" width="10.5" height="10.5" rx="2.5"/><path d="M4.5 15V7a2.5 2.5 0 012.5-2.5h8"/>',
-    bookmark: '<path d="M7 4h10v16l-5-4-5 4z"/>',
-    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
-    calendar: '<rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M3.5 10.5h17M8.5 3v5M15.5 3v5"/>',
-    chart: '<path d="M3.5 20.5h17"/><path d="M6.5 20V11M12 20V4M17.5 20v-6"/>',
-    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 14.5a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5v.2a2 2 0 01-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 010-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3h.1a1.6 1.6 0 001-1.5V3a2 2 0 014 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8v.1a1.6 1.6 0 001.5 1H21a2 2 0 010 4h-.1a1.6 1.6 0 00-1.5 1z"/>',
-    moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>',
-    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
-    'chevron-left': '<path d="M15 5l-7 7 7 7"/>',
-    'chevron-down': '<path d="M5 9l7 7 7-7"/>',
-    'chevron-up': '<path d="M19 15l-7-7-7 7"/>',
-    'pencil': '<path d="M4 20h4L19 9a2.1 2.1 0 10-3-3L5 17v3z"/>',
-    'chevron-right': '<path d="M9 5l7 7-7 7"/>',
-    'arrow-up': '<path d="M12 19V5M6 11l6-6 6 6"/>',
-    'arrow-down': '<path d="M12 5v14M6 13l6 6 6-6"/>',
-    'refresh-cw': '<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'
+var MUSCLES = ['가슴', '등', '어깨', '하체', '팔', '코어', '유산소', '전신', '기타'];
+var TYPES = {
+  wr: '무게 × 횟수',
+  r: '횟수 (맨몸)',
+  t: '시간',
+  dt: '거리 + 시간'
+};
+var SET_TYPES = [
+  { key: 'n', label: '일반', badge: '' },
+  { key: 'w', label: '워밍업', badge: 'W' },
+  { key: 'd', label: '드롭 세트', badge: 'D' },
+  { key: 'f', label: '실패 지점', badge: 'F' }
+];
+var REST_OPTIONS = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
+
+var data = emptyData();
+
+function emptyData() {
+  return {
+    v: 1, exercises: [], routines: [], workouts: [],
+    settings: { rest: 90, sound: true, vibrate: true, theme: 'auto' }
   };
+}
 
-  function svg(name, size) {
-    return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size +
-      '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      (PATHS[name] || PATHS.other) + '</svg>';
-  }
-  function hydrateIcons() {
-    var nodes = document.querySelectorAll('[data-icon]');
-    Array.prototype.forEach.call(nodes, function (el) {
-      el.innerHTML = svg(el.getAttribute('data-icon'), parseInt(el.getAttribute('data-size'), 10) || 16);
-      el.removeAttribute('data-icon');
-    });
-  }
-
-  // ---------- [공용] 삭제 확인 대화상자 ----------
-  // 예전엔 버튼을 두 번 눌러서 확인했는데("삭제?"로 글자가 바뀌었다가 다시 누르면 삭제),
-  // 같은 자리를 두 번 눌러야 하는 방식이라 오히려 실수로 연달아 눌러버리기 쉬웠다(특히
-  // 목록이 다시 그려지며 버튼 위치/크기가 바뀌는 경우). 그래서 버튼 자체를 바꾸는 대신
-  // 화면 아래에서 올라오는 확인 대화상자로 전부 바꿈 — 취소/삭제를 명확히 분리된 버튼으로.
-  var confirmDialogOnConfirm = null;
-  function armDelete(btn, label, onConfirm) {
-    $('confirm-dialog-text').textContent = label || '삭제할까요?';
-    $('confirm-dialog').style.display = 'flex';
-    confirmDialogOnConfirm = onConfirm;
-  }
-  function disarm() {
-    $('confirm-dialog').style.display = 'none';
-    confirmDialogOnConfirm = null;
-  }
-  // core.js는 가장 먼저 로드되는 스크립트라 아직 calc.js의 $() 헬퍼가 없다 — 여기서만
-  // document.getElementById를 직접 쓴다.
-  document.getElementById('confirm-dialog-cancel').addEventListener('click', disarm);
-  document.getElementById('confirm-dialog-backdrop').addEventListener('click', disarm);
-  document.getElementById('confirm-dialog-ok').addEventListener('click', function () {
-    var fn = confirmDialogOnConfirm;
-    disarm();
-    if (fn) fn();
+// ---------- 공용 유틸 ----------
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function num(v) { var n = Number(v); return (v === '' || v == null || !isFinite(n)) ? null : n; }
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function fmtDate(d) { d = new Date(d); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function fmtKoDate(ms) {
+  var d = new Date(ms);
+  return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + '일월화수목금토'[d.getDay()] + ')';
+}
+function fmtClock(ms) { var d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function fmtNum(n) { return (Math.round(n * 10) / 10).toLocaleString('ko-KR'); }
+// 초 → "1:05:09" / "5:09"
+function fmtTimer(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return (h ? h + ':' + pad2(m) : m) + ':' + pad2(s);
+}
+// 초 → "1시간 5분" / "45초"
+function fmtDur(sec) {
+  sec = Math.round(sec || 0);
+  if (sec < 60) return sec + '초';
+  var h = Math.floor(sec / 3600), m = Math.round(sec % 3600 / 60);
+  if (m === 60) { h += 1; m = 0; }
+  return h ? h + '시간' + (m ? ' ' + m + '분' : '') : m + '분';
+}
+function fmtRest(sec) { return sec ? (sec >= 60 ? Math.floor(sec / 60) + '분' + (sec % 60 ? ' ' + sec % 60 + '초' : '') : sec + '초') : '끔'; }
 
-  // ---------- [데이터] 부위·종목 기본 목록 ----------
-  var CATALOG = {
-    '가슴': ['벤치프레스', '인클라인 벤치프레스', '덤벨 플라이', '딥스', '체스트프레스 머신'],
-    '등': ['데드리프트', '풀업', '랫풀다운', '시티드로우', '벤트오버로우'],
-    '어깨': ['숄더프레스', '사이드레터럴레이즈', '프론트레이즈', '페이스풀'],
-    '하체': ['스쿼트', '레그프레스', '레그컬', '레그익스텐션', '런지'],
-    '팔': ['바벨컬', '덤벨컬', '트라이셉스 익스텐션', '케이블 푸시다운'],
-    '코어': ['플랭크', '크런치', '행잉레그레이즈'],
-    '유산소': ['러닝머신', '사이클', '로잉머신'],
-    '기타': []
+// ---------- 계산 ----------
+function exById(id) {
+  for (var i = 0; i < data.exercises.length; i++) if (data.exercises[i].id === id) return data.exercises[i];
+  return null;
+}
+function exName(id) { var e = exById(id); return e ? e.name : '(삭제된 종목)'; }
+function exType(id) { var e = exById(id); return e ? e.type : 'wr'; }
+function e1rm(w, r) { return (w > 0 && r > 0) ? (r === 1 ? w : w * (1 + r / 30)) : 0; }
+function isWork(s) { return s.t !== 'w'; }
+function setVolume(s) { return isWork(s) ? (s.w || 0) * (s.r || 0) : 0; }
+function workoutVolume(w) {
+  var v = 0;
+  w.exercises.forEach(function (b) { b.sets.forEach(function (s) { v += setVolume(s); }); });
+  return v;
+}
+function workoutSetCount(w) {
+  var n = 0; w.exercises.forEach(function (b) { n += b.sets.length; }); return n;
+}
+function workoutDuration(w) { return w.end > w.start ? (w.end - w.start) / 1000 : 0; }
+// 세트 한 줄 요약 — 종목 type에 따라
+function fmtSet(s, type) {
+  if (type === 'r') return (s.r || 0) + '회' + (s.w ? ' (+' + fmtNum(s.w) + 'kg)' : '');
+  if (type === 't') return fmtDur(s.s);
+  if (type === 'dt') return (s.d ? fmtNum(s.d) + 'km · ' : '') + fmtDur(s.s);
+  return fmtNum(s.w || 0) + 'kg × ' + (s.r || 0);
+}
+// 세트의 "좋음" 점수 — 최고 세트 고르기/PR 판정용
+function setScore(s, type) {
+  if (!isWork(s)) return 0;
+  if (type === 'wr') return e1rm(s.w || 0, s.r || 0);
+  if (type === 'r') return s.r || 0;
+  if (type === 't') return s.s || 0;
+  if (type === 'dt') return s.d || s.s || 0;
+  return 0;
+}
+function bestSet(sets, type) {
+  var best = null, bs = -1;
+  sets.forEach(function (s) { var sc = setScore(s, type); if (sc > bs) { bs = sc; best = s; } });
+  return best;
+}
+function sortedWorkouts() { return data.workouts.slice().sort(function (a, b) { return b.start - a.start; }); }
+// 해당 시각 이전, 이 종목을 마지막으로 한 운동의 세트 (이전 기록 칸에 표시)
+function previousSets(exId, beforeMs, excludeId) {
+  var best = null;
+  data.workouts.forEach(function (w) {
+    if (w.id === excludeId || w.start >= beforeMs) return;
+    if (best && w.start <= best.start) return;
+    if (w.exercises.some(function (b) { return b.exId === exId; })) best = w;
+  });
+  if (!best) return null;
+  var sets = [];
+  best.exercises.forEach(function (b) { if (b.exId === exId) sets = sets.concat(b.sets); });
+  return sets;
+}
+// 이 시각 이전의 이 종목 최고 기록 { score, w } — PR 판정용
+function bestBefore(exId, beforeMs, excludeId) {
+  var type = exType(exId), score = 0, w = 0;
+  data.workouts.forEach(function (wk) {
+    if (wk.id === excludeId || wk.start >= beforeMs) return;
+    wk.exercises.forEach(function (b) {
+      if (b.exId !== exId) return;
+      b.sets.forEach(function (s) {
+        if (!isWork(s)) return;
+        score = Math.max(score, setScore(s, type));
+        if (type === 'wr') w = Math.max(w, s.w || 0);
+      });
+    });
+  });
+  return { score: score, w: w };
+}
+function exerciseUseCount(exId) {
+  var n = 0;
+  data.workouts.forEach(function (w) { if (w.exercises.some(function (b) { return b.exId === exId; })) n++; });
+  return n;
+}
+function routineUseCount(exId) {
+  return data.routines.filter(function (r) { return r.exercises.some(function (b) { return b.exId === exId; }); }).length;
+}
+
+// ---------- 불러오기 · 정리 · 저장 ----------
+function cleanSet(s) {
+  s = s || {};
+  var out = { t: ['n', 'w', 'd', 'f'].indexOf(s.t) >= 0 ? s.t : 'n' };
+  ['w', 'r', 's', 'd'].forEach(function (k) { var n = num(s[k]); if (n != null && n >= 0) out[k] = n; });
+  return out;
+}
+function cleanBlock(b) {
+  return {
+    exId: String((b && b.exId) || ''),
+    note: typeof (b && b.note) === 'string' ? b.note.slice(0, 200) : '',
+    rest: num(b && b.rest) != null ? Math.min(600, Math.max(0, num(b.rest))) : null,
+    sets: Array.isArray(b && b.sets) ? b.sets.map(cleanSet) : []
   };
-  // icon은 [공용] 아이콘 섹션의 PATHS 키(기록 리스트 아이콘용). color는 캘린더 점 표시와
-  // "부위별 볼륨 추이" 차트 선 색에 쓰인다.
-  var CAT_META = {
-    '가슴': { icon: 'chest', color: '#FF9270' },
-    '등': { icon: 'back', color: '#4E9AE8' },
-    '어깨': { icon: 'shoulder', color: '#EF9F27' },
-    '하체': { icon: 'legs', color: '#22B184' },
-    '팔': { icon: 'arms', color: '#8F87E8' },
-    '코어': { icon: 'core', color: '#E0648E' },
-    '유산소': { icon: 'cardio', color: '#7BB230' },
-    '기타': { icon: 'other', color: '#9A9A93' }
-  };
-  var CATEGORIES = Object.keys(CATALOG);
-  function meta(c) { return CAT_META[c] || CAT_META['기타']; }
-
-  // 세트 강도 3단계
-  var RPE = [
-    { key: 'easy',  label: '여유',  short: '여유', color: '#4E9AE8', desc: '몇 개 더 가능' },
-    { key: 'mid',   label: '적정',  short: '적정', color: '#22B184', desc: '1~2개 여유' },
-    { key: 'limit', label: '한계',  short: '한계', color: '#E8603C', desc: '더는 불가' }
-  ];
-  function rpeOf(key) {
-    for (var i = 0; i < RPE.length; i++) if (RPE[i].key === key) return RPE[i];
-    return null;
+}
+function normalize(o) {
+  var d = emptyData();
+  if (!o || typeof o !== 'object') return d;
+  d.exercises = (Array.isArray(o.exercises) ? o.exercises : []).filter(function (e) { return e && e.id && e.name; }).map(function (e) {
+    return {
+      id: String(e.id), name: String(e.name).trim().slice(0, 40),
+      muscle: MUSCLES.indexOf(e.muscle) >= 0 ? e.muscle : '기타',
+      type: TYPES[e.type] ? e.type : 'wr'
+    };
+  });
+  d.routines = (Array.isArray(o.routines) ? o.routines : []).filter(Boolean).map(function (r) {
+    return { id: String(r.id || uid()), name: String(r.name || '루틴').slice(0, 40), exercises: (r.exercises || []).map(cleanBlock) };
+  });
+  d.workouts = (Array.isArray(o.workouts) ? o.workouts : []).filter(function (w) { return w && num(w.start); }).map(function (w) {
+    return {
+      id: String(w.id || uid()), name: String(w.name || '운동').slice(0, 40),
+      routineId: w.routineId ? String(w.routineId) : '',
+      start: num(w.start), end: num(w.end) || num(w.start),
+      note: typeof w.note === 'string' ? w.note.slice(0, 1000) : '',
+      exercises: (w.exercises || []).map(cleanBlock)
+    };
+  });
+  var s = o.settings || {};
+  d.settings.rest = num(s.rest) != null ? Math.min(600, Math.max(0, num(s.rest))) : 90;
+  d.settings.sound = s.sound !== false;
+  d.settings.vibrate = s.vibrate !== false;
+  d.settings.theme = ['auto', 'light', 'dark'].indexOf(s.theme) >= 0 ? s.theme : 'auto';
+  return d;
+}
+async function loadData() {
+  try {
+    var res = await store.get(STORAGE_KEY);
+    if (res && res.value) data = normalize(JSON.parse(res.value));
+  } catch (e) {
+    if (store.mode === 'github') toast('GitHub에서 불러오지 못했습니다 — ' + (e.message || ''), 4000);
   }
-  function isCardio(cat) { return cat === '유산소'; }
-
-  // ---------- [데이터] 입력 상한값 (오타 방지) ----------
-  var LIMITS = { weight: 500, reps: 100, minutes: 600, intensity: 20, distance: 200, proteinMeal: 300, proteinTarget: 400 };
-
-  // ---------- [데이터] +/- 스테퍼 버튼의 1회 증감폭 (entry-form.js의 bindStepper가 씀) ----------
-  var STEPS = { weight: 2.5, reps: 1, minutes: 5, intensity: 1 };
-
-  // ---------- [데이터] 단백질 목표 방향성별 g/kg 계수 ----------
-  // 체중(kg) × 계수 = 일일 목표 단백질(g). 운동하는 성인 기준 일반적으로 알려진 참고 범위이며,
-  // 정밀한 영양 처방이 아니므로 개인차·질환 여부에 따라 조정이 필요할 수 있습니다.
-  var PROTEIN_COEF = { cut: 2.0, maintain: 1.6, bulk: 1.8 };
-  var PROTEIN_GOAL_LABELS = { cut: '체중 감량', maintain: '유지', bulk: '증량' };
-
-  // ---------- [공용] 종목 이름 정규화 (공백·대소문자 차이 흡수) ----------
-  function normName(v) { return String(v || '').toLowerCase().replace(/\s+/g, ''); }
-
-  // ---------- [계산] 맨몸운동 체중 부하 (종목별 수동 지정) ----------
-  // data.bwExercises = { '<종목명>': <체중 비율 %> }. 사용자가 직접 켠 종목에만 적용됨.
-  function bwPercent(name) {
-    if (!name) return 0;
-    var v = Number((data.bwExercises || {})[name]);
-    return (isFinite(v) && v > 0) ? Math.min(150, v) : 0;
+}
+async function persist() {
+  try { await store.set(STORAGE_KEY, JSON.stringify(data)); }
+  catch (e) {
+    toast('저장에 실패했습니다 — ' + (e.message || '알 수 없는 오류'), 4000);
+    throw e;
   }
-  function bwRatio(name) { return bwPercent(name) / 100; }
-  function setBwPercent(name, pct) {
-    if (!name) return;
-    data.bwExercises = data.bwExercises || {};
-    if (!pct) delete data.bwExercises[name];
-    else data.bwExercises[name] = Math.min(150, Math.max(5, Math.round(pct)));
-    persist();
-  }
-  // 기록 시점의 체중을 세트에 저장 — 이후 체중이 바뀌어도 과거 볼륨은 그대로 유지됨
-  function bwLoadFor(name) {
-    var r = bwRatio(name);
-    if (!r || !(data.weightKg > 0)) return 0;
-    return Math.round(data.weightKg * r * 10) / 10;
-  }
-  function effWeight(s) { return (Number(s.bwLoad) || 0) + (Number(s.weight) || 0); }
+}
+function save() { persist().catch(function () {}); }
 
-  // ---------- [상태] 앱 전역 상태 ----------
-  var data = {
-    days: [], customExercises: {}, hiddenExercises: {},
-    restSeconds: 90, sound: true, vibrate: true, flash: true, dark: false,
-    heightCm: 0, weightKg: 0, weeklyGoal: 0, historyOpen: false, bwExercises: {}, schema: SCHEMA,
-    protein: { targetG: 0, targetAuto: true, goalDirection: 'maintain', logs: {} }, proteinOpen: false,
-    customProteinLabels: [], hiddenProteinLabels: [], proteinLabelGrams: {},
-    exerciseSubgroups: {}, routines: [], currentGym: ''
-  };
-  var staging = [];
-  var selectedCategory = null;
-  // 오늘 운동 세션 소요시간 추적용 (저장 전, 메모리 상태 — saveDraft로 새로고침 대비 영속화)
-  var sessionStartAt = null;   // 이번 세션에서 첫 세트를 추가한 시각(ms)
-  var sessionLastAt = null;    // 가장 최근 세트를 추가한 시각(ms)
-  var sessionAccumMs = 0;      // 세트 사이 텀이 SESSION_GAP_MS 이내였던 구간만 누적한 소요시간(ms)
-  // "빠른 입력" 화면(entry-form.js)이 지금 작성 중인 종목/세트에 관한 상태를 한데 묶어둔 것.
-  // QEState.current가 null이면 입력 화면이 닫혀 있다는 뜻.
-  var QEState = {
-    current: null,           // 지금 입력 중인 종목 { category, name, variant, sets } — staging에 들어가기 전 임시본
-    editingRecordCtx: null,  // { day, exIdx } — 저장된 기록을 수정 중일 때만 설정됨
-    editingSetIndex: -1,     // current.sets 중 지금 고쳐쓰는 세트의 인덱스 (-1이면 새 세트 추가 중)
-    warmupOn: false,         // 다음에 추가할 세트에 워밍업 표시를 붙일지
-    rpeSelected: null        // 다음에 추가할 세트의 강도(easy/mid/limit), 선택 안 하면 null
-  };
-  var DRAFT_KEY = 'workout-tracker-draft';
-  var TIMER_KEY = 'workout-tracker-timer-end';
-  var chartMode = 'weight';
-  var calCursor = new Date();
-  var calSelected = null;
-  var editMode = false;
-  var exSearch = '';
-  var timerId = null, timerRemaining = 0;
-  var audioCtx = null;
+// ---------- 아이콘 ----------
+var ICONS = {
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  check: '<path d="M5 13l4.5 4.5L19 7"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  down: '<path d="M5 9l7 7 7-7"/>',
+  right: '<path d="M9 5l7 7-7 7"/>',
+  more: '<circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/>',
+  dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1" fill="currentColor"/><circle cx="3.5" cy="12" r="1" fill="currentColor"/><circle cx="3.5" cy="18" r="1" fill="currentColor"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+  play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/>',
+  edit: '<path d="M4 20h4L19 9a2.1 2.1 0 1 0-3-3L5 17v3z"/>',
+  trash: '<path d="M4 7h16M9.5 4h5M10 11v6M14 11v6M6 7l1 13h10l1-13"/>',
+  cal: '<rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M3.5 10.5h17M8.5 3v5M15.5 3v5"/>',
+  copy: '<rect x="9" y="9" width="10.5" height="10.5" rx="2.5"/><path d="M4.5 15V7a2.5 2.5 0 0 1 2.5-2.5h8"/>',
+  up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  dn: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  swap: '<path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/>',
+  note: '<path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/>',
+  refresh: '<path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M5.5 9a8 8 0 0 1 13.2-3L21 10M3 14l2.3 4A8 8 0 0 0 18.5 15"/>'
+};
+function icon(name, size) {
+  size = size || 18;
+  return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>';
+}
 
+// ---------- 토스트 ----------
+var toastTimer = null;
+function toast(msg, ms) {
+  var el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.classList.remove('show'); }, ms || 2200);
+}
+
+// ---------- 페이지 스택 (전체 화면으로 올라오는 화면들) ----------
+// 각 페이지는 history 항목 하나와 짝을 이룬다 — 안드로이드/브라우저 뒤로가기로 닫을 수 있게.
+// 닫을 때는 항상 closePage()(= history.back())를 거치고, 실제 제거는 popstate에서 한다.
+var pages = [];
+function pushPage(render) {
+  var el = document.createElement('div');
+  el.className = 'page';
+  $('pages').appendChild(el);
+  var page = { el: el, render: function () { var st = el.scrollTop; render(el, page); el.scrollTop = st; } };
+  pages.push(page);
+  page.render();
+  requestAnimationFrame(function () { el.classList.add('in'); });
+  history.pushState({ depth: pages.length }, '');
+  document.body.classList.add('noscroll');
+  return page;
+}
+// then: 페이지가 실제로 닫힌 뒤(popstate 처리 후) 실행할 함수
+var afterPop = [];
+function closePage(n, then) { if (then) afterPop.push(then); history.go(-(n || 1)); }
+function topPage() { return pages[pages.length - 1]; }
+window.addEventListener('popstate', function () {
+  if (sheetOpen) hideSheet();
+  var depth = (history.state && history.state.depth) || 0;
+  // 저장 안 한 변경사항이 있는 페이지(guard)는 확인창을 띄우고 닫기를 되돌린다
+  var tp = topPage();
+  if (tp && pages.length > depth && tp.guard && !tp.forceClose && tp.guard()) {
+    history.pushState({ depth: pages.length }, '');
+    afterPop = [];
+    return;
+  }
+  while (pages.length > depth) {
+    var p = pages.pop();
+    if (p.onClose) p.onClose();
+    var el = p.el;
+    el.classList.remove('in');
+    setTimeout(function (x) { return function () { x.remove(); }; }(el), 220);
+  }
+  if (!pages.length) document.body.classList.remove('noscroll');
+  var t = topPage();
+  if (t) t.render(); else refreshTab();
+  refreshChrome();
+  var fns = afterPop; afterPop = [];
+  fns.forEach(function (fn) { fn(); });
+});
+function pageHeader(opts) {
+  return '<header class="page-head">' +
+    '<button class="icon-btn" ' + (opts.backAttr || 'data-act="page-back"') + ' aria-label="뒤로">' + icon(opts.backIcon || 'back', 22) + '</button>' +
+    '<div class="page-title">' + (opts.titleHtml || esc(opts.title || '')) + '</div>' +
+    '<div class="page-right">' + (opts.right || '') + '</div></header>';
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-act="page-back"]');
+  if (b) closePage();
+});
+
+// ---------- 시트 (아래에서 올라오는 메뉴 / 확인창) ----------
+var sheetOpen = false;
+// items: [{ label, icon, danger, onClick }]
+function actionSheet(title, items) {
+  var html = (title ? '<div class="sheet-title">' + esc(title) + '</div>' : '') +
+    items.map(function (it, i) {
+      return '<button class="sheet-item' + (it.danger ? ' danger' : '') + (it.active ? ' active' : '') + '" data-i="' + i + '">' +
+        (it.icon ? icon(it.icon, 18) : '') + '<span>' + esc(it.label) + '</span>' + (it.active ? icon('check', 16) : '') + '</button>';
+    }).join('') +
+    '<button class="sheet-item cancel" data-i="-1">취소</button>';
+  showSheet(html, function (box) {
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-i]');
+      if (!b) return;
+      var i = Number(b.getAttribute('data-i'));
+      hideSheet();
+      if (i >= 0 && items[i].onClick) items[i].onClick();
+    });
+  });
+}
+function confirmSheet(msg, okLabel, onOk, opts) {
+  opts = opts || {};
+  showSheet('<div class="sheet-msg">' + esc(msg) + '</div>' +
+    '<div class="sheet-row"><button class="btn btn-secondary" data-c="0">' + esc(opts.cancelLabel || '취소') + '</button>' +
+    '<button class="btn ' + (opts.danger === false ? 'btn-primary' : 'btn-danger') + '" data-c="1">' + esc(okLabel) + '</button></div>',
+  function (box) {
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-c]');
+      if (!b) return;
+      hideSheet();
+      if (b.getAttribute('data-c') === '1') onOk();
+      else if (opts.onCancel) opts.onCancel();
+    });
+  });
+}
+function showSheet(html, bind) {
+  var box = $('sheet-box');
+  box.innerHTML = html;
+  var fresh = box.cloneNode(true); // 이전 리스너 제거
+  box.parentNode.replaceChild(fresh, box);
+  $('sheet').classList.add('show');
+  sheetOpen = true;
+  if (bind) bind(fresh);
+}
+function hideSheet() {
+  $('sheet').classList.remove('show');
+  sheetOpen = false;
+}
+$('sheet-backdrop').addEventListener('click', hideSheet);
+
+// ---------- 테마 ----------
+var darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function applyTheme() {
+  var t = data.settings.theme;
+  var dark = t === 'dark' || (t === 'auto' && darkMQ && darkMQ.matches);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', dark ? '#0E0F11' : '#F4F5F7');
+}
+if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTheme);

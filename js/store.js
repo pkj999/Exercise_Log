@@ -1,13 +1,14 @@
 'use strict';
 
-  // ---------- [저장] GitHub 동기화 (선택 사항 — 설정 안 하면 기존처럼 이 기기에만 저장됨) ----------
-  // core.js에서 분리된 파일. STORAGE_KEY(core.js에서 정의)를 쓰므로 core.js 다음에 로드돼야 한다.
-  // 여기서 만드는 `store`는 [저장] 저장소 어댑터로, persist.js의 loadData()/persist()가
+  // ---------- [저장] 저장소 어댑터 + GitHub 동기화 (선택 사항 — 연결 안 하면 이 기기에만 저장됨) ----------
+  // STORAGE_KEY(core.js)를 쓰므로 core.js 다음에 로드돼야 한다. core.js의 loadData()/persist()가
   // store.get()/store.set()을 통해 쓴다 — GitHub 연결이 안 돼 있으면 로컬(localStorage/클로드 앱
-  // storage)로, 연결돼 있으면 GitHub Contents API로 운동 기록 본문(STORAGE_KEY)만 라우팅한다.
+  // storage)로, 연결돼 있으면 GitHub Contents API로 운동 데이터 본문(STORAGE_KEY)만 라우팅한다.
+  // 연결 정보(GH_CONFIG_KEY)는 구버전 앱과 같은 키를 그대로 써서, 재설계 후에도 다시 연결할 필요가 없다.
   var GH_CONFIG_KEY = 'wt-github-cfg';
-  var GH_CACHE_KEY = 'wt-github-cache'; // GitHub 요청 실패(오프라인 등) 시 마지막으로 받았던 내용을 대신 보여주기 위한 로컬 사본
-  var GH_CACHE_AT_KEY = 'wt-github-cache-at'; // 위 사본을 "내가 직접" 마지막으로 저장에 성공한 시각
+  // 캐시/표시 키는 구버전(wt-github-cache 등)과 다른 이름을 쓴다 — 구버전 형식의 데이터가 새 앱에 섞여 들어오지 않게.
+  var GH_CACHE_KEY = 'el-github-cache'; // GitHub 요청 실패(오프라인 등) 시 마지막으로 받았던 내용을 대신 보여주기 위한 로컬 사본
+  var GH_CACHE_AT_KEY = 'el-github-cache-at'; // 위 사본을 "내가 직접" 마지막으로 저장에 성공한 시각
   // "이 기기에서 바꾼 내용을 아직 GitHub에 제대로 올리지 못했다"는 표시. GH_CACHE_KEY는
   // GitHub 저장 성공/실패와 무관하게 항상 최신 내용으로 먼저 갱신해두는데(오프라인에서도
   // 바로 반영되게 하려고), 만약 그 뒤 저장이 실제로는 실패했는데도 이 표시가 없으면 —
@@ -15,7 +16,7 @@
   // "예전 것"으로 취급되어 그 오래된 내용에 덮어써져 사라질 수 있다(실제로 겪은 사고).
   // 그래서 PUT을 시도하기 직전에 이 값을 켜두고, 성공했을 때만 끈다 — 켜져 있는 동안은
   // 네트워크에서 새로 읽어오더라도 로컬 내용을 절대 덮어쓰지 않는다.
-  var GH_PENDING_KEY = 'wt-github-pending';
+  var GH_PENDING_KEY = 'el-github-pending';
   // GitHub Contents API는 커밋 자체는 바로 끝나도, 그 직후 다시 읽으면 몇 초~몇 분 정도 저장 전
   // 내용을 그대로 돌려주는 지연(읽기 일관성 지연)이 있을 수 있다. 그래서 "방금 내가 저장한 것"은
   // 이 시간 동안 무조건 로컬 사본을 그대로 믿고, 네트워크로 다시 확인하지 않는다 — 안 그러면
@@ -23,7 +24,8 @@
   // 보이는 것처럼 방금 바꾼 설정이 도로 사라지는 것처럼 보일 수 있다.
   var GH_WRITE_GRACE_MS = 3 * 60 * 1000;
   var GH_API = 'https://api.github.com';
-  var GH_DATA_PATH = 'data/workout-data.json';
+  // 구버전 기록 파일(data/workout-data.json)은 건드리지 않고 새 파일에 저장한다
+  var GH_DATA_PATH = 'data/exercise-log.json';
   var ghSha = null; // 마지막으로 읽거나 쓴 파일의 sha — 다음 저장(PUT) 때 충돌 감지용으로 필요
 
   function getGhConfig() {
@@ -149,7 +151,7 @@
   }
 
   async function ghPutData(cfg, valueStr, sha) {
-    var body = { message: 'update workout data', content: utf8ToBase64(valueStr), branch: cfg.branch || 'main' };
+    var body = { message: 'update exercise log', content: utf8ToBase64(valueStr), branch: cfg.branch || 'main' };
     if (sha) body.sha = sha;
     var res = await ghFetch(cfg, { method: 'PUT', body: body });
     if (!res.ok) {
