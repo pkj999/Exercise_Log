@@ -200,7 +200,7 @@ svg { flex-shrink: 0; }
 /* ---------- 상세 / 페이지 ---------- */
 #pages .page { position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; transform: translateX(100%); transition: transform .22s ease; overscroll-behavior: contain; }
 #pages .page.in { transform: none; }
-.page-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; padding: calc(env(safe-area-inset-top) + 8px) 10px 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.page-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; padding: calc(env(safe-area-inset-top) + 8px) max(10px, calc(50% - 286px)) 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
 .page-title { flex: 1; min-width: 0; font-weight: 700; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .page-right { display: flex; align-items: center; gap: 4px; }
 .page-body { max-width: 560px; margin: 0 auto; padding: 14px 16px calc(env(safe-area-inset-bottom) + 96px); }
@@ -257,7 +257,7 @@ svg { flex-shrink: 0; }
 .check.on { background: var(--good); color: #fff; }
 .add-set { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 38px; margin: 6px 0; border-radius: 8px; background: var(--card-2); font-weight: 650; font-size: 14px; color: var(--text); }
 
-.rest-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px); background: var(--card); border-top: 1px solid var(--line); overflow: hidden; }
+.rest-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 10px max(12px, calc(50% - 280px)) calc(env(safe-area-inset-bottom) + 10px); background: var(--card); border-top: 1px solid var(--line); overflow: hidden; }
 .rest-progress { position: absolute; left: 0; top: 0; height: 3px; background: var(--accent); transition: width .5s linear; }
 .rest-main { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--accent); }
 .rest-main b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
@@ -366,8 +366,8 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시)
-var APP_VERSION = 47;
-var APP_BUILD_DATE = '2026-11-20';
+var APP_VERSION = 48;
+var APP_BUILD_DATE = '2026-11-23';
 
 var STORAGE_KEY = 'exercise-log-v1';
 var ACTIVE_KEY = 'exercise-log-active';
@@ -411,9 +411,11 @@ function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function num(v) { var n = Number(v); return (v === '' || v == null || !isFinite(n)) ? null : n; }
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
 function fmtDate(d) { d = new Date(d); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+// 올해가 아니면 연도를 앞에 붙인다 (지난 기록을 여러 해 넣어도 구분되게)
 function fmtKoDate(ms) {
   var d = new Date(ms);
-  return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + '일월화수목금토'[d.getDay()] + ')';
+  var y = d.getFullYear() !== new Date().getFullYear() ? d.getFullYear() + '년 ' : '';
+  return y + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + '일월화수목금토'[d.getDay()] + ')';
 }
 function fmtClock(ms) { var d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
 function fmtNum(n) { return (Math.round(n * 10) / 10).toLocaleString('ko-KR'); }
@@ -610,6 +612,17 @@ var toastTimer = null;
 function toast(msg, ms) {
   var el = $('toast');
   el.textContent = msg;
+  // 화면 아래쪽에 고정된 요소 중 가장 위에 있는 것의 바로 위에 띄운다 — 이어하기 바·시트 등을 가리지 않게
+  var minTop = window.innerHeight;
+  var cands = sheetOpen ? [$('sheet-box')] : pages.length
+    ? Array.prototype.slice.call(topPage().el.querySelectorAll('.rest-bar'))
+    : [document.querySelector('.tabbar'), $('minibar')];
+  cands.forEach(function (c) {
+    if (!c || c.hidden) return;
+    var r = c.getBoundingClientRect();
+    if (r.height && r.top < minTop) minTop = r.top;
+  });
+  el.style.bottom = (window.innerHeight - minTop + 12) + 'px';
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function () { el.classList.remove('show'); }, ms || 2200);
@@ -647,6 +660,13 @@ window.addEventListener('popstate', function () {
   handlePop((history.state && history.state.depth) || 0, false);
 });
 function handlePop(depth, direct) {
+  // 메뉴(시트)가 열린 상태에서 뒤로가기를 누르면 메뉴만 닫고 화면은 그대로 둔다
+  if (sheetOpen && !direct && pages.length > depth) {
+    hideSheet();
+    history.pushState({ depth: pages.length }, '');
+    afterPop = [];
+    return;
+  }
   if (sheetOpen) hideSheet();
   // 저장 안 한 변경사항이 있는 페이지(guard)는 확인창을 띄우고 닫기를 되돌린다
   var tp = topPage();
@@ -1087,6 +1107,9 @@ var COLS = {
   t: [{ k: 's', h: '초', im: 'numeric' }],
   dt: [{ k: 'd', h: 'km', im: 'decimal' }, { k: 'm', h: '분', im: 'decimal' }]
 };
+// 세트 입력 상한 (오타 방지) — k: w(kg) r(회) s(초) m(분) d(km)
+var SET_LIMITS = { w: 500, r: 300, s: 36000, m: 600, d: 300 };
+var SET_LIMIT_MSG = { w: '무게는 500kg까지 입력할 수 있어요', r: '횟수는 300회까지 입력할 수 있어요', s: '시간은 10시간(36000초)까지 입력할 수 있어요', m: '시간은 600분까지 입력할 수 있어요', d: '거리는 300km까지 입력할 수 있어요' };
 function valOf(s, k) {
   if (!s) return '';
   if (k === 'm') return s.s != null ? Math.round(s.s / 6) / 10 : '';
@@ -1261,11 +1284,24 @@ function bindEditor(el, ed, page) {
     } else if (t.hasAttribute('data-bn')) {
       ctx(t).b.note = t.value;
     } else if (t.hasAttribute('data-k')) {
-      var c = ctx(t), s = c.b.sets[c.j];
+      var c = ctx(t), s = c.b.sets[c.j], k = t.getAttribute('data-k');
       var v = num(t.value);
-      setVal(s, t.getAttribute('data-k'), v != null && v >= 0 ? v : null);
+      if (v != null && v > SET_LIMITS[k]) v = SET_LIMITS[k];
+      setVal(s, k, v != null && v >= 0 ? v : null);
     } else return;
     changed();
+  });
+  // 입력칸을 벗어나면 실제 저장된 값으로 다시 표시 — 음수·범위 밖 값이 화면에만 남아 있지 않게
+  el.addEventListener('change', function (e) {
+    var t = e.target, k = t.getAttribute('data-k');
+    if (!k) return;
+    var c = ctx(t), s = c.b.sets[c.j];
+    var shown = num(t.value), stored = valOf(s, k);
+    if (String(stored) !== String(t.value)) {
+      t.value = stored;
+      if (shown != null && shown > SET_LIMITS[k]) toast(SET_LIMIT_MSG[k]);
+      else if (shown != null && shown < 0) toast('0 이상의 값을 입력하세요');
+    }
   });
 
   el.addEventListener('click', function (e) {
@@ -1647,6 +1683,17 @@ function renderPickerList(el, st, opts) {
   if (addBtn) { addBtn.disabled = !st.sel.length; addBtn.textContent = st.sel.length ? '추가 (' + st.sel.length + ')' : '추가'; }
 }
 
+// 종목 삭제 — 기록에 쓰인 종목은 지울 수 없고, 루틴에서는 함께 빠진다
+function deleteExercise(ex, onDone) {
+  var used = exerciseUseCount(ex.id), inRoutine = routineUseCount(ex.id);
+  if (used) { toast('운동 기록 ' + used + '개에 쓰인 종목이라 삭제할 수 없어요', 3000); return; }
+  confirmSheet('\u2018' + ex.name + '\u2019 종목을 삭제할까요?' + (inRoutine ? ' 루틴 ' + inRoutine + '개에서도 빠집니다.' : ''), '삭제', function () {
+    data.routines.forEach(function (r) { r.exercises = r.exercises.filter(function (b) { return b.exId !== ex.id; }); });
+    data.exercises = data.exercises.filter(function (e2) { return e2.id !== ex.id; });
+    save();
+    if (onDone) onDone();
+  });
+}
 // 종목 만들기/수정 시트. ex가 있으면 수정, 없으면 새로 만들기
 function openExerciseForm(ex, presetName, onSaved) {
   var used = ex ? exerciseUseCount(ex.id) : 0;
@@ -1679,12 +1726,7 @@ function openExerciseForm(ex, presetName, onSaved) {
       if (act === 'delete') {
         if (used) { fail('운동 기록 ' + used + '개에 쓰인 종목이라 삭제할 수 없어요. 이름은 바꿀 수 있어요.'); return; }
         hideSheet();
-        confirmSheet('‘' + ex.name + '’ 종목을 삭제할까요?' + (inRoutine ? ' 루틴 ' + inRoutine + '개에서도 빠집니다.' : ''), '삭제', function () {
-          data.routines.forEach(function (r) { r.exercises = r.exercises.filter(function (b) { return b.exId !== ex.id; }); });
-          data.exercises = data.exercises.filter(function (e2) { return e2.id !== ex.id; });
-          save();
-          if (onSaved) onSaved(null);
-        });
+        deleteExercise(ex, function () { if (onSaved) onSaved(null); });
         return;
       }
       var name = box.querySelector('#exf-name').value.trim();
@@ -1929,7 +1971,7 @@ function setLinesHtml(sets, type, extra) {
 function exercisesTabHtml() {
   return '<div class="sec-head"><div class="search grow"><span class="search-icon">' + icon('search', 17) + '</span>' +
     '<input class="input" id="ex-q" placeholder="종목 검색" autocomplete="off" value="' + esc(exQuery) + '"></div>' +
-    '<button class="btn btn-primary btn-sm" data-a="new-ex">' + icon('plus', 15) + '새 종목</button></div><div id="ex-list"></div>';
+    '<button class="btn btn-ghost btn-sm" data-a="new-ex">' + icon('plus', 15) + '새 종목</button></div><div id="ex-list"></div>';
 }
 function renderExList() {
   var box = $('ex-list'); if (!box) return;
@@ -1937,7 +1979,8 @@ function renderExList() {
   data.workouts.forEach(function (w) { w.exercises.forEach(function (b) { counts[b.exId] = (counts[b.exId] || 0) + 1; }); });
   var list = filterExercises(exQuery, '');
   if (!data.exercises.length) {
-    box.innerHTML = '<div class="empty">' + icon('dumbbell', 30) + '<p>종목이 없어요.<br>내가 하는 운동만 직접 추가해서 쓰는 방식이에요.</p></div>';
+    box.innerHTML = '<div class="empty">' + icon('dumbbell', 30) + '<p>종목이 없어요.<br>내가 하는 운동만 직접 추가해서 쓰는 방식이에요.</p>' +
+      '<button class="btn btn-secondary" data-a="new-ex">첫 종목 만들기</button></div>';
     return;
   }
   if (!list.length) { box.innerHTML = '<p class="hint">검색 결과가 없어요.</p>'; return; }
@@ -1969,7 +2012,7 @@ function openExerciseDetail(exId) {
     var ex = exById(exId);
     if (!ex) { el.innerHTML = pageHeader({ title: '종목' }) + '<div class="page-body"><p class="hint">삭제된 종목입니다.</p></div>'; return; }
     var hist = exerciseHistory(exId), type = ex.type;
-    var h = pageHeader({ title: ex.name, right: '<button class="icon-btn" data-x="edit" aria-label="종목 수정">' + icon('edit', 18) + '</button>' }) +
+    var h = pageHeader({ title: ex.name, right: '<button class="icon-btn" data-x="menu" aria-label="메뉴">' + icon('more', 20) + '</button>' }) +
       '<div class="page-body"><p class="meta">' + ex.muscle + ' · ' + TYPES[type] + '</p>';
     var all = [];
     hist.forEach(function (x) { x.sets.forEach(function (s) { if (isWork(s)) all.push(s); }); });
@@ -2012,9 +2055,13 @@ function openExerciseDetail(exId) {
     var act = b.getAttribute('data-x');
     if (act === 'metric') { st.metric = b.getAttribute('data-m'); page.render(); }
     else if (act === 'workout') openWorkoutDetail(b.getAttribute('data-wid'));
-    else if (act === 'edit') {
+    else if (act === 'menu') {
       var ex = exById(exId);
-      if (ex) openExerciseForm(ex, '', function (res) { if (res === null) closePage(); else page.render(); });
+      if (!ex) return;
+      actionSheet(ex.name, [
+        { label: '수정', icon: 'edit', onClick: function () { openExerciseForm(ex, '', function (res) { if (res === null) closePage(); else page.render(); }); } },
+        { label: '삭제', icon: 'trash', danger: true, onClick: function () { deleteExercise(ex, function () { closePage(); }); } }
+      ]);
     }
   });
 }
