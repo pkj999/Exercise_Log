@@ -256,6 +256,22 @@ svg { flex-shrink: 0; }
 .chart-y { position: absolute; top: 4px; right: 0; width: 52px; height: 150px; display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: var(--muted); pointer-events: none; text-align: right; }
 .chart-dots { position: absolute; left: 0; right: 56px; top: 4px; height: 150px; pointer-events: none; }
 .chart-dots i { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--card); border: 2px solid var(--accent); }
+.chart-svg .mv, .spark .mv { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.cdot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+.cdot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--accent); opacity: .5; box-sizing: border-box; }
+.cdot.pf::after { background: var(--accent); }
+.cdot.po::after { background: var(--card); }
+.mv-label { position: absolute; top: -2px; transform: translateX(4px); font-size: 10px; color: var(--muted); white-space: nowrap; }
+.spark .pf { fill: currentColor; opacity: .45; } .spark .po { fill: var(--card); stroke: currentColor; stroke-width: 1.2; opacity: .55; }
+.gr-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+.gr-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.lg-line { width: 14px; height: 3px; border-radius: 2px; background: var(--accent); }
+.lg-dot { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--muted); }
+.lg-dot.pf { background: var(--muted); } .lg-dot.po { background: transparent; }
+.growth .lg-line { background: var(--muted); }
+.danger-text { color: var(--danger); }
+.lg-mv { width: 0; height: 11px; border-left: 1px dashed var(--muted); }
+.gr-sum .gr-pill { margin-left: 2px; }
 .chart-x { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); position: absolute; left: 0; right: 56px; bottom: 0; }
 
 /* ---------- 편집기 ---------- */
@@ -400,12 +416,12 @@ svg { flex-shrink: 0; }
  *   Block     = { exId, note, rest, sets: [Set] }
  *   Set       = { t, w, r, s, d }   t: n(일반) w(워밍업) d(드롭) f(실패)
  *               w=kg, r=횟수, s=초, d=km — 종목 type에 맞는 값만 채움
- *   settings  = { rest, sound, vibrate, theme }
+ *   settings  = { rest, sound, vibrate, theme, prefillPrev, gymMoves: ['YYYY-MM-DD'] }   gymMoves: 헬스장 이동일(그래프 구간 나눔)
  *   진행 중인 운동은 ACTIVE_KEY(이 기기 로컬)에만 두고, 완료할 때 workouts에 들어간다.
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 6;
+var APP_VERSION = 7;
 var APP_BUILD_DATE = '2026-11-24';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -434,7 +450,7 @@ var data = emptyData();
 function emptyData() {
   return {
     v: 1, exercises: [], routines: [], workouts: [],
-    settings: { rest: 90, sound: true, vibrate: true, theme: 'auto', prefillPrev: true }
+    settings: { rest: 90, sound: true, vibrate: true, theme: 'auto', prefillPrev: true, gymMoves: [] }
   };
 }
 
@@ -616,6 +632,8 @@ function normalize(o) {
   d.settings.vibrate = s.vibrate !== false;
   d.settings.theme = ['auto', 'light', 'dark'].indexOf(s.theme) >= 0 ? s.theme : 'auto';
   d.settings.prefillPrev = s.prefillPrev !== false;
+  d.settings.gymMoves = (Array.isArray(s.gymMoves) ? s.gymMoves : []).filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })
+    .filter(function (x, i, a) { return a.indexOf(x) === i; }).sort().slice(0, 20);
   return d;
 }
 async function loadData() {
@@ -1958,65 +1976,124 @@ function routineMenu(routine, page) {
   ]);
 }
 // 루틴 상세 — 시작하지 않고도 어떤 종목을 어떻게 하는지(세트·무게·휴식·메모, 지난 기록) 확인
-// ---------- 루틴 성장 추이 (A안: 종목별 미니 그래프) ----------
-// 기준: 운동한 날마다 그 종목의 값 하나 — 예상 1RM(그날 최고), 최고 무게, 볼륨(그날 합계).
-// 무게 기록이 아닌 종목은 각자의 대표 값으로 바꿔 쓴다: 횟수 종목=최고 횟수/총 횟수, 시간=최장/총 시간, 거리=최장/총 거리.
-var growthState = { metric: 'e1rm', period: 'all' };   // 화면을 닫았다 열어도 마지막 선택 유지
+// ---------- 성장 추이 공통 (종목 상세 그래프 · 루틴 성장 추이) ----------
+// 점진적 과부하는 "매번 오르는 선"이 아니라 "추세가 오르는가"로 본다.
+//  · 그날 값: 운동한 날마다 하나. 워밍업(W)·드롭(D) 세트는 빼고, 예상 1RM은 12회 이하 세트를 우선
+//    (늘 고반복으로 하는 종목처럼 12회 이하 세트가 없으면 그 날 세트 전체로 계산)
+//  · 추세선: 최근 3회 중 최고값(롤링 최고). 하루 부진해도 꺾이지 않고, 정체·후퇴가 몇 번 이어질 때만 드러난다
+//  · 헬스장 이동일(설정)에서 구간을 끊는다 — 기구가 달라 같은 숫자가 같은 부하가 아니므로, 변화는 같은 구간 안에서만 비교
+//  · 변화: 선택한 기간(4주/8주/전체) 안에서 추세선 처음 → 마지막. ±2% 안쪽은 '유지', 기록 3회 미만이면 판단 보류
+var TREND_WINDOW = 3, FLAT_PCT = 2, MIN_POINTS = 3;   // MIN_POINTS: 기간(같은 구간) 안 기록이 이보다 적으면 상승/하락을 판단하지 않음
+var growthState = { metric: 'e1rm', period: '8' };   // 화면을 닫았다 열어도 마지막 선택 유지
 var GROWTH_METRICS = [['e1rm', '예상 1RM'], ['w', '최고 무게'], ['vol', '볼륨']];
 var GROWTH_PERIODS = [['4', '4주'], ['8', '8주'], ['all', '전체']];
-function growthValue(sets, type, metric) {
-  var ws = sets.filter(isWork), v = 0;
-  var total = metric === 'vol';
-  ws.forEach(function (s) {
-    var x;
-    if (type === 'wr') x = metric === 'e1rm' ? e1rm(s.w || 0, s.r || 0) : metric === 'w' ? (s.w || 0) : setVolume(s);
-    else if (type === 'r') x = s.r || 0;
-    else if (type === 't') x = s.s || 0;
-    else x = s.d || 0;
-    v = total ? v + x : Math.max(v, x);
+// 종목 type별로 기준(metric)을 그 종목에 맞는 값으로 바꾼다
+function metricFor(type, metric) {
+  if (type === 'wr') return metric;
+  if (type === 'r') return metric === 'vol' || metric === 'tot' ? 'tot' : 'r';
+  if (type === 't') return metric === 'vol' ? 'stot' : 's';
+  return metric === 's' ? 's' : 'd';
+}
+function dayValue(sets, type, metric) {
+  metric = metricFor(type, metric);
+  var total = metric === 'vol' || metric === 'tot' || metric === 'stot';
+  var pool = total ? sets.filter(isWork) : sets.filter(function (x) { return x.t === 'n' || x.t === 'f'; });
+  if (!pool.length) pool = sets.filter(isWork);
+  if (metric === 'e1rm') {
+    var low = pool.filter(function (x) { return x.r > 0 && x.r <= 12; });
+    if (low.length) pool = low;
+  }
+  var v = 0, best = null;
+  pool.forEach(function (x) {
+    var val = metric === 'e1rm' ? e1rm(x.w || 0, x.r || 0) : metric === 'w' ? (x.w || 0) : metric === 'vol' ? (x.w || 0) * (x.r || 0)
+      : metric === 'tot' || metric === 'r' ? (x.r || 0) : metric === 'stot' || metric === 's' ? (x.s || 0) : (x.d || 0);
+    if (total) v += val; else if (val > v) { v = val; best = x; }
   });
-  return v;
+  return { v: v, best: best || bestSet(pool, type) };
 }
-function growthFmt(v, type, metric) {
-  if (type === 'wr') return fmtNum(v) + 'kg';
-  if (type === 'r') return Math.round(v) + '회';
-  if (type === 't') return fmtDur(v);
-  return fmtNum(v) + 'km';
+function fmtMetric(v, type, metric) {
+  metric = metricFor(type, metric);
+  if (metric === 'tot' || metric === 'r') return Math.round(v) + '회';
+  if (metric === 's' || metric === 'stot') return fmtDur(v);
+  if (metric === 'd') return fmtNum(v) + 'km';
+  return fmtNum(v) + 'kg';
 }
-function sparkSvg(vals, dir) {
-  var W = 72, H = 34, P = 4, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rg = mx - mn || 1;
-  var xy = vals.map(function (y, i) { return [(P + i * (W - 2 * P) / (vals.length - 1)).toFixed(1), (P + (1 - (y - mn) / rg) * (H - 2 * P)).toFixed(1)]; });
-  var last = xy[xy.length - 1];
-  return '<svg class="spark ' + dir + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
-    '<polyline points="' + xy.map(function (p) { return p.join(','); }).join(' ') + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
-    '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="3.5" fill="currentColor" stroke="var(--card)" stroke-width="2"/></svg>';
+function moveTimes() { return data.settings.gymMoves.map(function (d) { return new Date(d + 'T00:00').getTime(); }); }
+function segOf(t, moves) { var n = 0; moves.forEach(function (m) { if (t >= m) n++; }); return n; }
+// 종목의 날짜별 점 + 추세선 값
+function progressSeries(exId, metric) {
+  var type = exType(exId), moves = moveTimes();
+  var pts = exerciseHistory(exId).map(function (x) {
+    var dv = dayValue(x.sets, type, metric);
+    return { t: x.w.start, v: dv.v, best: dv.best, pos: x.pos, wid: x.w.id, seg: segOf(x.w.start, moves) };
+  }).filter(function (p) { return p.v > 0; });
+  pts.forEach(function (p, i) {
+    var m = p.v;
+    for (var j = i - 1; j >= 0 && j > i - TREND_WINDOW; j--) { if (pts[j].seg !== p.seg) break; m = Math.max(m, pts[j].v); }
+    p.trend = m;
+  });
+  return { type: type, pts: pts, moves: moves };
+}
+// 변화 상태: 마지막 점이 속한 구간 안에서, 기간 시작 이후 추세선 처음 → 마지막
+function progressStatus(series, sinceMs) {
+  var pts = series.pts;
+  if (!pts.length) return { kind: 'none' };
+  var last = pts[pts.length - 1];
+  var inSeg = pts.filter(function (p) { return p.seg === last.seg; });
+  var win = inSeg.filter(function (p) { return p.t >= sinceMs; });
+  var moved = last.seg > 0 && inSeg.length < pts.length;
+  if (win.length < MIN_POINTS) return { kind: 'few', n: win.length, moved: moved, last: last };
+  var a = win[0].trend, d = last.trend - a, pct = a ? d / a * 100 : 0;
+  return { kind: Math.abs(pct) < FLAT_PCT ? 'fl' : pct > 0 ? 'up' : 'dn', d: d, pct: Math.round(pct), last: last, moved: moved };
+}
+function statusPill(stt, type, metric) {
+  if (stt.kind === 'none') return '<span class="gr-pill fl">기록 없음</span>';
+  if (stt.kind === 'few') return '<span class="gr-pill fl" title="기록 ' + MIN_POINTS + '회부터 추세를 판단해요">' + (stt.moved ? '이동 후 ' : '') + '기록 ' + stt.n + '회</span>';
+  if (stt.kind === 'fl') return '<span class="gr-pill fl">유지 · ' + (stt.pct > 0 ? '+' : '') + stt.pct + '%</span>';
+  return '<span class="gr-pill ' + stt.kind + '">' + (stt.kind === 'up' ? '▲ ' : '▼ ') + fmtMetric(Math.abs(stt.d), type, metric) + ' · ' + (stt.pct > 0 ? '+' : '') + stt.pct + '%</span>';
+}
+// 작은 그래프: 옅은 점(첫 종목 ●, 그 외 ○) + 추세선(구간마다 끊김) + 헬스장 이동선
+function sparkSvg(series, dir) {
+  var pts = series.pts, W = 72, H = 34, P = 4;
+  var vs = pts.map(function (p) { return p.v; }), mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs), rg = mx - mn || 1;
+  var t0 = pts[0].t, t1 = pts[pts.length - 1].t, tr = t1 - t0 || 1;
+  var X = function (t) { return (P + (t - t0) / tr * (W - 2 * P)).toFixed(1); }, Y = function (v) { return (P + (1 - (v - mn) / rg) * (H - 2 * P)).toFixed(1); };
+  var h = '<svg class="spark ' + dir + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">';
+  series.moves.forEach(function (m) { if (m > t0 && m <= t1) h += '<line x1="' + X(m) + '" x2="' + X(m) + '" y1="1" y2="' + (H - 1) + '" class="mv"/>'; });
+  pts.forEach(function (p) { h += '<circle cx="' + X(p.t) + '" cy="' + Y(p.v) + '" r="2.4" class="' + (p.pos === 0 ? 'pf' : 'po') + '"/>'; });
+  var segs = {};
+  pts.forEach(function (p) { (segs[p.seg] = segs[p.seg] || []).push(X(p.t) + ',' + Y(p.trend)); });
+  Object.keys(segs).forEach(function (k) {
+    var a = segs[k];
+    if (a.length > 1) h += '<polyline points="' + a.join(' ') + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>';
+  });
+  return h + '</svg>';
+}
+function growthSummary(up, down, flat, wait, per) {
+  if (!up && !down && !flat) return '<p class="gr-sum">아직 추세를 판단할 기록이 부족해요<small class="muted"> · 같은 구간(헬스장) 안에서 ' + MIN_POINTS + '회부터 판단</small></p>';
+  var parts = [];
+  if (up) parts.push('<span class="up">' + up + '개 상승</span>');
+  if (down) parts.push('<span class="dn">' + down + '개 하락</span>');
+  if (flat) parts.push(flat + '개 유지');
+  if (wait) parts.push('<span class="muted">' + wait + '개 판단 보류</span>');
+  return '<p class="gr-sum">' + parts.join(' · ') + '<small class="muted"> · ' + per + ' 추세선 기준</small></p>';
 }
 function routineGrowthHtml(r) {
   var seen = {}, exIds = [];
   r.exercises.forEach(function (b) { if (!seen[b.exId] && exById(b.exId)) { seen[b.exId] = 1; exIds.push(b.exId); } });
   if (!exIds.length) return '';
   var since = growthState.period === 'all' ? 0 : Date.now() - Number(growthState.period) * 7 * 86400000;
-  var up = 0, down = 0, minT = Infinity, maxT = 0;
+  var up = 0, down = 0, flat = 0;
   var rows = exIds.map(function (id) {
-    var type = exType(id);
-    var pts = exerciseHistory(id).filter(function (x) { return x.w.start >= since; }).map(function (x) {
-      return { t: x.w.start, v: growthValue(x.sets, type, growthState.metric), best: bestSet(x.sets, type) };
-    }).filter(function (p) { return p.v > 0; });
-    var h = '<button class="gr-row" data-r="ex" data-ex="' + id + '">';
-    var name = '<span class="gr-name"><b>' + esc(exName(id)) + '</b><small>';
-    if (!pts.length) return h + name + '기간 안에 기록 없음</small></span><span class="gr-none">—</span><span></span></button>';
-    var lastP = pts[pts.length - 1];
-    minT = Math.min(minT, pts[0].t); maxT = Math.max(maxT, lastP.t);
-    name += pts.length + '회' + (lastP.best ? ' · 최고 세트 ' + esc(fmtSetShort(lastP.best, type)) : '') + '</small></span>';
-    var val = '<span class="gr-val"><b>' + growthFmt(lastP.v, type) + '</b>';
-    if (pts.length < 2) return h + name + '<span class="gr-none">기록 1회</span>' + val + '</span></button>';
-    var a = pts[0].v, d = lastP.v - a, pct = a ? Math.round(d / a * 100) : 0;
-    var eps = type === 'wr' ? 0.5 : 0.5;
-    var dir = Math.abs(d) < eps ? 'fl' : d > 0 ? 'up' : 'dn';
-    if (dir === 'up') up++; else if (dir === 'dn') down++;
-    var pill = dir === 'fl' ? '<span class="gr-pill fl">유지</span>'
-      : '<span class="gr-pill ' + dir + '">' + (dir === 'up' ? '▲ ' : '▼ ') + growthFmt(Math.abs(d), type) + ' · ' + (pct > 0 ? '+' : '') + pct + '%</span>';
-    return h + name + sparkSvg(pts.map(function (p) { return p.v; }), dir) + val + pill + '</span></button>';
+    var sr = progressSeries(id, growthState.metric), type = sr.type;
+    var stt = progressStatus(sr, since);
+    var h = '<button class="gr-row" data-r="ex" data-ex="' + id + '"><span class="gr-name"><b>' + esc(exName(id)) + '</b><small>';
+    if (!sr.pts.length) return h + '기록 없음</small></span><span class="gr-none">—</span><span></span></button>';
+    var lastP = sr.pts[sr.pts.length - 1];
+    h += sr.pts.length + '회' + (lastP.best ? ' · 최근 ' + esc(fmtSetShort(lastP.best, type)) : '') + '</small></span>';
+    if (stt.kind === 'up') up++; else if (stt.kind === 'dn') down++; else if (stt.kind === 'fl') flat++;
+    var graph = sr.pts.length > 1 ? sparkSvg(sr, stt.kind === 'up' || stt.kind === 'dn' ? stt.kind : 'fl') : '<span class="gr-none">—</span>';
+    return h + graph + '<span class="gr-val"><b>' + fmtMetric(lastP.trend, type, growthState.metric) + '</b>' + statusPill(stt, type, growthState.metric) + '</span></button>';
   }).join('');
   var hasWr = exIds.some(function (id) { return exType(id) === 'wr'; });
   var chips = hasWr ? '<div class="chips">' + GROWTH_METRICS.map(function (m) {
@@ -2025,11 +2102,11 @@ function routineGrowthHtml(r) {
   var seg = '<div class="seg sm">' + GROWTH_PERIODS.map(function (m) {
     return '<button class="' + (growthState.period === m[0] ? 'on' : '') + '" data-r="g-period" data-v="' + m[0] + '">' + m[1] + '</button>';
   }).join('') + '</div>';
-  var md = function (t) { var d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate(); };
+  var per = growthState.period === 'all' ? '전체 기간' : '최근 ' + growthState.period + '주';
   return '<div class="card growth"><div class="card-head"><b>성장 추이</b>' + seg + '</div>' + chips +
-    '<p class="gr-sum">' + exIds.length + '종목 중 <span class="up">' + up + '개 상승</span> · <span class="dn">' + down + '개 하락</span>' +
-    '<small class="muted"> · 처음 대비' + (maxT ? ' (' + md(minT) + '–' + md(maxT) + ')' : '') + '</small></p>' +
-    rows + '</div>';
+    growthSummary(up, down, flat, exIds.length - up - down - flat, per) + rows +
+    '<p class="gr-legend"><span><i class="lg-line"></i>최근 ' + TREND_WINDOW + '회 최고(추세)</span><span><i class="lg-dot pf"></i>첫 종목</span><span><i class="lg-dot po"></i>그 외</span>' +
+    (data.settings.gymMoves.length ? '<span><i class="lg-mv"></i>헬스장 이동</span>' : '') + '</p></div>';
 }
 function openRoutineDetail(id) {
   var page = pushPage(function (el) {
@@ -2362,9 +2439,9 @@ function renderExList() {
 function exerciseHistory(exId) {
   var out = [];
   data.workouts.forEach(function (w) {
-    var sets = [];
-    w.exercises.forEach(function (b) { if (b.exId === exId) sets = sets.concat(b.sets); });
-    if (sets.length) out.push({ w: w, sets: sets });
+    var sets = [], pos = -1;
+    w.exercises.forEach(function (b, i) { if (b.exId === exId) { sets = sets.concat(b.sets); if (pos < 0) pos = i; } });
+    if (sets.length) out.push({ w: w, sets: sets, pos: pos });   // pos: 그날 몇 번째로 한 종목인지(0 = 첫 종목)
   });
   return out.sort(function (a, b) { return a.w.start - b.w.start; });
 }
@@ -2380,7 +2457,7 @@ function openExerciseDetail(exId) {
     hist.forEach(function (x) { x.sets.forEach(function (s) { if (isWork(s)) all.push(s); }); });
     var mx = function (f) { return all.reduce(function (a, s) { return Math.max(a, f(s)); }, 0); };
     var stats;
-    if (type === 'wr') stats = [['최고 무게', fmtNum(mx(function (s) { return s.w || 0; })) + 'kg'], ['예상 1RM', fmtNum(mx(function (s) { return e1rm(s.w || 0, s.r || 0); })) + 'kg'], ['최고 볼륨', fmtNum(mx(setVolume)) + 'kg'], ['운동 횟수', hist.length + '회']];
+    if (type === 'wr') stats = [['최고 무게', fmtNum(mx(function (s) { return s.w || 0; })) + 'kg'], ['예상 1RM', fmtNum(hist.reduce(function (a, x) { return Math.max(a, dayValue(x.sets, 'wr', 'e1rm').v); }, 0)) + 'kg'], ['최고 볼륨', fmtNum(mx(setVolume)) + 'kg'], ['운동 횟수', hist.length + '회']];
     else if (type === 'r') stats = [['최고 횟수', mx(function (s) { return s.r || 0; }) + '회'], ['총 횟수', all.reduce(function (a, s) { return a + (s.r || 0); }, 0) + '회'], ['운동 횟수', hist.length + '회']];
     else if (type === 't') stats = [['최장 시간', fmtDur(mx(function (s) { return s.s || 0; }))], ['운동 횟수', hist.length + '회']];
     else stats = [['최장 거리', fmtNum(mx(function (s) { return s.d || 0; })) + 'km'], ['최장 시간', fmtDur(mx(function (s) { return s.s || 0; }))], ['운동 횟수', hist.length + '회']];
@@ -2389,18 +2466,14 @@ function openExerciseDetail(exId) {
     if (hist.length) {
       var metrics = type === 'wr' ? [['e1rm', '예상 1RM'], ['w', '최고 무게'], ['vol', '볼륨']] : type === 'r' ? [['r', '최고 횟수'], ['tot', '총 횟수']] : type === 't' ? [['s', '최장 시간']] : [['d', '거리'], ['s', '시간']];
       if (!metrics.some(function (m) { return m[0] === st.metric; })) st.metric = metrics[0][0];
-      var pts = hist.map(function (x) {
-        var ws = x.sets.filter(isWork), v = 0;
-        ws.forEach(function (s) {
-          var val = st.metric === 'e1rm' ? e1rm(s.w || 0, s.r || 0) : st.metric === 'vol' ? setVolume(s) : st.metric === 'tot' ? s.r || 0 : s[st.metric] || 0;
-          v = (st.metric === 'vol' || st.metric === 'tot') ? v + val : Math.max(v, val);
-        });
-        return { t: x.w.start, v: v };
-      });
-      var unit = { e1rm: 'kg', w: 'kg', vol: 'kg', r: '회', tot: '회', s: '초', d: 'km' }[st.metric];
+      var sr = progressSeries(exId, st.metric);
+      st.series = sr;
+      var stt8 = progressStatus(sr, Date.now() - 8 * 7 * 86400000);
       h += '<div class="card"><div class="chips">' + (metrics.length > 1 ? metrics.map(function (m) {
         return '<button class="chip' + (st.metric === m[0] ? ' on' : '') + '" data-x="metric" data-m="' + m[0] + '">' + m[1] + '</button>';
-      }).join('') : '') + '</div>' + lineChart(pts, unit) + '</div>';
+      }).join('') : '') + '</div>' +
+        '<p class="gr-sum">최근 8주 추세 ' + statusPill(stt8, type, st.metric) + '</p>' +
+        trendChart(sr, st.metric) + '</div>';
       h += '<h3 class="month-head">기록</h3>';
       hist.slice().reverse().forEach(function (x) {
         h += '<button class="card hist-item" data-x="workout" data-wid="' + x.w.id + '"><div class="card-head"><b>' + esc(x.w.name) + '</b><small class="muted">' + fmtKoDate(x.w.start) + '</small></div>' +
@@ -2416,6 +2489,10 @@ function openExerciseDetail(exId) {
     if (!b) return;
     var act = b.getAttribute('data-x');
     if (act === 'metric') { st.metric = b.getAttribute('data-m'); page.render(); }
+    else if (act === 'pt' && st.series) {
+      var pt = st.series.pts[Number(b.getAttribute('data-i'))];
+      if (pt) toast(fmtKoDate(pt.t) + ' · ' + (pt.pos + 1) + '번째 종목' + (pt.best ? ' · ' + fmtSetShort(pt.best, st.series.type) : '') + ' → ' + fmtMetric(pt.v, st.series.type, st.metric), 3000);
+    }
     else if (act === 'workout') openWorkoutDetail(b.getAttribute('data-wid'));
     else if (act === 'menu') {
       var ex = exById(exId);
@@ -2427,26 +2504,39 @@ function openExerciseDetail(exId) {
     }
   });
 }
-function lineChart(pts, unit) {
-  if (pts.length < 2) return '<p class="hint">기록이 2회 이상 쌓이면 추이 그래프가 보여요.' + (pts.length ? ' (현재 ' + fmtNum(pts[0].v) + unit + ')' : '') + '</p>';
+// 종목 상세 그래프: 옅은 점(첫 종목 ●, 그 외 ○) + 굵은 추세선(최근 3회 최고) + 헬스장 이동선. 점을 누르면 그날 정보
+function trendChart(sr, metric) {
+  var pts = sr.pts, type = sr.type;
+  if (pts.length < 2) return '<p class="hint">기록이 2회 이상 쌓이면 추이 그래프가 보여요.' + (pts.length ? ' (현재 ' + fmtMetric(pts[0].v, type, metric) + ')' : '') + '</p>';
   var W = 320, H = 150, P = 8;
   var vs = pts.map(function (p) { return p.v; });
   var min = Math.min.apply(null, vs), max = Math.max.apply(null, vs);
   if (max === min) { max += 1; min = Math.max(0, min - 1); }
-  var t0 = pts[0].t, t1 = pts[pts.length - 1].t || t0 + 1;
-  var xy = pts.map(function (p) {
-    var x = P + (t1 === t0 ? 0 : (p.t - t0) / (t1 - t0)) * (W - 2 * P);
-    var y = P + (1 - (p.v - min) / (max - min)) * (H - 2 * P);
-    return [x.toFixed(1), y.toFixed(1)];
+  var t0 = pts[0].t, t1 = pts[pts.length - 1].t, tr = t1 - t0 || 1;
+  var X = function (t) { return P + (t - t0) / tr * (W - 2 * P); }, Y = function (v) { return P + (1 - (v - min) / (max - min)) * (H - 2 * P); };
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="chart-svg">';
+  var labels = '';
+  sr.moves.forEach(function (m) {
+    if (m > t0 && m <= t1) {
+      svg += '<line x1="' + X(m).toFixed(1) + '" x2="' + X(m).toFixed(1) + '" y1="0" y2="' + H + '" class="mv" vector-effect="non-scaling-stroke"/>';
+      labels += '<span class="mv-label" style="left:' + (X(m) / W * 100) + '%">헬스장 이동</span>';
+    }
   });
-  var fmtV = function (v) { return unit === '초' ? fmtDur(v) : fmtNum(v) + unit; };
-  return '<div class="chart"><div class="chart-y"><span>' + fmtV(max) + '</span><span>' + fmtV(min) + '</span></div>' +
-    '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" class="chart-svg">' +
-    '<polyline points="' + xy.map(function (p) { return p.join(','); }).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
-    '</svg><div class="chart-dots">' + xy.map(function (p) { return '<i style="left:' + (p[0] / W * 100) + '%;top:' + (p[1] / H * 100) + '%"></i>'; }).join('') + '</div>' +
-    '<div class="chart-x"><span>' + fmtKoDate(t0) + '</span><span>' + fmtKoDate(t1) + '</span></div></div>';
+  var segs = {};
+  pts.forEach(function (p) { (segs[p.seg] = segs[p.seg] || []).push(X(p.t).toFixed(1) + ',' + Y(p.trend).toFixed(1)); });
+  Object.keys(segs).forEach(function (k) {
+    if (segs[k].length > 1) svg += '<polyline points="' + segs[k].join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+  });
+  svg += '</svg>';
+  var dots = pts.map(function (p, i) {
+    return '<button class="cdot ' + (p.pos === 0 ? 'pf' : 'po') + '" style="left:' + (X(p.t) / W * 100) + '%;top:' + (Y(p.v) / H * 100) + '%" data-x="pt" data-i="' + i + '" aria-label="' + fmtKoDate(p.t) + ' ' + fmtMetric(p.v, type, metric) + '"></button>';
+  }).join('');
+  return '<div class="chart"><div class="chart-y"><span>' + fmtMetric(max, type, metric) + '</span><span>' + fmtMetric(min, type, metric) + '</span></div>' + svg +
+    '<div class="chart-dots">' + labels + dots + '</div>' +
+    '<div class="chart-x"><span>' + fmtKoDate(t0) + '</span><span>' + fmtKoDate(t1) + '</span></div></div>' +
+    '<p class="gr-legend"><span><i class="lg-line"></i>최근 ' + TREND_WINDOW + '회 최고(추세)</span><span><i class="lg-dot pf"></i>첫 종목</span><span><i class="lg-dot po"></i>그 외</span>' +
+    (sr.moves.length ? '<span><i class="lg-mv"></i>헬스장 이동</span>' : '') + '<span class="muted">점을 누르면 그날 기록</span></p>';
 }
-
 // ---------- 설정 탭 ----------
 function settingsTabHtml() {
   var s = data.settings, cfg = getGhConfig();
@@ -2459,6 +2549,11 @@ function settingsTabHtml() {
     '<div class="row"><span>휴식 끝 알림음</span><button class="switch' + (s.sound ? ' on' : '') + '" data-a="toggle" data-k="sound" aria-label="알림음"></button></div>' +
     '<div class="row"><span>휴식 끝 진동</span><button class="switch' + (s.vibrate ? ' on' : '') + '" data-a="toggle" data-k="vibrate" aria-label="진동"></button></div>' +
     '<div class="row"><span class="list-main"><span class="row-label">루틴 시작 시 지난 기록으로 채우기</span><small>끄면 루틴에 저장된 무게·횟수로 채워요</small></span><button class="switch' + (s.prefillPrev ? ' on' : '') + '" data-a="toggle" data-k="prefillPrev" aria-label="지난 기록으로 채우기"></button></div></div>';
+  h += '<h2 class="sec-title">헬스장 이동일</h2><div class="card"><p class="hint left">헬스장을 옮기면 기구가 달라 같은 무게도 체감 부하가 달라요. 이동일을 넣으면 그래프에 세로선이 생기고, 성장 변화는 이동 뒤 기록끼리만 비교해요.</p>' +
+    s.gymMoves.map(function (d) {
+      return '<div class="row"><span>' + fmtKoDate(new Date(d + 'T12:00').getTime()) + '</span><button class="btn btn-ghost btn-sm danger-text" data-a="gym-del" data-v="' + d + '">삭제</button></div>';
+    }).join('') +
+    '<div class="row"><input type="date" class="input" id="gym-move-date" aria-label="헬스장 이동일" style="flex:1"><button class="btn btn-secondary btn-sm" data-a="gym-add">추가</button></div></div>';
   h += '<h2 class="sec-title">GitHub 동기화</h2><div class="card">';
   if (cfg) {
     h += '<div class="row"><span class="list-main"><b>' + esc(cfg.owner + '/' + cfg.repo) + '</b><small>' + esc(cfg.branch || 'main') + ' 브랜치 · ' + esc(GH_DATA_PATH) +
@@ -2658,6 +2753,16 @@ $('view').addEventListener('click', function (e) {
       data.settings.rest = REST_OPTIONS[i]; save(); refreshTab();
       break;
     case 'toggle': var k = b.getAttribute('data-k'); data.settings[k] = !data.settings[k]; save(); refreshTab(); break;
+    case 'gym-add':
+      var gd = ($('gym-move-date') || {}).value;
+      if (!gd) { toast('날짜를 고르세요'); break; }
+      if (data.settings.gymMoves.indexOf(gd) < 0) { data.settings.gymMoves.push(gd); data.settings.gymMoves.sort(); save(); }
+      refreshTab(); toast('헬스장 이동일을 추가했어요');
+      break;
+    case 'gym-del':
+      var gv = b.getAttribute('data-v');
+      data.settings.gymMoves = data.settings.gymMoves.filter(function (x) { return x !== gv; }); save(); refreshTab();
+      break;
     case 'gh-connect': ghConnect(); break;
     case 'gh-reload':
       if (localStorage.getItem(GH_PENDING_KEY)) { toast('아직 GitHub에 올라가지 않은 변경사항이 있어 다시 불러오지 않았습니다', 3500); break; }
