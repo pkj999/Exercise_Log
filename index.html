@@ -163,7 +163,12 @@ svg { flex-shrink: 0; }
 .warn-note { font-size: 13px; font-weight: 600; color: var(--warm); background: var(--gold-soft); border-radius: 10px; padding: 9px 12px; margin: -4px 0 12px; }
 
 /* ---------- 운동 탭 ---------- */
-.routine-ex { margin: 0 0 4px; font-size: 14px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.routine-body { display: block; width: 100%; text-align: left; border-radius: 10px; }
+.routine-body .wk-lines { border-top: 0; padding-top: 2px; }
+.routine-body .meta { display: flex; align-items: center; margin-bottom: 12px; }
+.more-link { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; color: var(--accent); font-weight: 600; }
+.fav-mark { color: var(--gold); margin-right: 6px; vertical-align: 1px; }
+.prev-line { font-size: 13px; color: var(--muted); margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .card.routine .btn-block { margin-bottom: 0; }
 .card.resume { display: flex; align-items: center; gap: 12px; border-color: var(--accent); }
 .pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 var(--good); animation: pulse 1.6s infinite; flex-shrink: 0; }
@@ -371,7 +376,7 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 3;
+var APP_VERSION = 4;
 var APP_BUILD_DATE = '2026-11-24';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -1877,11 +1882,92 @@ function refreshChrome() {
 
 // ---------- 운동 탭 ----------
 // 즐겨찾기 켜고 끄기 — 카드가 목록 위/아래로 자리를 옮기므로 화면도 그 카드를 따라간다
-function toggleRoutineFav(r) {
+function toggleRoutineFav(r, page) {
   r.fav = !r.fav; save(); refreshTab();
-  var card = document.querySelector('.card.routine[data-rid="' + r.id + '"]');
-  if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (page) page.render();
+  else {
+    var card = document.querySelector('.card.routine[data-rid="' + r.id + '"]');
+    if (card) card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
   toast(r.fav ? '즐겨찾기에 추가했어요' : '즐겨찾기에서 뺐어요');
+}
+// 루틴 종목 한 줄 요약: "4세트 · 50–55kg × 8–10" (워밍업 제외, 값이 없으면 세트 수만)
+function routineSummary(b) {
+  var type = exType(b.exId), ws = b.sets.filter(isWork), warm = b.sets.length - ws.length;
+  function range(vals, f) {
+    vals = vals.filter(function (v) { return v != null; });
+    if (!vals.length) return '';
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    return lo === hi ? f(lo) : f(lo) + '–' + f(hi);
+  }
+  var head = (warm ? 'W' + warm + ' + ' : '') + ws.length + '세트';
+  var val = '';
+  if (type === 'wr') {
+    var wv = range(ws.map(function (x) { return x.w; }), fmtNum), rv = range(ws.map(function (x) { return x.r; }), String);
+    val = wv && rv ? wv + 'kg × ' + rv : wv ? wv + 'kg' : rv ? rv + '회' : '';
+  } else if (type === 'r') val = range(ws.map(function (x) { return x.r; }), function (v) { return v + '회'; });
+  else if (type === 't') val = range(ws.map(function (x) { return x.s; }), fmtDur);
+  else val = range(ws.map(function (x) { return x.d; }), function (v) { return fmtNum(v) + 'km'; }) || range(ws.map(function (x) { return x.s; }), fmtDur);
+  return val ? head + ' · ' + val : head;
+}
+// 루틴 ⋯ 메뉴 — 운동 탭 카드와 루틴 상세에서 같이 쓴다 (page: 상세에서 열었을 때)
+function routineMenu(routine, page) {
+  actionSheet(routine.name, [
+    { label: routine.fav ? '즐겨찾기 해제' : '즐겨찾기', icon: routine.fav ? 'starf' : 'star', onClick: function () { toggleRoutineFav(routine, page); } },
+    { label: '수정', icon: 'edit', onClick: function () { openEditor('routine', routine); } },
+    { label: '복제', icon: 'copy', onClick: function () {
+      var c = clone(routine); c.id = uid(); c.fav = false; c.name = (routine.name + ' 사본').slice(0, 40);
+      data.routines.splice(data.routines.indexOf(routine) + 1, 0, c); save(); refreshTab();
+      toast('\u2018' + c.name + '\u2019을 만들었어요');
+    } },
+    { label: '삭제', icon: 'trash', danger: true, onClick: function () {
+      confirmSheet('\u2018' + routine.name + '\u2019 루틴을 삭제할까요? 운동 기록은 지워지지 않습니다.', '삭제', function () {
+        data.routines = data.routines.filter(function (r) { return r !== routine; }); save();
+        if (page) closePage(1, function () { toast('삭제했습니다'); }); else refreshTab();
+      });
+    } }
+  ]);
+}
+// 루틴 상세 — 시작하지 않고도 어떤 종목을 어떻게 하는지(세트·무게·휴식·메모, 지난 기록) 확인
+function openRoutineDetail(id) {
+  var page = pushPage(function (el) {
+    var r = data.routines.find(function (x) { return x.id === id; });
+    if (!r) { el.innerHTML = pageHeader({ title: '루틴' }) + '<div class="page-body"><p class="hint">삭제된 루틴입니다.</p></div>'; return; }
+    var last = 0;
+    data.workouts.forEach(function (w) { if (w.routineId === r.id && w.start > last) last = w.start; });
+    var h = pageHeader({ title: '루틴', right: '<button class="icon-btn" data-r="menu" aria-label="메뉴">' + icon('more', 20) + '</button>' }) +
+      '<div class="page-body"><h2 class="detail-title">' + (r.fav ? '<span class="fav-mark">' + icon('starf', 18) + '</span>' : '') + esc(r.name) + '</h2>' +
+      '<p class="meta">종목 ' + r.exercises.length + '개' + (last ? ' · 마지막 ' + fmtKoDate(last) : '') + '</p>' +
+      (data.settings.prefillPrev ? '<p class="hint left">시작하면 각 세트가 아래 \u2018지난번\u2019 값으로 채워져요. 설정에서 루틴 값으로 바꿀 수 있어요.</p>' : '');
+    r.exercises.forEach(function (b) {
+      var type = exType(b.exId), no = 0;
+      var rest = b.rest != null ? b.rest : data.settings.rest;
+      var prev = previousSets(b.exId, Infinity, '');
+      var memo = b.note || lastNote(b.exId, Infinity, '');
+      h += '<div class="card"><div class="card-head"><button class="block-name" data-r="ex" data-ex="' + b.exId + '">' + esc(exName(b.exId)) + '</button>' +
+        '<small class="muted">' + icon('clock', 13) + ' 휴식 ' + fmtRest(rest) + '</small></div>' +
+        (memo ? '<p class="meta">' + (b.note ? '' : '지난 메모: ') + esc(memo) + '</p>' : '') +
+        '<div class="set-list">' + b.sets.map(function (st) {
+          if (st.t !== 'w') no++;
+          return '<div class="set-line"><span class="set-badge t-' + st.t + '">' + setBadge(st.t, no) + '</span><span>' + (hasValue(st) ? esc(fmtSet(st, type)) : '<span class="muted">값 없음</span>') + '</span></div>';
+        }).join('') + '</div>' +
+        (prev ? '<p class="prev-line">지난번 · ' + esc(prev.map(function (x) { return (x.t === 'w' ? 'W ' : '') + fmtSetShort(x, type); }).join(' / ')) + '</p>' : '') +
+        '</div>';
+    });
+    if (!r.exercises.length) h += '<div class="empty"><p>종목이 없어요. ⋯ 메뉴의 수정에서 추가하세요.</p></div>';
+    h += '<button class="btn btn-primary btn-block btn-lg" data-r="start">' + icon('play', 16) + '루틴 시작</button></div>';
+    el.innerHTML = h;
+  });
+  page.el.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-r]');
+    if (!b) return;
+    var r = data.routines.find(function (x) { return x.id === id; });
+    if (!r) return;
+    var act = b.getAttribute('data-r');
+    if (act === 'menu') routineMenu(r, page);
+    else if (act === 'start') startWorkout(r);
+    else if (act === 'ex' && exById(b.getAttribute('data-ex'))) openExerciseDetail(b.getAttribute('data-ex'));
+  });
 }
 function workoutTabHtml() {
   var h = '<h2 class="sec-title">빠른 시작</h2>';
@@ -1905,13 +1991,15 @@ function workoutTabHtml() {
     if (split && i === favs.length) h += '<h3 class="month-head">전체 루틴</h3>';
     var last = 0;
     data.workouts.forEach(function (w) { if (w.routineId === r.id && w.start > last) last = w.start; });
-    var names = r.exercises.map(function (b) { return exName(b.exId); });
     h += '<div class="card routine" data-rid="' + r.id + '">' +
       '<div class="card-head"><b>' + esc(r.name) + '</b><span class="card-actions">' +
       '<button class="icon-btn fav' + (r.fav ? ' on' : '') + '" data-a="routine-fav" aria-pressed="' + !!r.fav + '" aria-label="' + (r.fav ? '즐겨찾기 해제' : '즐겨찾기') + '">' + icon(r.fav ? 'starf' : 'star', 19) + '</button>' +
       '<button class="icon-btn" data-a="routine-menu" aria-label="루틴 메뉴">' + icon('more', 20) + '</button></span></div>' +
-      '<p class="routine-ex">' + esc(names.join(', ') || '종목 없음') + '</p>' +
-      '<p class="meta">종목 ' + r.exercises.length + '개' + (last ? ' · 마지막 ' + fmtKoDate(last) : '') + '</p>' +
+      '<button class="routine-body" data-a="open-routine" aria-label="' + esc(r.name) + ' 루틴 자세히 보기"><div class="wk-lines">' +
+      (r.exercises.length ? r.exercises.map(function (b) {
+        return '<div class="wk-line"><span>' + esc(exName(b.exId)) + '</span><span class="muted">' + esc(routineSummary(b)) + '</span></div>';
+      }).join('') : '<div class="wk-line muted">종목 없음</div>') +
+      '</div><p class="meta">종목 ' + r.exercises.length + '개' + (last ? ' · 마지막 ' + fmtKoDate(last) : '') + '<span class="more-link">자세히' + icon('right', 13) + '</span></p></button>' +
       '<button class="btn btn-primary btn-block" data-a="start-routine">' + icon('play', 14) + '루틴 시작</button></div>';
   });
   return h;
@@ -2368,21 +2456,8 @@ $('view').addEventListener('click', function (e) {
     case 'new-routine': openEditor('routine'); break;
     case 'start-routine': if (routine) startWorkout(routine); break;
     case 'routine-fav': if (routine) toggleRoutineFav(routine); break;
-    case 'routine-menu':
-      actionSheet(routine.name, [
-        { label: routine.fav ? '즐겨찾기 해제' : '즐겨찾기', icon: routine.fav ? 'starf' : 'star', onClick: function () { toggleRoutineFav(routine); } },
-        { label: '수정', icon: 'edit', onClick: function () { openEditor('routine', routine); } },
-        { label: '복제', icon: 'copy', onClick: function () {
-          var c = clone(routine); c.id = uid(); c.fav = false; c.name = (routine.name + ' 사본').slice(0, 40);
-          data.routines.splice(data.routines.indexOf(routine) + 1, 0, c); save(); refreshTab();
-        } },
-        { label: '삭제', icon: 'trash', danger: true, onClick: function () {
-          confirmSheet('‘' + routine.name + '’ 루틴을 삭제할까요? 운동 기록은 지워지지 않습니다.', '삭제', function () {
-            data.routines = data.routines.filter(function (r) { return r !== routine; }); save(); refreshTab();
-          });
-        } }
-      ]);
-      break;
+    case 'routine-menu': if (routine) routineMenu(routine); break;
+    case 'open-routine': if (routine) openRoutineDetail(routine.id); break;
     case 'open-workout': openWorkoutDetail(b.getAttribute('data-wid')); break;
     case 'add-past': openEditor('edit', null, { date: histDay }); break;
     case 'cal-prev': calMonth.setMonth(calMonth.getMonth() - 1); refreshTab(); break;
