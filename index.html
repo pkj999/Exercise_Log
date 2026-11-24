@@ -156,6 +156,8 @@ svg { flex-shrink: 0; }
 .switch.on::after { transform: translateX(20px); }
 .badge { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
 .badge.ok { background: var(--good-soft); color: var(--good); }
+.row-label { font-weight: 400; white-space: normal; }
+.warn-note { font-size: 13px; font-weight: 600; color: var(--warm); background: var(--gold-soft); border-radius: 10px; padding: 9px 12px; margin: -4px 0 12px; }
 
 /* ---------- 운동 탭 ---------- */
 .routine-ex { margin: 0 0 4px; font-size: 14px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -366,8 +368,8 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시)
-var APP_VERSION = 48;
-var APP_BUILD_DATE = '2026-11-23';
+var APP_VERSION = 49;
+var APP_BUILD_DATE = '2026-11-24';
 
 var STORAGE_KEY = 'exercise-log-v1';
 var ACTIVE_KEY = 'exercise-log-active';
@@ -395,7 +397,7 @@ var data = emptyData();
 function emptyData() {
   return {
     v: 1, exercises: [], routines: [], workouts: [],
-    settings: { rest: 90, sound: true, vibrate: true, theme: 'auto' }
+    settings: { rest: 90, sound: true, vibrate: true, theme: 'auto', prefillPrev: true }
   };
 }
 
@@ -556,6 +558,7 @@ function normalize(o) {
   d.settings.sound = s.sound !== false;
   d.settings.vibrate = s.vibrate !== false;
   d.settings.theme = ['auto', 'light', 'dark'].indexOf(s.theme) >= 0 ? s.theme : 'auto';
+  d.settings.prefillPrev = s.prefillPrev !== false;
   return d;
 }
 async function loadData() {
@@ -1071,12 +1074,21 @@ function defaultWorkoutName(ms) {
   var h = new Date(ms || Date.now()).getHours();
   return (h < 5 ? '새벽' : h < 11 ? '아침' : h < 14 ? '점심' : h < 18 ? '오후' : '저녁') + ' 운동';
 }
-function liveBlocksFrom(blocks) {
+// usePrev: 루틴으로 시작할 때 각 세트 값을 그 종목의 지난 기록(같은 순번 세트)으로 채운다 —
+// 루틴에 적어둔 무게가 예전 값이어도 지난번에 한 무게부터 바로 시작할 수 있게. 세트 종류(W/D/F)는 루틴을 따른다.
+function liveBlocksFrom(blocks, usePrev) {
   return (blocks || []).map(function (b) {
     var sets = b.sets.length ? b.sets : [{ t: 'n' }];
+    var prev = usePrev ? previousSets(b.exId, Date.now(), '') : null;
     return {
       exId: b.exId, note: b.note || '', rest: b.rest,
-      sets: sets.map(function (s) { var c = cleanSet(s); c.done = false; return c; })
+      sets: sets.map(function (s, i) {
+        var c = cleanSet(s);
+        var p = prev && prev[i];
+        if (p) ['w', 'r', 's', 'd'].forEach(function (k) { if (p[k] != null) c[k] = p[k]; else delete c[k]; });
+        c.done = false;
+        return c;
+      })
     };
   });
 }
@@ -1086,7 +1098,7 @@ function startWorkout(routine, blocks, name) {
     active = {
       id: uid(), name: name || (routine ? routine.name : defaultWorkoutName()),
       routineId: routine ? routine.id : '', start: Date.now(), note: '',
-      exercises: liveBlocksFrom(routine ? routine.exercises : blocks),
+      exercises: liveBlocksFrom(routine ? routine.exercises : blocks, !!routine && data.settings.prefillPrev),
       restEnd: 0, restTotal: 0
     };
     saveActive();
@@ -1181,7 +1193,8 @@ function renderEditor(el, ed) {
     h += '<div class="field-row">' +
       '<label class="field"><span>날짜</span><input type="date" class="input" data-f="date" value="' + fmtDate(sd) + '"></label>' +
       '<label class="field"><span>시작</span><input type="time" class="input" data-f="time" value="' + fmtClock(o.start) + '"></label>' +
-      '<label class="field narrow"><span>소요(분)</span><input type="number" class="input" inputmode="numeric" data-f="dur" value="' + Math.round(workoutDuration(o) / 60) + '"></label></div>';
+      '<label class="field narrow"><span>소요(분)</span><input type="number" class="input" inputmode="numeric" data-f="dur" value="' + Math.round(workoutDuration(o) / 60) + '"></label></div>' +
+      '<p class="warn-note js-future"' + (o.start > Date.now() ? '' : ' hidden') + '>오늘 이후의 날짜·시각이에요. 맞는지 확인해 주세요.</p>';
   }
   if (!routine) h += '<textarea class="note-input" data-f="note" rows="1" maxlength="1000" placeholder="메모 (선택)">' + esc(o.note || '') + '</textarea>';
 
@@ -1281,6 +1294,8 @@ function bindEditor(el, ed, page) {
       var dur = Math.max(0, Math.min(1440, Number(el.querySelector('[data-f="dur"]').value) || 0));
       var st = new Date(dateV + 'T' + timeV).getTime();
       if (isFinite(st)) { o.start = st; o.end = st + dur * 60000; }
+      var fn = el.querySelector('.js-future');
+      if (fn) fn.hidden = !(o.start > Date.now());
     } else if (t.hasAttribute('data-bn')) {
       ctx(t).b.note = t.value;
     } else if (t.hasAttribute('data-k')) {
@@ -1652,7 +1667,7 @@ function openPicker(opts) {
         st.sel.push(ex.id); st.q = ''; st.muscle = '';
         var inp = el.querySelector('[data-p="q"]'); if (inp) inp.value = '';
         renderPickerList(el, st, opts);
-      });
+      }, st.muscle);
     }
   });
 }
@@ -1695,10 +1710,10 @@ function deleteExercise(ex, onDone) {
   });
 }
 // 종목 만들기/수정 시트. ex가 있으면 수정, 없으면 새로 만들기
-function openExerciseForm(ex, presetName, onSaved) {
+function openExerciseForm(ex, presetName, onSaved, presetMuscle) {
   var used = ex ? exerciseUseCount(ex.id) : 0;
   var inRoutine = ex ? routineUseCount(ex.id) : 0;
-  var cur = { muscle: ex ? ex.muscle : '', type: ex ? ex.type : 'wr' };
+  var cur = { muscle: ex ? ex.muscle : (presetMuscle || ''), type: ex ? ex.type : 'wr' };
   function chips(list, key, labels) {
     return list.map(function (v) {
       var dis = key === 'type' && used > 0 && v !== cur.type;
@@ -1755,9 +1770,12 @@ var currentTab = 'workout';
 var TAB_TITLES = { workout: '운동', history: '기록', exercises: '종목', settings: '설정' };
 var calMonth = new Date(); calMonth.setDate(1);
 var histDay = null;      // 기록 탭에서 캘린더로 고른 날짜 (YYYY-MM-DD)
+var HIST_PAGE = 20;      // 기록 탭 목록을 한 번에 그리는 개수 — 기록이 많아도 탭이 빨리 열리게
+var histLimit = HIST_PAGE;
 var exQuery = '';
 
 function switchTab(tab) {
+  if (tab !== currentTab) histLimit = HIST_PAGE;
   currentTab = tab;
   Array.prototype.forEach.call(document.querySelectorAll('.tab-btn'), function (b) {
     b.classList.toggle('on', b.getAttribute('data-tab') === tab);
@@ -1834,11 +1852,15 @@ function historyTabHtml() {
     h += '<p class="hint">이 날은 기록이 없어요.</p>';
   }
   var lastMonth = '';
-  list.forEach(function (w) {
+  var shown = histDay ? list : list.slice(0, histLimit);
+  shown.forEach(function (w) {
     var d = new Date(w.start), mk = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월';
     if (mk !== lastMonth && !histDay) { h += '<h3 class="month-head">' + mk + '</h3>'; lastMonth = mk; }
     h += workoutCardHtml(w);
   });
+  if (shown.length < list.length) {
+    h += '<button class="btn btn-secondary btn-block" data-a="hist-more">더 보기 (' + (list.length - shown.length) + '개 남음)</button>';
+  }
   return h;
 }
 function workoutCardHtml(w) {
@@ -2095,7 +2117,8 @@ function settingsTabHtml() {
   h += '<h2 class="sec-title">운동</h2><div class="card">' +
     '<div class="row"><span>기본 휴식 시간</span><div class="stepper"><button data-a="rest-dec" aria-label="줄이기">−</button><b>' + fmtRest(s.rest) + '</b><button data-a="rest-inc" aria-label="늘리기">+</button></div></div>' +
     '<div class="row"><span>휴식 끝 알림음</span><button class="switch' + (s.sound ? ' on' : '') + '" data-a="toggle" data-k="sound" aria-label="알림음"></button></div>' +
-    '<div class="row"><span>휴식 끝 진동</span><button class="switch' + (s.vibrate ? ' on' : '') + '" data-a="toggle" data-k="vibrate" aria-label="진동"></button></div></div>';
+    '<div class="row"><span>휴식 끝 진동</span><button class="switch' + (s.vibrate ? ' on' : '') + '" data-a="toggle" data-k="vibrate" aria-label="진동"></button></div>' +
+    '<div class="row"><span class="list-main"><span class="row-label">루틴 시작 시 지난 기록으로 채우기</span><small>끄면 루틴에 저장된 무게·횟수로 채워요</small></span><button class="switch' + (s.prefillPrev ? ' on' : '') + '" data-a="toggle" data-k="prefillPrev" aria-label="지난 기록으로 채우기"></button></div></div>';
   h += '<h2 class="sec-title">GitHub 동기화</h2><div class="card">';
   if (cfg) {
     h += '<div class="row"><span class="list-main"><b>' + esc(cfg.owner + '/' + cfg.repo) + '</b><small>' + esc(cfg.branch || 'main') + ' 브랜치 · ' + esc(GH_DATA_PATH) +
@@ -2222,6 +2245,7 @@ $('view').addEventListener('click', function (e) {
     case 'cal-next': calMonth.setMonth(calMonth.getMonth() + 1); refreshTab(); break;
     case 'cal-day': var d = b.getAttribute('data-d'); histDay = histDay === d ? null : d; refreshTab(); break;
     case 'cal-clear': histDay = null; refreshTab(); break;
+    case 'hist-more': histLimit += HIST_PAGE; refreshTab(); break;
     case 'new-ex': openExerciseForm(null, exQuery.trim(), function () { refreshTab(); }); break;
     case 'open-ex': openExerciseDetail(b.getAttribute('data-id')); break;
     case 'theme': data.settings.theme = b.getAttribute('data-v'); applyTheme(); save(); refreshTab(); break;
