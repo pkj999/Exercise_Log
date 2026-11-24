@@ -175,7 +175,8 @@ svg { flex-shrink: 0; }
 .gr-row:first-of-type { border-top: 0; }
 .gr-row:active { background: var(--card-2); }
 .gr-name { min-width: 0; display: flex; flex-direction: column; }
-.gr-name b { font-size: 14px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
+.gr-name b { font-size: 14px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; overflow-wrap: anywhere; }
+@media (max-width: 360px) { .gr-row { grid-template-columns: minmax(0, 1fr) 56px 96px; } .gr-row .spark { width: 56px; height: auto; } .gr-name b { font-size: 13px; } }
 .gr-name small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gr-none { font-size: 11px; color: var(--muted); text-align: center; background: var(--card-2); border-radius: 8px; padding: 9px 0; }
 .gr-val { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
@@ -193,8 +194,8 @@ svg { flex-shrink: 0; }
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
 .stat-grid.four { grid-template-columns: repeat(4, 1fr); }
 .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
-.stat small { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; }
-.stat b { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat small { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.stat b { display: block; font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
 .stat b i { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 1px; }
 .bars-wrap { position: relative; padding-top: 18px; }
 .bars-max { position: absolute; top: 0; left: 0; font-size: 11px; color: var(--muted); }
@@ -207,12 +208,22 @@ svg { flex-shrink: 0; }
 .dbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 150px; margin-top: 6px; }
 .dcol { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; border-radius: 10px; padding: 2px 0; }
 .dcol:not(.empty):active { background: var(--card-2); }
-.dval { font-size: 11px; font-weight: 700; color: var(--text); height: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dval { font-size: 11px; font-weight: 700; color: var(--text); height: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; max-width: 100%; overflow: hidden; display: block; text-align: center; letter-spacing: -.02em; }
 .dbar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--line); }
 .dbar { width: 62%; max-width: 28px; background: var(--accent); border-radius: 4px 4px 0 0; }
 .dnone { width: 5px; height: 5px; border-radius: 50%; background: var(--line); margin-bottom: 4px; }
 .dlab { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.3; font-variant-numeric: tabular-nums; }
 .dlab.today { color: var(--accent); font-weight: 800; }
+.ms-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 52px 78px; align-items: center; gap: 8px; width: 100%; padding: 7px 0; text-align: left; border-radius: 8px; }
+.ms-row:active { background: var(--card-2); }
+.ms-name { font-size: 14px; font-weight: 650; }
+.ms-track { height: 8px; border-radius: 4px; background: var(--card-2); overflow: hidden; }
+.ms-fill { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+.ms-fill.ok { background: var(--good); }
+.ms-count { font-size: 14px; font-weight: 750; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+.ms-count i { font-style: normal; font-weight: 600; font-size: 12px; color: var(--muted); }
+.ms-state { font-size: 11px; font-weight: 700; color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; justify-content: flex-end; }
+.ms-state.ok { color: var(--good); } .ms-state.lack { color: var(--warm); }
 .week-hint { font-size: 11px; color: var(--muted); text-align: center; margin: 8px 0 0; }
 .bar { width: 100%; background: var(--accent-soft); border-radius: 4px 4px 0 0; }
 .bar.now { background: var(--accent); }
@@ -278,7 +289,7 @@ svg { flex-shrink: 0; }
 .editor .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
 .stats-bar div { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
 .stats-bar small, .finish-stats small { display: block; font-size: 12px; color: var(--muted); }
-.stats-bar b, .finish-stats b { font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.stats-bar b, .finish-stats b { display: block; font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
 .stats-bar .js-elapsed { color: var(--accent); }
 .title-input { width: 100%; border: 0; background: none; outline: none; font-size: 22px; font-weight: 800; padding: 4px 0; margin-bottom: 6px; }
 .title-input::placeholder { color: var(--muted); font-weight: 600; }
@@ -301,8 +312,9 @@ svg { flex-shrink: 0; }
 .set-badge.t-w { color: var(--warm); }
 .set-badge.t-d { color: var(--accent); }
 .set-badge.t-f { color: var(--danger); }
-.prev { text-align: left; font-size: 13px; color: var(--muted); padding: 6px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
-.prev svg { color: var(--gold); }
+.prev { text-align: left; font-size: 13px; color: var(--muted); padding: 6px 2px 6px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.prev svg { color: var(--gold); vertical-align: -2px; margin-right: 2px; }
+@media (max-width: 360px) { .prev { font-size: 12px; } }
 .set-input { width: 100%; height: 36px; border: 0; border-radius: 8px; background: var(--card-2); text-align: center; font-weight: 700; font-size: 16px; outline: none; padding: 0 2px; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
 .set-input::-webkit-outer-spin-button, .set-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .set-input::placeholder { color: var(--muted); opacity: .7; font-weight: 600; }
@@ -416,12 +428,12 @@ svg { flex-shrink: 0; }
  *   Block     = { exId, note, rest, sets: [Set] }
  *   Set       = { t, w, r, s, d }   t: n(일반) w(워밍업) d(드롭) f(실패)
  *               w=kg, r=횟수, s=초, d=km — 종목 type에 맞는 값만 채움
- *   settings  = { rest, sound, vibrate, theme, prefillPrev, gymMoves: ['YYYY-MM-DD'] }   gymMoves: 헬스장 이동일(그래프 구간 나눔)
+ *   settings  = { rest, sound, vibrate, theme, prefillPrev, gymMoves: ['YYYY-MM-DD'], setTargets: { 부위: 주간 목표 세트 } }   gymMoves: 헬스장 이동일(그래프 구간 나눔)
  *   진행 중인 운동은 ACTIVE_KEY(이 기기 로컬)에만 두고, 완료할 때 workouts에 들어간다.
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 7;
+var APP_VERSION = 8;
 var APP_BUILD_DATE = '2026-11-24';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -430,6 +442,8 @@ var ACTIVE_KEY = 'exercise-log-active';
 var OLD_KEYS = ['workout-tracker-data', 'workout-tracker-draft', 'workout-tracker-timer-end',
   'workout-log-v3', 'workout-log-v2', 'workout-log', 'wt-github-cache', 'wt-github-cache-at', 'wt-github-pending'];
 
+// 부위별 주간 목표 세트 기본값 (설정에서 바꿈, 0이면 목표 없음). 주 10세트 안팎이 흔히 쓰는 출발점
+var DEFAULT_SET_TARGETS = { '가슴': 10, '등': 10, '어깨': 10, '하체': 10, '팔': 10 };
 var MUSCLES = ['가슴', '등', '어깨', '하체', '팔', '코어', '유산소', '전신', '기타'];
 var TYPES = {
   wr: '무게 × 횟수',
@@ -448,9 +462,11 @@ var REST_OPTIONS = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
 var data = emptyData();
 
 function emptyData() {
+  var targets = {};
+  MUSCLES.forEach(function (m) { targets[m] = DEFAULT_SET_TARGETS[m] || 0; });
   return {
     v: 1, exercises: [], routines: [], workouts: [],
-    settings: { rest: 90, sound: true, vibrate: true, theme: 'auto', prefillPrev: true, gymMoves: [] }
+    settings: { rest: 90, sound: true, vibrate: true, theme: 'auto', prefillPrev: true, gymMoves: [], setTargets: targets }
   };
 }
 
@@ -474,6 +490,21 @@ function fmtKoDate(ms) {
 }
 function fmtClock(ms) { var d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
 function fmtNum(n) { return (Math.round(n * 10) / 10).toLocaleString('ko-KR'); }
+// 큰 볼륨은 톤으로 (10만kg 이상): 114,461kg → 114.5t — 칸이 좁은 요약 숫자용
+function fmtVolBig(v) { return v >= 100000 ? fmtNum(v / 1000) + '<i>t</i>' : Math.round(v).toLocaleString('ko-KR') + '<i>kg</i>'; }
+// 칸보다 긴 숫자는 글자 크기를 줄여 칸 안에 맞춘다 (최소 11px). 화면을 그린 뒤 호출
+var FIT_SEL = '.stat b, .stat small, .dval, .stats-bar b, .finish-stats b, .gr-val b, .ms-count';
+function fitText(root) {
+  Array.prototype.forEach.call((root || document).querySelectorAll(FIT_SEL), function (el) {
+    el.style.fontSize = '';
+    var avail = el.clientWidth || (el.parentElement ? el.parentElement.clientWidth : 0);
+    if (!avail) return;
+    var size = parseFloat(getComputedStyle(el).fontSize), n = 0;
+    var min = el.classList.contains('dval') ? 9 : 11;
+    while (el.scrollWidth > avail + 0.5 && size > min && n++ < 20) { size -= 0.5; el.style.fontSize = size + 'px'; }
+  });
+}
+window.addEventListener('resize', function () { fitText(document); });
 // 초 → "1:05:09" / "5:09"
 function fmtTimer(sec) {
   sec = Math.max(0, Math.floor(sec));
@@ -632,6 +663,11 @@ function normalize(o) {
   d.settings.vibrate = s.vibrate !== false;
   d.settings.theme = ['auto', 'light', 'dark'].indexOf(s.theme) >= 0 ? s.theme : 'auto';
   d.settings.prefillPrev = s.prefillPrev !== false;
+  d.settings.setTargets = {};
+  MUSCLES.forEach(function (m) {
+    var v = s.setTargets && num(s.setTargets[m]);
+    d.settings.setTargets[m] = v != null ? Math.max(0, Math.min(40, Math.round(v))) : (DEFAULT_SET_TARGETS[m] || 0);
+  });
   d.settings.gymMoves = (Array.isArray(s.gymMoves) ? s.gymMoves : []).filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })
     .filter(function (x, i, a) { return a.indexOf(x) === i; }).sort().slice(0, 20);
   return d;
@@ -716,7 +752,7 @@ function pushPage(render) {
   var el = document.createElement('div');
   el.className = 'page';
   $('pages').appendChild(el);
-  var page = { el: el, render: function () { var st = el.scrollTop; render(el, page); el.scrollTop = st; } };
+  var page = { el: el, render: function () { var st = el.scrollTop; render(el, page); el.scrollTop = st; fitText(el); } };
   pages.push(page);
   page.render();
   requestAnimationFrame(function () { el.classList.add('in'); });
@@ -1303,7 +1339,8 @@ function blockHtml(b, i, ed) {
   var live = ed.mode === 'live', o = ed.obj;
   var ex = exById(b.exId), type = ex ? ex.type : 'wr', cols = COLS[type];
   var prev = previousSets(b.exId, ed.mode === 'routine' ? Infinity : o.start, o.id);
-  var grid = '34px minmax(0,1fr) ' + cols.map(function () { return '64px'; }).join(' ') + (live ? ' 40px' : '');
+  // 좁은 화면에서는 입력칸을 줄여 '이전' 칸 자리를 확보 (min(64px, 17vw))
+  var grid = '34px minmax(0,1fr) ' + cols.map(function () { return 'min(64px, 17vw)'; }).join(' ') + (live ? ' 40px' : '');
   var h = '<section class="block" data-b="' + i + '">' +
     '<div class="block-head"><button class="block-name" data-e="ex-detail">' + esc(ex ? ex.name : '(삭제된 종목)') + '</button>' +
     '<button class="icon-btn" data-e="block-menu" aria-label="종목 메뉴">' + icon('more', 20) + '</button></div>' +
@@ -1918,6 +1955,7 @@ function refreshTab() {
   else if (currentTab === 'history') v.innerHTML = historyTabHtml();
   else if (currentTab === 'exercises') { v.innerHTML = exercisesTabHtml(); renderExList(); }
   else v.innerHTML = settingsTabHtml();
+  fitText(v);
 }
 // 진행 중인 운동 미니 바 (탭 화면 위에서만 보임)
 function refreshChrome() {
@@ -2200,10 +2238,11 @@ function historyTabHtml() {
   var weekDur = thisWeek.reduce(function (a, w) { return a + workoutDuration(w); }, 0);
   var h = '<div class="stat-grid">' +
     '<div class="stat"><small>이번 주</small><b>' + thisWeek.length + '회</b></div>' +
-    '<div class="stat"><small>이번 주 볼륨</small><b>' + fmtNum(weekVol) + '<i>kg</i></b></div>' +
+    '<div class="stat"><small>이번 주 볼륨</small><b>' + fmtVolBig(weekVol) + '</b></div>' +
     '<div class="stat"><small>이번 주 시간</small><b>' + (weekDur > 0 ? fmtDur(weekDur) : '—') + '</b></div></div>';
   h += '<div class="card"><div class="card-head"><b>주간 볼륨</b><small class="muted">최근 12주</small></div>' + weeklyChart() + '</div>';
   h += dayChartHtml();
+  h += muscleSetsHtml();
   h += calendarHtml();
   h += '<button class="btn btn-secondary btn-block" data-a="add-past">' + icon('plus', 17) + (histDay ? fmtKoDate(new Date(histDay + 'T12:00').getTime()) + ' 운동 추가' : '지난 운동 기록 추가') + '</button>';
   var list = sortedWorkouts().filter(function (w) { return !histDay || fmtDate(w.start) === histDay; });
@@ -2277,7 +2316,7 @@ function weeklyChart() {
 }
 // ---------- 주간 막대 (요일별) — 옆으로 넘겨 주 단위 이동, 막대를 누르면 그날 기록으로 ----------
 var weekCursor = null;   // 보고 있는 주의 월요일 0시 (null이면 이번 주)
-function fmtVolShort(v) { return v >= 1000 ? (Math.round(v / 100) / 10) + 't' : Math.round(v) + 'kg'; }
+function fmtVolShort(v) { return v >= 100000 ? Math.round(v / 1000) + 't' : v >= 1000 ? (Math.round(v / 100) / 10) + 't' : Math.round(v) + 'kg'; }
 function dayChartHtml() {
   var cur = weekStart(Date.now()), ws = weekCursor || cur, DAY = 86400000;
   var days = [];
@@ -2313,6 +2352,39 @@ function dayChartHtml() {
   h += '</div>' + (ws !== cur ? '<button class="btn btn-ghost btn-sm cal-clear" data-a="wk-now">이번 주로</button>' : '') +
     '<p class="week-hint">막대를 누르면 그날 기록으로 이동 · 옆으로 밀어 주 이동</p></div>';
   return h;
+}
+// 이 주(주간 막대에서 보고 있는 주) 부위별 세트 수 — 워밍업 제외, 유산소 제외
+function weekMuscleSets(ws) {
+  var end = new Date(ws); end.setDate(end.getDate() + 7);
+  var res = {};
+  data.workouts.forEach(function (w) {
+    if (w.start < ws || w.start >= end.getTime()) return;
+    w.exercises.forEach(function (b) {
+      var ex = exById(b.exId); if (!ex || ex.muscle === '유산소') return;
+      var n = b.sets.filter(isWork).length; if (!n) return;
+      var r = res[ex.muscle] = res[ex.muscle] || { n: 0, ex: {} };
+      r.n += n; r.ex[ex.name] = (r.ex[ex.name] || 0) + n;
+    });
+  });
+  return res;
+}
+function muscleSetsHtml() {
+  var ws = weekCursor || weekStart(Date.now());
+  var res = weekMuscleSets(ws), tg = data.settings.setTargets;
+  var list = MUSCLES.filter(function (m) { return m !== '유산소' && (tg[m] > 0 || res[m]); });
+  if (!list.length) return '';
+  var done = 0, need = 0;
+  var rows = list.map(function (m) {
+    var n = res[m] ? res[m].n : 0, t = tg[m] || 0;
+    var pct = t ? Math.min(100, n / t * 100) : (n ? 100 : 0);
+    var state = !t ? '<span class="ms-state">목표 없음</span>' : n >= t ? '<span class="ms-state ok">' + icon('check', 12) + '달성' + (n > t ? ' +' + (n - t) : '') + '</span>' : '<span class="ms-state lack">' + (t - n) + '세트 부족</span>';
+    if (t) { if (n >= t) done++; else need++; }
+    return '<button class="ms-row" data-a="ms-row" data-m="' + m + '" aria-label="' + m + ' ' + n + '세트' + (t ? ', 목표 ' + t + '세트' : '') + '">' +
+      '<span class="ms-name">' + m + '</span><span class="ms-track"><span class="ms-fill' + (t && n >= t ? ' ok' : '') + '" style="width:' + pct + '%"></span></span>' +
+      '<span class="ms-count">' + n + (t ? '<i>/' + t + '</i>' : '') + '</span>' + state + '</button>';
+  }).join('');
+  return '<div class="card ms-card"><div class="card-head"><b>부위별 세트</b><small class="muted">' + (done + need ? '목표 달성 ' + done + '/' + (done + need) + ' 부위' : '워밍업 제외') + '</small></div>' +
+    rows + '<p class="week-hint">위 주간 막대와 같은 주 · 워밍업·유산소 제외 · 목표는 설정에서 바꿀 수 있어요</p></div>';
 }
 function openDay(key) {
   var list = data.workouts.filter(function (w) { return fmtDate(w.start) === key; }).sort(function (a, b) { return a.start - b.start; });
@@ -2357,7 +2429,7 @@ function openWorkoutDetail(id) {
       '<div class="page-body"><h2 class="detail-title">' + esc(w.name) + '</h2>' +
       '<p class="meta">' + fmtKoDate(w.start) + ' · ' + fmtClock(w.start) + '–' + fmtClock(w.end) + '</p>' +
       '<div class="stat-grid four"><div class="stat"><small>시간</small><b>' + fmtWorkoutDur(w) + '</b></div>' +
-      '<div class="stat"><small>볼륨</small><b>' + fmtNum(workoutVolume(w)) + '<i>kg</i></b></div>' +
+      '<div class="stat"><small>볼륨</small><b>' + fmtVolBig(workoutVolume(w)) + '</b></div>' +
       '<div class="stat"><small>세트</small><b>' + workoutSetCount(w) + '</b></div>' +
       '<div class="stat"><small>PR</small><b>' + prs.count + '</b></div></div>' +
       (w.note ? '<p class="note-box">' + esc(w.note) + '</p>' : '');
@@ -2549,6 +2621,11 @@ function settingsTabHtml() {
     '<div class="row"><span>휴식 끝 알림음</span><button class="switch' + (s.sound ? ' on' : '') + '" data-a="toggle" data-k="sound" aria-label="알림음"></button></div>' +
     '<div class="row"><span>휴식 끝 진동</span><button class="switch' + (s.vibrate ? ' on' : '') + '" data-a="toggle" data-k="vibrate" aria-label="진동"></button></div>' +
     '<div class="row"><span class="list-main"><span class="row-label">루틴 시작 시 지난 기록으로 채우기</span><small>끄면 루틴에 저장된 무게·횟수로 채워요</small></span><button class="switch' + (s.prefillPrev ? ' on' : '') + '" data-a="toggle" data-k="prefillPrev" aria-label="지난 기록으로 채우기"></button></div></div>';
+  h += '<h2 class="sec-title">부위별 주간 목표 세트</h2><div class="card"><p class="hint left">기록 탭 \u2018부위별 세트\u2019에서 이 목표와 비교해요. 0이면 목표 없음. 주 10세트 안팎에서 시작해 몸 상태에 맞게 조절하세요.</p>' +
+    MUSCLES.filter(function (m) { return m !== '유산소'; }).map(function (m) {
+      var v = s.setTargets[m] || 0;
+      return '<div class="row"><span>' + m + '</span><div class="stepper"><button data-a="tg-dec" data-m="' + m + '" aria-label="' + m + ' 목표 줄이기">−</button><b>' + (v ? v + '세트' : '없음') + '</b><button data-a="tg-inc" data-m="' + m + '" aria-label="' + m + ' 목표 늘리기">+</button></div></div>';
+    }).join('') + '</div>';
   h += '<h2 class="sec-title">헬스장 이동일</h2><div class="card"><p class="hint left">헬스장을 옮기면 기구가 달라 같은 무게도 체감 부하가 달라요. 이동일을 넣으면 그래프에 세로선이 생기고, 성장 변화는 이동 뒤 기록끼리만 비교해요.</p>' +
     s.gymMoves.map(function (d) {
       return '<div class="row"><span>' + fmtKoDate(new Date(d + 'T12:00').getTime()) + '</span><button class="btn btn-ghost btn-sm danger-text" data-a="gym-del" data-v="' + d + '">삭제</button></div>';
@@ -2733,6 +2810,17 @@ $('view').addEventListener('click', function (e) {
     case 'wk-next': moveWeek(1); break;
     case 'wk-now': weekCursor = null; refreshTab(); break;
     case 'wk-day': openDay(b.getAttribute('data-d')); break;
+    case 'ms-row':
+      var mm = b.getAttribute('data-m'), mr = weekMuscleSets(weekCursor || weekStart(Date.now()))[mm];
+      if (!mr) { toast(mm + ': 이 주에는 세트가 없어요'); break; }
+      actionSheet(mm + ' · ' + mr.n + '세트', Object.keys(mr.ex).sort(function (x, y) { return mr.ex[y] - mr.ex[x]; }).map(function (k) {
+        return { label: k + ' — ' + mr.ex[k] + '세트', icon: 'dumbbell' };
+      }));
+      break;
+    case 'tg-dec': case 'tg-inc':
+      var tm = b.getAttribute('data-m'), tv = data.settings.setTargets[tm] || 0;
+      data.settings.setTargets[tm] = Math.max(0, Math.min(40, tv + (act === 'tg-inc' ? 1 : -1))); save(); refreshTab();
+      break;
     case 'wk-jump':
       var jw = Number(b.getAttribute('data-ws'));
       weekCursor = jw === weekStart(Date.now()) ? null : jw; refreshTab();
