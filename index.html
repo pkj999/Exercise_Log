@@ -367,8 +367,8 @@ svg { flex-shrink: 0; }
  *   진행 중인 운동은 ACTIVE_KEY(이 기기 로컬)에만 두고, 완료할 때 workouts에 들어간다.
  * ========================================================================= */
 
-// 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시)
-var APP_VERSION = 49;
+// 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
+var APP_VERSION = 1;
 var APP_BUILD_DATE = '2026-11-24';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -507,6 +507,17 @@ function bestBefore(exId, beforeMs, excludeId) {
   });
   return { score: score, w: w };
 }
+// '이전' 값 짝짓기 — 워밍업은 지난 워밍업과, 나머지(일반·드롭·실패)는 지난 본세트와 각각 순서대로 맞춘다.
+// 순번만으로 맞추면 이번에 워밍업을 하나 더 넣었을 때 워밍업 줄에 지난 본세트 무게가 보이는 문제가 있었다.
+function prevFor(prev, sets, j) {
+  if (!prev || !sets[j]) return null;
+  var warm = sets[j].t === 'w', n = 0;
+  for (var i = 0; i < j; i++) if ((sets[i].t === 'w') === warm) n++;
+  var same = prev.filter(function (x) { return (x.t === 'w') === warm; });
+  return same[n] || null;
+}
+// 소요시간을 모르는 기록(0분)은 "—"로 표시
+function fmtWorkoutDur(w) { var d = workoutDuration(w); return d > 0 ? fmtDur(d) : '—'; }
 function exerciseUseCount(exId) {
   var n = 0;
   data.workouts.forEach(function (w) { if (w.exercises.some(function (b) { return b.exId === exId; })) n++; });
@@ -1084,7 +1095,7 @@ function liveBlocksFrom(blocks, usePrev) {
       exId: b.exId, note: b.note || '', rest: b.rest,
       sets: sets.map(function (s, i) {
         var c = cleanSet(s);
-        var p = prev && prev[i];
+        var p = prevFor(prev, sets, i);
         if (p) ['w', 'r', 's', 'd'].forEach(function (k) { if (p[k] != null) c[k] = p[k]; else delete c[k]; });
         c.done = false;
         return c;
@@ -1237,7 +1248,7 @@ function blockHtml(b, i, ed) {
   b.sets.forEach(function (s, j) {
     if (s.t !== 'w') workNo++;
     var badge = setBadge(s.t, workNo);
-    var p = prev && prev[j];
+    var p = prevFor(prev, b.sets, j);
     h += '<div class="set-row' + (s.done ? ' done' : '') + '" data-s="' + j + '" style="grid-template-columns:' + grid + '">' +
       '<button class="set-badge t-' + s.t + '" data-e="set-type">' + badge + '</button>' +
       '<button class="prev" data-e="fill-prev"' + (p ? '' : ' disabled') + '>' + (s.pr ? icon('trophy', 13) : '') + esc(fmtSetShort(p, type)) + '</button>' +
@@ -1369,7 +1380,7 @@ function bindEditor(el, ed, page) {
         break;
       case 'fill-prev':
         var prev = previousSets(c.b.exId, ed.mode === 'routine' ? Infinity : o.start, o.id);
-        var p = prev && prev[c.j];
+        var p = prevFor(prev, c.b.sets, c.j);
         if (p) {
           var tgt = c.b.sets[c.j];
           ['w', 'r', 's', 'd'].forEach(function (k) { if (p[k] != null) tgt[k] = p[k]; });
@@ -1407,17 +1418,37 @@ function newBlock(exId, ed) {
 
 function blockMenu(bi, ed, changed, rerender) {
   var list = ed.obj.exercises;
-  var items = [
+  var items = [];
+  var prev = previousSets(list[bi].exId, ed.mode === 'routine' ? Infinity : ed.obj.start, ed.obj.id);
+  if (prev && prev.length) {
+    items.push({ label: '빈 칸을 지난 기록으로 채우기', icon: 'copy', onClick: function () {
+      fillFromPrev(list[bi], prev, ed.mode === 'live');
+      changed(); rerender();
+    } });
+  }
+  items.push(
     { label: '종목 교체', icon: 'swap', onClick: function () {
       openPicker({ multi: false, title: '종목 교체', onPick: function (ids) { list[bi].exId = ids[0]; changed(); } });
     } }
-  ];
+  );
   if (bi > 0) items.push({ label: '위로 이동', icon: 'up', onClick: function () { list.splice(bi - 1, 0, list.splice(bi, 1)[0]); changed(); rerender(); } });
   if (bi < list.length - 1) items.push({ label: '아래로 이동', icon: 'dn', onClick: function () { list.splice(bi + 1, 0, list.splice(bi, 1)[0]); changed(); rerender(); } });
   items.push({ label: '종목 삭제', icon: 'trash', danger: true, onClick: function () { list.splice(bi, 1); changed(); rerender(); } });
   actionSheet(exName(list[bi].exId), items);
 }
 
+// 지난 기록과 세트 수를 맞추고(모자라면 추가), 비어 있는 칸만 지난 값으로 채운다 — 직접 입력한 값은 그대로 둔다
+function fillFromPrev(b, prev, live) {
+  while (b.sets.length < prev.length) {
+    var ns = { t: prev[b.sets.length].t };
+    if (live) ns.done = false;
+    b.sets.push(ns);
+  }
+  b.sets.forEach(function (s, j) {
+    var p = prevFor(prev, b.sets, j);
+    if (p) ['w', 'r', 's', 'd'].forEach(function (k) { if (s[k] == null && p[k] != null) s[k] = p[k]; });
+  });
+}
 function toggleCheck(c, ed, el, changed) {
   var o = ed.obj, s = c.b.sets[c.j], type = exType(c.b.exId);
   if (s.done) {
@@ -1425,7 +1456,7 @@ function toggleCheck(c, ed, el, changed) {
   } else {
     // 비어 있는 칸은 이전 기록(placeholder) 값으로 채운다 — 같은 무게로 반복할 때 바로 체크만 하면 되게
     var prev = previousSets(c.b.exId, o.start, o.id);
-    var p = prev && prev[c.j];
+    var p = prevFor(prev, c.b.sets, c.j);
     COLS[type].forEach(function (col) {
       var k = col.k === 'm' ? 's' : col.k;
       if (s[k] == null && p && p[k] != null) s[k] = p[k];
@@ -1458,7 +1489,7 @@ function toggleCheck(c, ed, el, changed) {
   COLS[type].forEach(function (col) { var inp = row.querySelector('[data-k="' + col.k + '"]'); if (inp) inp.value = valOf(s, col.k); });
   var pv = row.querySelector('.prev');
   var prevS = previousSets(c.b.exId, o.start, o.id);
-  pv.innerHTML = (s.pr ? icon('trophy', 13) : '') + esc(fmtSetShort(prevS && prevS[c.j], type));
+  pv.innerHTML = (s.pr ? icon('trophy', 13) : '') + esc(fmtSetShort(prevFor(prevS, c.b.sets, c.j), type));
 }
 
 // ---------- 휴식 타이머 ----------
@@ -1541,10 +1572,13 @@ function finishLive(el, ed) {
   }).filter(function (b) { return b.sets.length && exById(b.exId); });
   var routine = o.routineId ? data.routines.find(function (r) { return r.id === o.routineId; }) : null;
   var t = liveTotals(o);
+  var elapsedMin = Math.max(1, Math.round((Date.now() - o.start) / 60000));
   var h = '<div class="sheet-title">운동 완료</div>' +
     '<div class="finish-stats"><div><small>시간</small><b>' + fmtDur((Date.now() - o.start) / 1000) + '</b></div>' +
     '<div><small>볼륨</small><b>' + fmtNum(t.vol) + 'kg</b></div><div><small>세트</small><b>' + t.sets + '</b></div></div>' +
-    '<label class="field"><span>운동 이름</span><input class="input" id="fin-name" maxlength="40" value="' + esc(o.name) + '"></label>' +
+    '<div class="field-row"><label class="field"><span>운동 이름</span><input class="input" id="fin-name" maxlength="40" value="' + esc(o.name) + '"></label>' +
+    '<label class="field narrow"><span>소요(분)</span><input class="input" id="fin-dur" type="number" inputmode="numeric" min="0" max="1440" value="' + elapsedMin + '"></label></div>' +
+    (elapsedMin > 180 ? '<p class="warn-note">시작한 지 3시간이 넘었어요. 운동을 마친 시간에 맞게 소요 시간을 고쳐 주세요.</p>' : '') +
     (skipped ? '<p class="sheet-note">완료 체크하지 않은 세트 ' + skipped + '개는 저장되지 않아요.</p>' : '') +
     (routine
       ? '<label class="check-line"><input type="checkbox" id="fin-routine"' + (structureChanged(routine, o.exercises) ? ' checked' : '') + '><span>루틴 ‘' + esc(routine.name) + '’에 이번 구성·무게 반영</span></label>'
@@ -1557,8 +1591,9 @@ function finishLive(el, ed) {
       if (b.getAttribute('data-c') === '0') { hideSheet(); return; }
       var name = box.querySelector('#fin-name').value.trim() || defaultWorkoutName(o.start);
       var toRoutine = box.querySelector('#fin-routine').checked;
+      var durMin = Math.max(0, Math.min(1440, Math.round(Number(box.querySelector('#fin-dur').value) || 0)));
       hideSheet();
-      var w = { id: o.id, name: name, routineId: o.routineId || '', start: o.start, end: Date.now(), note: (o.note || '').trim(), exercises: blocks };
+      var w = { id: o.id, name: name, routineId: o.routineId || '', start: o.start, end: o.start + durMin * 60000, note: (o.note || '').trim(), exercises: blocks };
       data.workouts.push(w);
       if (toRoutine) {
         // 루틴에는 편집기에 보이는 구성 그대로(이번에 건너뛴 종목·세트 포함) 반영한다 — 하루 빼먹었다고 루틴에서 사라지지 않게
@@ -1578,8 +1613,30 @@ function finishLive(el, ed) {
     });
   });
 }
-function saveEdited(ed, page) {
+function saveEdited(ed, page, ghost) {
   var o = ed.obj;
+  // 회색 글자(지난 기록)만 보이고 실제로는 비어 있는 세트 — 그냥 저장하면 빠지므로 먼저 물어본다
+  if (ghost == null) {
+    var ghosts = 0;
+    o.exercises.forEach(function (b) {
+      var prev = previousSets(b.exId, o.start, o.id);
+      b.sets.forEach(function (st, j) { var p = prevFor(prev, b.sets, j); if (!hasValue(st) && p && hasValue(p)) ghosts++; });
+    });
+    if (ghosts) {
+      actionSheet('회색으로 보이는 지난 기록 ' + ghosts + '세트가 비어 있어요', [
+        { label: '지난 값으로 채워서 저장', icon: 'copy', onClick: function () { saveEdited(ed, page, true); } },
+        { label: '직접 입력한 세트만 저장', icon: 'check', onClick: function () { saveEdited(ed, page, false); } }
+      ]);
+      return;
+    }
+  }
+  if (ghost) o.exercises.forEach(function (b) {
+    var prev = previousSets(b.exId, o.start, o.id);
+    b.sets.forEach(function (st, j) {
+      var p = prevFor(prev, b.sets, j);
+      if (!hasValue(st) && p) ['w', 'r', 's', 'd'].forEach(function (k) { if (p[k] != null) st[k] = p[k]; });
+    });
+  });
   var blocks = o.exercises.map(function (b) {
     return { exId: b.exId, note: (b.note || '').trim(), rest: b.rest, sets: b.sets.filter(hasValue).map(cleanSet) };
   }).filter(function (b) { return b.sets.length && exById(b.exId); });
@@ -1841,7 +1898,7 @@ function historyTabHtml() {
   var h = '<div class="stat-grid">' +
     '<div class="stat"><small>이번 주</small><b>' + thisWeek.length + '회</b></div>' +
     '<div class="stat"><small>이번 주 볼륨</small><b>' + fmtNum(weekVol) + '<i>kg</i></b></div>' +
-    '<div class="stat"><small>이번 주 시간</small><b>' + fmtDur(weekDur) + '</b></div></div>';
+    '<div class="stat"><small>이번 주 시간</small><b>' + (weekDur > 0 ? fmtDur(weekDur) : '—') + '</b></div></div>';
   h += '<div class="card"><div class="card-head"><b>주간 볼륨</b><small class="muted">최근 12주</small></div>' + weeklyChart() + '</div>';
   h += calendarHtml();
   h += '<button class="btn btn-secondary btn-block" data-a="add-past">' + icon('plus', 17) + (histDay ? fmtKoDate(new Date(histDay + 'T12:00').getTime()) + ' 운동 추가' : '지난 운동 기록 추가') + '</button>';
@@ -1867,7 +1924,7 @@ function workoutCardHtml(w) {
   var prs = workoutPRs(w);
   var h = '<button class="card workout" data-a="open-workout" data-wid="' + w.id + '">' +
     '<div class="card-head"><b>' + esc(w.name) + '</b><small class="muted">' + fmtKoDate(w.start) + '</small></div>' +
-    '<div class="wk-stats"><span>' + icon('clock', 14) + fmtDur(workoutDuration(w)) + '</span><span>' + fmtNum(workoutVolume(w)) + 'kg</span>' +
+    '<div class="wk-stats"><span>' + icon('clock', 14) + fmtWorkoutDur(w) + '</span><span>' + fmtNum(workoutVolume(w)) + 'kg</span>' +
     '<span>' + workoutSetCount(w) + '세트</span>' + (prs.count ? '<span class="pr">' + icon('trophy', 14) + 'PR ' + prs.count + '</span>' : '') + '</div>' +
     '<div class="wk-lines">';
   w.exercises.slice(0, 4).forEach(function (b) {
@@ -1939,7 +1996,7 @@ function openWorkoutDetail(id) {
     var h = pageHeader({ title: '운동 기록', right: '<button class="icon-btn" data-w="menu" aria-label="메뉴">' + icon('more', 20) + '</button>' }) +
       '<div class="page-body"><h2 class="detail-title">' + esc(w.name) + '</h2>' +
       '<p class="meta">' + fmtKoDate(w.start) + ' · ' + fmtClock(w.start) + '–' + fmtClock(w.end) + '</p>' +
-      '<div class="stat-grid four"><div class="stat"><small>시간</small><b>' + fmtDur(workoutDuration(w)) + '</b></div>' +
+      '<div class="stat-grid four"><div class="stat"><small>시간</small><b>' + fmtWorkoutDur(w) + '</b></div>' +
       '<div class="stat"><small>볼륨</small><b>' + fmtNum(workoutVolume(w)) + '<i>kg</i></b></div>' +
       '<div class="stat"><small>세트</small><b>' + workoutSetCount(w) + '</b></div>' +
       '<div class="stat"><small>PR</small><b>' + prs.count + '</b></div></div>' +
