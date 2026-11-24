@@ -168,6 +168,21 @@ svg { flex-shrink: 0; }
 .routine-body .meta { display: flex; align-items: center; margin-bottom: 12px; }
 .more-link { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; color: var(--accent); font-weight: 600; }
 .fav-mark { color: var(--gold); margin-right: 6px; vertical-align: 1px; }
+.seg.sm { padding: 2px; } .seg.sm button { padding: 4px 10px; font-size: 12px; }
+.gr-sum { font-size: 13px; margin: 0 0 4px; }
+.gr-sum .up { color: var(--good); font-weight: 700; } .gr-sum .dn { color: var(--danger); font-weight: 700; }
+.gr-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 104px; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 0; border-top: 1px solid var(--line); }
+.gr-row:first-of-type { border-top: 0; }
+.gr-row:active { background: var(--card-2); }
+.gr-name { min-width: 0; display: flex; flex-direction: column; }
+.gr-name b { font-size: 14px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
+.gr-name small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-none { font-size: 11px; color: var(--muted); text-align: center; background: var(--card-2); border-radius: 8px; padding: 9px 0; }
+.gr-val { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.gr-val b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.gr-pill { font-size: 10.5px; font-weight: 700; border-radius: 6px; padding: 1px 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gr-pill.up { background: var(--good-soft); color: var(--good); } .gr-pill.dn { background: var(--danger-soft); color: var(--danger); } .gr-pill.fl { background: var(--card-2); color: var(--muted); }
+.spark { display: block; } .spark.up { color: var(--good); } .spark.dn { color: var(--danger); } .spark.fl { color: var(--muted); }
 .prev-line { font-size: 13px; color: var(--muted); margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .card.routine .btn-block { margin-bottom: 0; }
 .card.resume { display: flex; align-items: center; gap: 12px; border-color: var(--accent); }
@@ -390,7 +405,7 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 5;
+var APP_VERSION = 6;
 var APP_BUILD_DATE = '2026-11-24';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -1943,6 +1958,79 @@ function routineMenu(routine, page) {
   ]);
 }
 // 루틴 상세 — 시작하지 않고도 어떤 종목을 어떻게 하는지(세트·무게·휴식·메모, 지난 기록) 확인
+// ---------- 루틴 성장 추이 (A안: 종목별 미니 그래프) ----------
+// 기준: 운동한 날마다 그 종목의 값 하나 — 예상 1RM(그날 최고), 최고 무게, 볼륨(그날 합계).
+// 무게 기록이 아닌 종목은 각자의 대표 값으로 바꿔 쓴다: 횟수 종목=최고 횟수/총 횟수, 시간=최장/총 시간, 거리=최장/총 거리.
+var growthState = { metric: 'e1rm', period: 'all' };   // 화면을 닫았다 열어도 마지막 선택 유지
+var GROWTH_METRICS = [['e1rm', '예상 1RM'], ['w', '최고 무게'], ['vol', '볼륨']];
+var GROWTH_PERIODS = [['4', '4주'], ['8', '8주'], ['all', '전체']];
+function growthValue(sets, type, metric) {
+  var ws = sets.filter(isWork), v = 0;
+  var total = metric === 'vol';
+  ws.forEach(function (s) {
+    var x;
+    if (type === 'wr') x = metric === 'e1rm' ? e1rm(s.w || 0, s.r || 0) : metric === 'w' ? (s.w || 0) : setVolume(s);
+    else if (type === 'r') x = s.r || 0;
+    else if (type === 't') x = s.s || 0;
+    else x = s.d || 0;
+    v = total ? v + x : Math.max(v, x);
+  });
+  return v;
+}
+function growthFmt(v, type, metric) {
+  if (type === 'wr') return fmtNum(v) + 'kg';
+  if (type === 'r') return Math.round(v) + '회';
+  if (type === 't') return fmtDur(v);
+  return fmtNum(v) + 'km';
+}
+function sparkSvg(vals, dir) {
+  var W = 72, H = 34, P = 4, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), rg = mx - mn || 1;
+  var xy = vals.map(function (y, i) { return [(P + i * (W - 2 * P) / (vals.length - 1)).toFixed(1), (P + (1 - (y - mn) / rg) * (H - 2 * P)).toFixed(1)]; });
+  var last = xy[xy.length - 1];
+  return '<svg class="spark ' + dir + '" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
+    '<polyline points="' + xy.map(function (p) { return p.join(','); }).join(' ') + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="3.5" fill="currentColor" stroke="var(--card)" stroke-width="2"/></svg>';
+}
+function routineGrowthHtml(r) {
+  var seen = {}, exIds = [];
+  r.exercises.forEach(function (b) { if (!seen[b.exId] && exById(b.exId)) { seen[b.exId] = 1; exIds.push(b.exId); } });
+  if (!exIds.length) return '';
+  var since = growthState.period === 'all' ? 0 : Date.now() - Number(growthState.period) * 7 * 86400000;
+  var up = 0, down = 0, minT = Infinity, maxT = 0;
+  var rows = exIds.map(function (id) {
+    var type = exType(id);
+    var pts = exerciseHistory(id).filter(function (x) { return x.w.start >= since; }).map(function (x) {
+      return { t: x.w.start, v: growthValue(x.sets, type, growthState.metric), best: bestSet(x.sets, type) };
+    }).filter(function (p) { return p.v > 0; });
+    var h = '<button class="gr-row" data-r="ex" data-ex="' + id + '">';
+    var name = '<span class="gr-name"><b>' + esc(exName(id)) + '</b><small>';
+    if (!pts.length) return h + name + '기간 안에 기록 없음</small></span><span class="gr-none">—</span><span></span></button>';
+    var lastP = pts[pts.length - 1];
+    minT = Math.min(minT, pts[0].t); maxT = Math.max(maxT, lastP.t);
+    name += pts.length + '회' + (lastP.best ? ' · 최고 세트 ' + esc(fmtSetShort(lastP.best, type)) : '') + '</small></span>';
+    var val = '<span class="gr-val"><b>' + growthFmt(lastP.v, type) + '</b>';
+    if (pts.length < 2) return h + name + '<span class="gr-none">기록 1회</span>' + val + '</span></button>';
+    var a = pts[0].v, d = lastP.v - a, pct = a ? Math.round(d / a * 100) : 0;
+    var eps = type === 'wr' ? 0.5 : 0.5;
+    var dir = Math.abs(d) < eps ? 'fl' : d > 0 ? 'up' : 'dn';
+    if (dir === 'up') up++; else if (dir === 'dn') down++;
+    var pill = dir === 'fl' ? '<span class="gr-pill fl">유지</span>'
+      : '<span class="gr-pill ' + dir + '">' + (dir === 'up' ? '▲ ' : '▼ ') + growthFmt(Math.abs(d), type) + ' · ' + (pct > 0 ? '+' : '') + pct + '%</span>';
+    return h + name + sparkSvg(pts.map(function (p) { return p.v; }), dir) + val + pill + '</span></button>';
+  }).join('');
+  var hasWr = exIds.some(function (id) { return exType(id) === 'wr'; });
+  var chips = hasWr ? '<div class="chips">' + GROWTH_METRICS.map(function (m) {
+    return '<button class="chip' + (growthState.metric === m[0] ? ' on' : '') + '" data-r="g-metric" data-v="' + m[0] + '">' + m[1] + '</button>';
+  }).join('') + '</div>' : '';
+  var seg = '<div class="seg sm">' + GROWTH_PERIODS.map(function (m) {
+    return '<button class="' + (growthState.period === m[0] ? 'on' : '') + '" data-r="g-period" data-v="' + m[0] + '">' + m[1] + '</button>';
+  }).join('') + '</div>';
+  var md = function (t) { var d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate(); };
+  return '<div class="card growth"><div class="card-head"><b>성장 추이</b>' + seg + '</div>' + chips +
+    '<p class="gr-sum">' + exIds.length + '종목 중 <span class="up">' + up + '개 상승</span> · <span class="dn">' + down + '개 하락</span>' +
+    '<small class="muted"> · 처음 대비' + (maxT ? ' (' + md(minT) + '–' + md(maxT) + ')' : '') + '</small></p>' +
+    rows + '</div>';
+}
 function openRoutineDetail(id) {
   var page = pushPage(function (el) {
     var r = data.routines.find(function (x) { return x.id === id; });
@@ -1952,6 +2040,7 @@ function openRoutineDetail(id) {
     var h = pageHeader({ title: '루틴', right: '<button class="icon-btn" data-r="menu" aria-label="메뉴">' + icon('more', 20) + '</button>' }) +
       '<div class="page-body"><h2 class="detail-title">' + (r.fav ? '<span class="fav-mark">' + icon('starf', 18) + '</span>' : '') + esc(r.name) + '</h2>' +
       '<p class="meta">종목 ' + r.exercises.length + '개' + (last ? ' · 마지막 ' + fmtKoDate(last) : '') + '</p>' +
+      routineGrowthHtml(r) +
       (data.settings.prefillPrev ? '<p class="hint left">시작하면 각 세트가 아래 \u2018지난번\u2019 값으로 채워져요. 설정에서 루틴 값으로 바꿀 수 있어요.</p>' : '');
     r.exercises.forEach(function (b) {
       var type = exType(b.exId), no = 0;
@@ -1981,6 +2070,8 @@ function openRoutineDetail(id) {
     if (act === 'menu') routineMenu(r, page);
     else if (act === 'start') startWorkout(r);
     else if (act === 'ex' && exById(b.getAttribute('data-ex'))) openExerciseDetail(b.getAttribute('data-ex'));
+    else if (act === 'g-metric') { growthState.metric = b.getAttribute('data-v'); page.render(); }
+    else if (act === 'g-period') { growthState.period = b.getAttribute('data-v'); page.render(); }
   });
 }
 function workoutTabHtml() {
