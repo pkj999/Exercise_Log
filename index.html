@@ -371,7 +371,7 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 2;
+var APP_VERSION = 3;
 var APP_BUILD_DATE = '2026-11-24';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -521,6 +521,15 @@ function prevFor(prev, sets, j) {
 }
 // 소요시간을 모르는 기록(0분)은 "—"로 표시
 function fmtWorkoutDur(w) { var d = workoutDuration(w); return d > 0 ? fmtDur(d) : '—'; }
+// 이 종목에 마지막으로 남긴 메모 (기구 세팅·그립 같은 반복 메모를 다시 보여주기용)
+function lastNote(exId, beforeMs, excludeId) {
+  var best = null, note = '';
+  data.workouts.forEach(function (w) {
+    if (w.id === excludeId || w.start >= beforeMs || (best && w.start <= best)) return;
+    w.exercises.forEach(function (b) { if (b.exId === exId && b.note) { best = w.start; note = b.note; } });
+  });
+  return note;
+}
 function exerciseUseCount(exId) {
   var n = 0;
   data.workouts.forEach(function (w) { if (w.exercises.some(function (b) { return b.exId === exId; })) n++; });
@@ -1233,6 +1242,11 @@ function renderEditor(el, ed) {
   if (live) { updateStats(el, o); tickTimers(); }
 }
 
+// 메모 칸이 비어 있으면 지난번 메모를 회색 안내로 보여준다 (저장되지는 않음)
+function notePlaceholder(exId, ed) {
+  var n = lastNote(exId, ed.mode === 'routine' ? Infinity : ed.obj.start, ed.obj.id);
+  return n ? '지난 메모: ' + n : '메모 추가';
+}
 function blockHtml(b, i, ed) {
   var live = ed.mode === 'live', o = ed.obj;
   var ex = exById(b.exId), type = ex ? ex.type : 'wr', cols = COLS[type];
@@ -1241,7 +1255,7 @@ function blockHtml(b, i, ed) {
   var h = '<section class="block" data-b="' + i + '">' +
     '<div class="block-head"><button class="block-name" data-e="ex-detail">' + esc(ex ? ex.name : '(삭제된 종목)') + '</button>' +
     '<button class="icon-btn" data-e="block-menu" aria-label="종목 메뉴">' + icon('more', 20) + '</button></div>' +
-    '<input class="block-note" data-bn maxlength="200" value="' + esc(b.note || '') + '" placeholder="메모 추가">';
+    '<input class="block-note" data-bn maxlength="200" value="' + esc(b.note || '') + '" placeholder="' + esc(notePlaceholder(b.exId, ed)) + '">';
   if (ed.mode !== 'edit') {
     var rest = b.rest != null ? b.rest : data.settings.rest;
     h += '<button class="rest-chip" data-e="rest">' + icon('clock', 14) + '휴식 ' + fmtRest(rest) + (b.rest == null ? ' (기본)' : '') + '</button>';
@@ -2269,6 +2283,49 @@ function exportData() {
     if (navigator.clipboard) navigator.clipboard.writeText(json).then(function () { toast('파일 저장이 안 돼서 클립보드에 복사했습니다'); });
   }
 }
+// 백업 합치기 — 지금 데이터는 그대로 두고 파일에만 있는 것을 더한다. 설정은 지금 것을 유지.
+//   종목: 같은 id 또는 같은 이름(공백·대소문자 무시)이면 기존 종목으로 연결, 없으면 추가
+//   운동: 같은 id이거나, 시작 시각(분 단위)과 내용이 같으면 이미 있는 것으로 보고 건너뜀
+//   루틴: 같은 id나 같은 이름이 있으면 건너뜀
+function mergeData(d) {
+  var res = { workouts: 0, exercises: 0, routines: 0, skipped: 0 };
+  // 종목은 새로 추가되는 운동·루틴이 실제로 쓰는 것만 더한다 — 예전 백업을 합쳐도 이미 정리(합치기)한 종목이 되살아나지 않게
+  var byId = {}, byName = {}, fileEx = {};
+  data.exercises.forEach(function (e) { byId[e.id] = e; byName[normName(e.name)] = e; });
+  d.exercises.forEach(function (e) { fileEx[e.id] = e; });
+  function exFor(id) {
+    var e = fileEx[id];
+    var hit = byId[id] || (e && byName[normName(e.name)]);
+    if (hit) return hit.id;
+    if (!e) return id;
+    var ne = clone(e);
+    data.exercises.push(ne); byId[ne.id] = ne; byName[normName(ne.name)] = ne; res.exercises++;
+    return ne.id;
+  }
+  function remap(blocks) { return blocks.map(function (b) { var c = clone(b); c.exId = exFor(b.exId); return c; }); }
+  function sig(w) { return Math.floor(w.start / 60000) + JSON.stringify(w.exercises.map(function (b) { return [b.exId, b.sets]; })); }
+  var rIds = {}, rNames = {}, rmap = {};
+  data.routines.forEach(function (r) { rIds[r.id] = r.id; rNames[r.name.trim()] = r.id; });
+  d.routines.forEach(function (r) {
+    var hit = rIds[r.id] || rNames[r.name.trim()];
+    if (hit) { rmap[r.id] = hit; return; }
+    var nr = clone(r); nr.exercises = remap(r.exercises);
+    data.routines.push(nr); rIds[nr.id] = nr.id; rNames[nr.name.trim()] = nr.id; rmap[r.id] = nr.id; res.routines++;
+  });
+  var ids = {}, sigs = {};
+  data.workouts.forEach(function (w) { ids[w.id] = 1; sigs[sig(w)] = 1; });
+  d.workouts.forEach(function (w) {
+    if (ids[w.id]) { res.skipped++; return; }
+    var probe = { start: w.start, exercises: w.exercises.map(function (b) {
+      var e = fileEx[b.exId], hit = byId[b.exId] || (e && byName[normName(e.name)]);
+      return { exId: hit ? hit.id : b.exId, sets: b.sets };
+    }) };
+    if (sigs[sig(probe)]) { res.skipped++; return; }
+    var nw = clone(w); nw.exercises = remap(w.exercises); if (nw.routineId) nw.routineId = rmap[nw.routineId] || nw.routineId;
+    data.workouts.push(nw); ids[nw.id] = 1; sigs[sig(nw)] = 1; res.workouts++;
+  });
+  return res;
+}
 function importData(file) {
   var reader = new FileReader();
   reader.onload = function () {
@@ -2276,9 +2333,18 @@ function importData(file) {
     try { obj = JSON.parse(reader.result); } catch (e) { toast('JSON 파일이 아닙니다'); return; }
     if (!obj || !Array.isArray(obj.workouts) || !Array.isArray(obj.exercises)) { toast('이 앱의 백업 파일 형식이 아닙니다'); return; }
     var d = normalize(obj);
-    confirmSheet('백업(운동 ' + d.workouts.length + '회, 종목 ' + d.exercises.length + '개)으로 지금 데이터를 대체할까요?', '대체', function () {
-      data = d; applyTheme(); save(); refreshTab(); toast('불러왔습니다');
-    });
+    actionSheet('백업 파일: 운동 ' + d.workouts.length + '회 · 종목 ' + d.exercises.length + '개 · 루틴 ' + d.routines.length + '개', [
+      { label: '합치기 (지금 기록은 두고 새 기록만 추가)', icon: 'plus', onClick: function () {
+        var r = mergeData(d);
+        save(); refreshTab();
+        toast('운동 ' + r.workouts + '회 · 종목 ' + r.exercises + '개 · 루틴 ' + r.routines + '개를 추가했어요' + (r.skipped ? ' (겹치는 운동 ' + r.skipped + '회는 건너뜀)' : ''), 4000);
+      } },
+      { label: '대체 (지금 데이터를 파일 내용으로 바꾸기)', icon: 'refresh', danger: true, onClick: function () {
+        confirmSheet('지금 앱의 기록(운동 ' + data.workouts.length + '회)이 모두 지워지고 파일 내용으로 바뀝니다. 대체할까요?', '대체', function () {
+          data = d; applyTheme(); save(); refreshTab(); toast('불러왔습니다');
+        });
+      } }
+    ]);
   };
   reader.readAsText(file);
 }
