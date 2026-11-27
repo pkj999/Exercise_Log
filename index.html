@@ -73,6 +73,8 @@ svg { flex-shrink: 0; }
 
 .loading { padding: 40vh 0 0; text-align: center; color: var(--muted); }
 #app { max-width: 560px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 8px) 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 84px); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sync-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; background: var(--gold-soft); color: var(--warm); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .top h1 { font-size: 26px; font-weight: 800; margin: 8px 0 14px; letter-spacing: -.02em; }
 
 /* ---------- 공통 요소 ---------- */
@@ -281,6 +283,7 @@ svg { flex-shrink: 0; }
 .lg-dot.pf { background: var(--muted); } .lg-dot.po { background: transparent; }
 .growth .lg-line { background: var(--muted); }
 .danger-text { color: var(--danger); }
+.warn-text { color: var(--warm) !important; }
 .lg-mv { width: 0; height: 11px; border-left: 1px dashed var(--muted); }
 .gr-sum .gr-pill { margin-left: 2px; }
 .chart-x { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); position: absolute; left: 0; right: 56px; bottom: 0; }
@@ -380,7 +383,7 @@ svg { flex-shrink: 0; }
 <div id="loading" class="loading">불러오는 중...</div>
 
 <div id="app" hidden>
-  <header class="top"><h1 id="tab-title">운동</h1></header>
+  <header class="top"><h1 id="tab-title">운동</h1><button id="sync-chip" class="sync-chip" hidden aria-label="동기화 상태 — 눌러서 다시 시도"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M5.5 9a8 8 0 0 1 13.2-3L21 10M3 14l2.3 4A8 8 0 0 0 18.5 15"/></svg><span>동기화 대기</span></button></header>
   <main id="view"></main>
 
   <button id="minibar" class="minibar" hidden>
@@ -430,11 +433,13 @@ svg { flex-shrink: 0; }
  *               w=kg, r=횟수, s=초, d=km — 종목 type에 맞는 값만 채움
  *   settings  = { rest, sound, vibrate, theme, prefillPrev, gymMoves: ['YYYY-MM-DD'], setTargets: { 부위: 주간 목표 세트 } }   gymMoves: 헬스장 이동일(그래프 구간 나눔)
  *   진행 중인 운동은 ACTIVE_KEY(이 기기 로컬)에만 두고, 완료할 때 workouts에 들어간다.
+ *   동기화용: 운동·루틴·종목·settings에 u(마지막 수정 시각 ms, 저장 때 자동 기록), deleted = { id: 삭제 시각 }.
+ *   여러 기기가 같은 GitHub 파일을 쓰므로 저장 충돌 때는 덮어쓰지 않고 합친다 — [core]의 mergeSync 참고.
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 8;
-var APP_BUILD_DATE = '2026-11-24';
+var APP_VERSION = 9;
+var APP_BUILD_DATE = '2026-11-27';
 
 var STORAGE_KEY = 'exercise-log-v1';
 var ACTIVE_KEY = 'exercise-log-active';
@@ -465,7 +470,7 @@ function emptyData() {
   var targets = {};
   MUSCLES.forEach(function (m) { targets[m] = DEFAULT_SET_TARGETS[m] || 0; });
   return {
-    v: 1, exercises: [], routines: [], workouts: [],
+    v: 1, exercises: [], routines: [], workouts: [], deleted: {},
     settings: { rest: 90, sound: true, vibrate: true, theme: 'auto', prefillPrev: true, gymMoves: [], setTargets: targets }
   };
 }
@@ -642,11 +647,11 @@ function normalize(o) {
     return {
       id: String(e.id), name: String(e.name).trim().slice(0, 40),
       muscle: MUSCLES.indexOf(e.muscle) >= 0 ? e.muscle : '기타',
-      type: TYPES[e.type] ? e.type : 'wr'
+      type: TYPES[e.type] ? e.type : 'wr', u: num(e.u) || 0
     };
   });
   d.routines = (Array.isArray(o.routines) ? o.routines : []).filter(Boolean).map(function (r) {
-    return { id: String(r.id || uid()), name: String(r.name || '루틴').slice(0, 40), fav: !!r.fav, exercises: (r.exercises || []).map(cleanBlock) };
+    return { id: String(r.id || uid()), name: String(r.name || '루틴').slice(0, 40), fav: !!r.fav, exercises: (r.exercises || []).map(cleanBlock), u: num(r.u) || 0 };
   });
   d.workouts = (Array.isArray(o.workouts) ? o.workouts : []).filter(function (w) { return w && num(w.start); }).map(function (w) {
     return {
@@ -654,8 +659,12 @@ function normalize(o) {
       routineId: w.routineId ? String(w.routineId) : '',
       start: num(w.start), end: num(w.end) || num(w.start),
       note: typeof w.note === 'string' ? w.note.slice(0, 1000) : '',
-      exercises: (w.exercises || []).map(cleanBlock)
+      exercises: (w.exercises || []).map(cleanBlock), u: num(w.u) || 0
     };
+  });
+  d.deleted = {};
+  if (o.deleted && typeof o.deleted === 'object') Object.keys(o.deleted).forEach(function (id) {
+    var t = num(o.deleted[id]); if (t && t > Date.now() - TOMB_KEEP_MS) d.deleted[String(id)] = t;
   });
   var s = o.settings || {};
   d.settings.rest = num(s.rest) != null ? Math.min(600, Math.max(0, num(s.rest))) : 90;
@@ -670,22 +679,144 @@ function normalize(o) {
   });
   d.settings.gymMoves = (Array.isArray(s.gymMoves) ? s.gymMoves : []).filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })
     .filter(function (x, i, a) { return a.indexOf(x) === i; }).sort().slice(0, 20);
+  d.settings.u = num(s.u) || 0;
   return d;
 }
+
+// ---------- 동기화: 수정 시각·삭제 기록 자동 기록, 충돌 시 합치기 ----------
+// 저장할 때마다 직전 모습(syncSnap)과 비교해 바뀐 항목에 u(수정 시각)를, 사라진 항목은 deleted에 기록한다.
+// 그래서 코드 곳곳에서 data를 고치고 save()만 불러도 동기화 정보가 빠짐없이 남는다.
+var SYNC_COLLS = ['exercises', 'routines', 'workouts'];
+var TOMB_KEEP_MS = 180 * 86400000;   // 삭제 기록 보관 기간 (이보다 오래 안 쓴 기기와는 합칠 때 삭제가 되살아날 수 있음)
+var syncSnap = null;
+function itemSig(x) { var c = {}; Object.keys(x).forEach(function (k) { if (k !== 'u') c[k] = x[k]; }); return JSON.stringify(c); }
+function snapOf(d) {
+  var sn = { settings: itemSig(d.settings) };
+  SYNC_COLLS.forEach(function (c) { sn[c] = {}; d[c].forEach(function (x) { sn[c][x.id] = itemSig(x); }); });
+  return sn;
+}
+function resetSyncSnap() { syncSnap = snapOf(data); }
+function stampChanges() {
+  var now = Date.now();
+  if (!syncSnap) { resetSyncSnap(); return; }
+  SYNC_COLLS.forEach(function (c) {
+    var seen = {};
+    data[c].forEach(function (x) {
+      seen[x.id] = 1;
+      if (syncSnap[c][x.id] !== itemSig(x)) { x.u = now; delete data.deleted[x.id]; }
+    });
+    Object.keys(syncSnap[c]).forEach(function (id) { if (!seen[id]) data.deleted[id] = now; });
+  });
+  if (syncSnap.settings !== itemSig(data.settings)) data.settings.u = now;
+  Object.keys(data.deleted).forEach(function (id) { if (data.deleted[id] < now - TOMB_KEEP_MS) delete data.deleted[id]; });
+  resetSyncSnap();
+}
+// 두 사본 합치기 (a = 이 기기, b = GitHub). 항목은 id로 모으고, 양쪽에 다 있으면 더 나중에 고친 쪽(u),
+// 같으면 이 기기 쪽. 삭제 기록이 그 항목의 마지막 수정보다 나중이면 삭제. 설정도 나중에 바꾼 쪽.
+// 순서는 이 기기 순서를 따르고 GitHub에만 있는 항목은 뒤에 붙인다.
+function mergeSync(a, b) {
+  var out = emptyData(), del = {};
+  [a.deleted || {}, b.deleted || {}].forEach(function (m) { Object.keys(m).forEach(function (id) { del[id] = Math.max(del[id] || 0, m[id]); }); });
+  var pool = {};
+  SYNC_COLLS.forEach(function (c) {
+    var map = {}, order = [];
+    a[c].forEach(function (x) { map[x.id] = x; order.push(x.id); });
+    b[c].forEach(function (x) {
+      if (!map[x.id]) { map[x.id] = x; order.push(x.id); }
+      else if ((x.u || 0) > (map[x.id].u || 0)) map[x.id] = x;
+    });
+    pool[c] = map;
+    out[c] = order.filter(function (id) { return !(del[id] && del[id] >= (map[id].u || 0)); }).map(function (id) { return map[id]; });
+  });
+  // 남은 운동·루틴이 쓰는 종목은 한쪽에서 지웠더라도 살린다 (기록이 '삭제된 종목'이 되지 않게)
+  var used = {}, have = {};
+  out.workouts.concat(out.routines).forEach(function (w) { w.exercises.forEach(function (bl) { used[bl.exId] = 1; }); });
+  out.exercises.forEach(function (e) { have[e.id] = 1; });
+  Object.keys(used).forEach(function (id) { if (!have[id] && pool.exercises[id]) { out.exercises.push(pool.exercises[id]); delete del[id]; } });
+  out.settings = (a.settings.u || 0) >= (b.settings.u || 0) ? a.settings : b.settings;
+  out.deleted = del;
+  return out;
+}
+// 저장소(store.js 부분)가 충돌·첫 저장 때 부른다: 문자열 둘을 받아 합친 문자열을 돌려준다
+var syncHooks = {
+  merge: function (localStr, remoteStr) {
+    try { return JSON.stringify(mergeSync(normalize(JSON.parse(localStr)), normalize(JSON.parse(remoteStr)))); }
+    catch (e) { return localStr; }
+  },
+  // 합친 결과를 화면에 반영 (다른 기기 기록이 들어왔을 수 있으므로)
+  applied: function (str) {
+    try {
+      var merged = normalize(JSON.parse(str));
+      if (JSON.stringify(merged) === JSON.stringify(data)) return;
+      data = merged; resetSyncSnap(); applyTheme(); rerenderAll();
+    } catch (e) {}
+  }
+};
+function rerenderAll() {
+  if (typeof refreshTab === 'function') refreshTab();
+  var t = topPage();
+  if (t && !t.isLive) t.render();
+}
+var syncState = { loadFailed: false, error: '' };
 async function loadData() {
   try {
     var res = await store.get(STORAGE_KEY);
     if (res && res.value) data = normalize(JSON.parse(res.value));
+    syncState.loadFailed = false;
   } catch (e) {
-    if (store.mode === 'github') toast('GitHub에서 불러오지 못했습니다 — ' + (e.message || ''), 4000);
+    if (store.mode === 'github') {
+      // 기록을 못 불러온 채로 열림 — 이대로 입력해도, 저장할 때 GitHub 기록과 합쳐서 올리므로 덮어쓰지 않는다
+      syncState.loadFailed = true; syncState.error = e.message || '';
+      toast('GitHub에서 기록을 불러오지 못했어요. 지금 입력한 기록은 연결되면 GitHub 기록과 합쳐서 저장돼요.', 5000);
+    }
   }
+  resetSyncSnap();
+  refreshSyncChip();
 }
 async function persist() {
-  try { await store.set(STORAGE_KEY, JSON.stringify(data)); }
+  stampChanges();
+  try { await store.set(STORAGE_KEY, JSON.stringify(data)); syncState.error = ''; }
   catch (e) {
-    toast('저장에 실패했습니다 — ' + (e.message || '알 수 없는 오류'), 4000);
+    syncState.error = e.message || '알 수 없는 오류';
+    toast('GitHub에 올리지 못했어요 — 이 기기에 보관했다가 다시 시도할게요 (' + syncState.error + ')', 4000);
     throw e;
-  }
+  } finally { refreshSyncChip(); }
+}
+// GitHub의 최신 내용을 받아 합친다 — 앱으로 돌아왔을 때·인터넷이 다시 연결됐을 때·직접 누를 때
+var lastPull = 0, pulling = false;
+async function syncNow(manual) {
+  if (store.mode !== 'github' || pulling) return;
+  if (!manual && Date.now() - lastPull < 30000) return;
+  pulling = true; lastPull = Date.now();
+  try {
+    if (store.hasPending()) await persist();           // 못 올린 변경이 있으면 올리면서 합친다
+    else {
+      var r = await store.pull();
+      if (r && r.value) {
+        var merged = mergeSync(data, normalize(JSON.parse(r.value)));
+        var str = JSON.stringify(merged);
+        syncHooks.applied(str);
+        if (str !== JSON.stringify(normalize(JSON.parse(r.value)))) await persist();   // 이 기기에만 있던 내용이 있으면 올림
+      }
+    }
+    syncState.loadFailed = false; syncState.error = '';
+    if (manual) toast('GitHub와 동기화했어요');
+  } catch (e) {
+    syncState.error = e.message || '';
+    if (manual) toast('동기화하지 못했어요 — ' + syncState.error, 4000);
+  } finally { pulling = false; refreshSyncChip(); }
+}
+// 상단 동기화 상태 표시: 못 올린 변경이 있거나 불러오기에 실패했을 때만 보인다
+function refreshSyncChip() {
+  var chip = $('sync-chip'); if (!chip) return;
+  var bad = store.mode === 'github' && (store.hasPending() || syncState.loadFailed);
+  chip.hidden = !bad;
+  if (bad) chip.querySelector('span').textContent = syncState.loadFailed ? '불러오기 실패' : '동기화 대기';
+}
+function fmtAgo(ms) {
+  if (!ms) return '없음';
+  var m = Math.round((Date.now() - ms) / 60000);
+  return m < 1 ? '방금' : m < 60 ? m + '분 전' : m < 1440 ? Math.round(m / 60) + '시간 전' : fmtKoDate(ms);
 }
 function save() { persist().catch(function () {}); }
 
@@ -895,6 +1026,7 @@ if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTh
   // 그래서 PUT을 시도하기 직전에 이 값을 켜두고, 성공했을 때만 끈다 — 켜져 있는 동안은
   // 네트워크에서 새로 읽어오더라도 로컬 내용을 절대 덮어쓰지 않는다.
   var GH_PENDING_KEY = 'el-github-pending';
+  var GH_SYNC_AT_KEY = 'el-github-sync-at';   // GitHub와 마지막으로 주고받기에 성공한 시각 (설정에 표시)
   // GitHub Contents API는 커밋 자체는 바로 끝나도, 그 직후 다시 읽으면 몇 초~몇 분 정도 저장 전
   // 내용을 그대로 돌려주는 지연(읽기 일관성 지연)이 있을 수 있다. 그래서 "방금 내가 저장한 것"은
   // 이 시간 동안 무조건 로컬 사본을 그대로 믿고, 네트워크로 다시 확인하지 않는다 — 안 그러면
@@ -1107,7 +1239,7 @@ if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTh
         return ghGetData(cfg).then(function (r) {
           if (r.value == null) return baseStore.get(k);
           ghSha = r.sha;
-          try { window.localStorage.setItem(GH_CACHE_KEY, r.value); } catch (e) {}
+          try { window.localStorage.setItem(GH_CACHE_KEY, r.value); window.localStorage.setItem(GH_SYNC_AT_KEY, String(Date.now())); } catch (e) {}
           return { key: k, value: r.value };
         }).catch(function (err) {
           try {
@@ -1125,35 +1257,57 @@ if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTh
         // 끝나면(그 사이 앱이 꺼지거나 오프라인이 되는 경우 포함) 이 표시가 남아있어서,
         // 다음에 GitHub에서 다시 읽어올 때 이 변경사항이 예전 것으로 취급되어 사라지지 않는다.
         try { window.localStorage.setItem(GH_PENDING_KEY, '1'); } catch (e) {}
-        function markWritten() {
-          try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); } catch (e) {}
+        function markWritten(final) {
+          try { window.localStorage.setItem(GH_CACHE_KEY, final); } catch (e) {}
+          try { window.localStorage.setItem(GH_CACHE_AT_KEY, String(Date.now())); window.localStorage.setItem(GH_SYNC_AT_KEY, String(Date.now())); } catch (e) {}
           try { window.localStorage.removeItem(GH_PENDING_KEY); } catch (e) {}
         }
         return queueGhWrite(function () {
-          // ghSha는 메모리 변수라 새로고침/앱 재실행 시 null로 초기화되는데, "아직 못 올린
-          // 변경사항이 있다(pending)" 표시 때문에 store.get()이 네트워크 조회를 건너뛰면
-          // ghSha가 계속 null로 남는다. null인 채로 PUT하면 "파일이 이미 있는데 sha가
-          // 없다"며 GitHub가 거부하고, 실패하니 pending도 안 꺼져서 — 영원히 같은 이유로
-          // 실패만 반복하는 고리에 빠진다(실제로 겪은 사고). 그래서 쓰기 전에 ghSha가 없으면
-          // 먼저 최신 sha만 확인해서 채워둔다.
-          var ensureSha = ghSha ? Promise.resolve(ghSha) : ghGetData(cfg).then(function (r) { ghSha = r.sha; return ghSha; });
-          return ensureSha.then(function () {
-            return ghPutData(cfg, v, ghSha);
-          }).then(function (sha) {
-            ghSha = sha;
-            markWritten();
-            return { key: k, value: v };
-          }).catch(function (err) {
-            if (err.status === 409 || err.status === 422) {
-              // sha가 어긋남(충돌) — 최신 sha로 다시 한 번만 시도. 쓰기가 이제 큐로 한 번에
-              // 하나씩만 실행되므로, 남은 충돌 가능성은 사실상 다른 기기가 동시에 저장한
-              // 경우뿐이라 재시도 한 번이면 충분하다.
-              return ghGetData(cfg).then(function (r) {
-                ghSha = r.sha;
-                return ghPutData(cfg, v, ghSha).then(function (sha) { ghSha = sha; markWritten(); return { key: k, value: v }; });
-              });
-            }
-            throw err;
+          // 덮어쓰지 않고 합쳐서 올린다 (예전엔 충돌 시 이 기기 내용으로 그대로 덮어써서, 다른 기기가 먼저
+          // 저장한 기록이 사라졌다 — 실제로 재현됨).
+          //  · 이 세션에서 GitHub를 한 번도 못 읽었으면(ghSha 없음: 새 기기·불러오기 실패·못 올린 변경 보관 중)
+          //    먼저 GitHub 내용을 받아 합친 뒤 올린다 — 빈 화면에서 저장해 전체 기록을 덮어쓰던 사고 방지
+          //  · 올리다 충돌(409/422: 그 사이 다른 기기가 저장)하면 최신 내용을 받아 다시 합쳐서 최대 3번 시도
+          var cur = v;
+          function fetchAndMerge() {
+            return ghGetData(cfg).then(function (r) {
+              ghSha = r.sha;
+              if (r.value) {
+                var merged = window.syncHooks ? syncHooks.merge(cur, r.value) : cur;
+                if (merged !== cur) { cur = merged; if (window.syncHooks) syncHooks.applied(cur); }
+              }
+            });
+          }
+          function attempt(n) {
+            return ghPutData(cfg, cur, ghSha).then(function (sha) {
+              ghSha = sha;
+              markWritten(cur);
+              return { key: k, value: cur };
+            }).catch(function (err) {
+              if ((err.status === 409 || err.status === 422) && n < 3) {
+                return new Promise(function (res) { setTimeout(res, 400 * n); }).then(fetchAndMerge).then(function () { return attempt(n + 1); });
+              }
+              throw err;
+            });
+          }
+          return (ghSha ? Promise.resolve() : fetchAndMerge()).then(function () { return attempt(1); });
+        });
+      },
+      hasPending: function () {
+        try { return !!getGhConfig() && !!window.localStorage.getItem(GH_PENDING_KEY); } catch (e) { return false; }
+      },
+      lastSyncAt: function () {
+        try { return Number(window.localStorage.getItem(GH_SYNC_AT_KEY) || 0); } catch (e) { return 0; }
+      },
+      // GitHub 최신 내용 받기 (쓰기 대기열 뒤에 실행해 쓰는 중인 내용과 엇갈리지 않게)
+      pull: function () {
+        var cfg = getGhConfig();
+        if (!cfg) return Promise.resolve(null);
+        return queueGhWrite(function () {
+          return ghGetData(cfg).then(function (r) {
+            ghSha = r.sha;
+            if (r.value) { try { window.localStorage.setItem(GH_CACHE_KEY, r.value); window.localStorage.setItem(GH_SYNC_AT_KEY, String(Date.now())); } catch (e) {} }
+            return r;
           });
         });
       }
@@ -2635,7 +2789,11 @@ function settingsTabHtml() {
   if (cfg) {
     h += '<div class="row"><span class="list-main"><b>' + esc(cfg.owner + '/' + cfg.repo) + '</b><small>' + esc(cfg.branch || 'main') + ' 브랜치 · ' + esc(GH_DATA_PATH) +
       (cfg.tokenExpiresAt ? '<br>토큰 만료: ' + esc(String(cfg.tokenExpiresAt).slice(0, 10)) : '') + '</small></span><span class="badge ok">연결됨</span></div>' +
-      '<div class="btn-row"><button class="btn btn-secondary" data-a="gh-reload">' + icon('refresh', 16) + '다시 불러오기</button><button class="btn btn-secondary danger" data-a="gh-disconnect">연결 해제</button></div>';
+      '<div class="row"><span class="list-main"><span class="row-label">마지막 동기화 · ' + fmtAgo(store.lastSyncAt()) + '</span>' +
+      (store.hasPending() ? '<small class="warn-text">아직 GitHub에 올리지 못한 변경이 있어요. 이 기기에 보관 중이며, 동기화하면 GitHub 기록과 합쳐서 올려요.</small>'
+        : syncState.loadFailed ? '<small class="warn-text">GitHub에서 기록을 불러오지 못했어요' + (syncState.error ? ' (' + esc(syncState.error) + ')' : '') + '</small>'
+        : '<small>다른 기기에서 저장한 기록도 앱을 다시 열 때 합쳐져요</small>') + '</span></div>' +
+      '<div class="btn-row"><button class="btn btn-secondary" data-a="gh-sync">' + icon('refresh', 16) + '지금 동기화</button><button class="btn btn-secondary danger" data-a="gh-disconnect">연결 해제</button></div>';
   } else {
     h += '<p class="hint left">연결하면 기록이 GitHub 저장소에 저장되어 여러 기기에서 같이 쓸 수 있어요. 연결하지 않으면 이 기기에만 저장됩니다.</p>' +
       '<div class="field-row"><label class="field"><span>계정</span><input class="input" id="gh-owner" autocomplete="off" autocapitalize="off"></label>' +
@@ -2673,6 +2831,7 @@ async function ghConnect() {
       try { localStorage.removeItem(GH_PENDING_KEY); localStorage.removeItem(GH_CACHE_AT_KEY); } catch (e) {}
       if (useRemote) {
         data = normalize(JSON.parse(remote.value));
+        resetSyncSnap();
         try { localStorage.setItem(GH_CACHE_KEY, remote.value); } catch (e) {}
         applyTheme();
       } else {
@@ -2852,10 +3011,8 @@ $('view').addEventListener('click', function (e) {
       data.settings.gymMoves = data.settings.gymMoves.filter(function (x) { return x !== gv; }); save(); refreshTab();
       break;
     case 'gh-connect': ghConnect(); break;
-    case 'gh-reload':
-      if (localStorage.getItem(GH_PENDING_KEY)) { toast('아직 GitHub에 올라가지 않은 변경사항이 있어 다시 불러오지 않았습니다', 3500); break; }
-      try { localStorage.removeItem(GH_CACHE_AT_KEY); } catch (e2) {}
-      loadData().then(function () { applyTheme(); refreshTab(); toast('GitHub에서 다시 불러왔습니다'); });
+    case 'gh-sync':
+      syncNow(true).then(function () { if (currentTab === 'settings') refreshTab(); });
       break;
     case 'gh-disconnect':
       confirmSheet('GitHub 연결을 해제할까요? 지금 데이터는 이 기기에 복사해 둡니다.', '연결 해제', function () {
@@ -2886,12 +3043,17 @@ $('minibar').addEventListener('click', function () { if (active) openEditor('liv
   document.addEventListener(ev, unlockAudio, { passive: true, once: true });
 });
 setInterval(tickTimers, 500);
-document.addEventListener('visibilitychange', function () { if (!document.hidden) tickTimers(); });
+document.addEventListener('visibilitychange', function () { if (!document.hidden) { tickTimers(); syncNow(false); } });
+// 인터넷이 다시 연결되면 못 올린 변경을 올리고 최신 내용을 합친다
+window.addEventListener('online', function () { lastPull = 0; syncNow(false); });
+$('sync-chip').addEventListener('click', function () { syncNow(true); });
 
 (async function init() {
   try { OLD_KEYS.forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {}
   loadActive();
   await loadData();
+  // 지난번에 못 올린 변경이 있으면 바로 다시 시도 (GitHub 기록과 합쳐서 올림)
+  if (store.hasPending() || syncState.loadFailed) setTimeout(function () { syncNow(true); }, 1500);
   applyTheme();
   $('loading').hidden = true;
   $('app').hidden = false;
