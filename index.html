@@ -455,7 +455,7 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 11;
+var APP_VERSION = 12;
 var APP_BUILD_DATE = '2026-11-27';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -1783,13 +1783,26 @@ function startRest(sec) {
   scheduleRestNotify();
 }
 // ---------- 휴식 끝 알림 (앱을 벗어나 있어도 폰 알림으로) ----------
-// 웹앱이라 화면이 꺼지거나 다른 앱에 있을 때 타이머가 멈출 수 있다. 안드로이드 홈 화면 앱에서는 대부분 제때 오고,
-// iOS는 앱이 백그라운드에 있으면 늦게 오거나 안 올 수 있다 — 돌아오면 앱 안 알림(소리·진동·문구)은 그대로 나온다.
-var restNotifyTimer = null;
+// 앱 화면의 타이머는 앱을 나가면 안드로이드 Chrome이 바로 멈춰서 알림을 못 보낸다(실제 기기에서 확인된 문제).
+// 그래서 화면과 따로 도는 서비스워커(sw.js)에 "몇 시에 알려줘"를 맡긴다. 서비스워커는 한 번에 최대 약 5분까지
+// 기다릴 수 있어 휴식 5분 이내는 제때 알림이 온다. 앱을 보고 있으면 서비스워커는 알림을 건너뛰고 앱 안 알림이 울린다.
+// 서비스워커가 없는 환경(미리보기 등)에서만 예전처럼 화면 타이머로 알린다.
+var restNotifyTimer = null, restSwScheduled = false;
 function notifyAllowed() { return data.settings.restNotify && 'Notification' in window && Notification.permission === 'granted'; }
+function restNotifyPayload() {
+  return { title: '휴식 끝!', options: { body: '다음 세트를 시작하세요 · ' + (active ? active.name : ''), tag: 'rest-timer', renotify: true,
+    vibrate: data.settings.vibrate ? [200, 100, 200] : undefined, icon: 'icon-192.png', badge: 'icon-192.png' } };
+}
+function swPost(msg) {
+  if (!('serviceWorker' in navigator)) return false;
+  try { navigator.serviceWorker.ready.then(function (reg) { if (reg.active) reg.active.postMessage(msg); }).catch(function () {}); return true; }
+  catch (e) { return false; }
+}
 function scheduleRestNotify() {
-  clearTimeout(restNotifyTimer);
-  if (!active || !active.restEnd || !notifyAllowed()) return;
+  clearTimeout(restNotifyTimer); restSwScheduled = false;
+  if (!active || !active.restEnd || !notifyAllowed()) { swPost({ type: 'rest-cancel' }); return; }
+  var pl = restNotifyPayload();
+  if (swPost({ type: 'rest-schedule', at: active.restEnd, title: pl.title, options: pl.options })) { restSwScheduled = true; return; }
   restNotifyTimer = setTimeout(fireRestNotify, Math.max(0, active.restEnd - Date.now()));
 }
 function fireRestNotify() {
@@ -1822,7 +1835,8 @@ function adjustRest(delta) {
 function stopRest() {
   if (!active) return;
   active.restEnd = 0; saveActive(); tickTimers();
-  clearTimeout(restNotifyTimer);
+  clearTimeout(restNotifyTimer); restSwScheduled = false;
+  swPost({ type: 'rest-cancel' });
 }
 function tickTimers() {
   var now = Date.now();
@@ -1831,8 +1845,9 @@ function tickTimers() {
   var resting = !!(active && active.restEnd);
   var remain = resting ? (active.restEnd - now) / 1000 : 0;
   if (resting && remain <= 0) {
-    var notified = active.restNotified;
-    active.restEnd = 0; saveActive(); resting = false;
+    // 앱이 멈춰 있다 늦게 알아챈 경우(끝난 지 1.5초 넘음) 서비스워커가 이미 폰 알림을 보냈으므로 소리·진동은 생략
+    var notified = active.restNotified || (restSwScheduled && now - active.restEnd > 1500);
+    active.restEnd = 0; saveActive(); resting = false; restSwScheduled = false;
     restAlert(notified);
   }
   Array.prototype.forEach.call(document.querySelectorAll('.js-restbar'), function (b) { b.hidden = !resting; });
