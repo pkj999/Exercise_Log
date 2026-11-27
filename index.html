@@ -337,6 +337,23 @@ svg { flex-shrink: 0; }
 .ss-label { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 12px; font-weight: 750; color: var(--ss); padding: 0 4px 2px; }
 .ss-label small { font-weight: 600; color: var(--muted); }
 .ss-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; margin-right: 6px; border-radius: 6px; background: var(--ss-soft); color: var(--ss); font-size: 12px; font-weight: 800; vertical-align: 2px; }
+.gchip { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; padding: 2px 7px; border-radius: 6px; font-size: 11.5px; font-weight: 750; white-space: nowrap; vertical-align: 2px; margin-left: 6px; }
+.gchip.up { background: var(--good-soft); color: var(--good); }
+.gchip.same { background: var(--card-2); color: var(--muted); }
+.gchip.down { background: var(--danger-soft); color: var(--danger); }
+.gchip.stall { background: var(--gold-soft); color: var(--warm); min-height: 26px; }
+.block-head .js-gchip { margin-left: auto; display: flex; }
+.block-head .block-name { min-width: 0; }
+.uni-tag { font-size: 11px; font-weight: 700; color: var(--muted); background: var(--card-2); border-radius: 5px; padding: 1px 5px; margin-left: 6px; vertical-align: 2px; }
+.growth-sum { font-size: 13px; color: var(--muted); margin: -2px 2px 12px; }
+.growth-sum .up { color: var(--good); font-weight: 750; } .growth-sum .down { color: var(--danger); font-weight: 700; }
+.growth-sum.center { text-align: center; margin: -4px 0 12px; }
+.stall-line { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 0 0 12px; }
+.stall-line .gchip { margin-left: 0; }
+.hist-item .card-head b .gchip { margin-left: 8px; }
+.set-memo { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; font-size: 12.5px; color: var(--muted); padding: 0 8px 6px 44px; margin-top: -2px; }
+.set-line-memo { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); padding-left: 40px; margin-top: -2px; }
+.set-row.next-up { box-shadow: inset 0 0 0 2px var(--accent); transition: box-shadow .3s; }
 .rest-chip.ss-next { color: var(--ss); margin: 0; }
 .card.ss { border-left: 4px solid var(--ss); }
 /* 세트 줄을 왼쪽으로 밀어서 삭제 */
@@ -469,11 +486,11 @@ svg { flex-shrink: 0; }
  *   [main]    초기화
  *
  * [데이터 구조]  (STORAGE_KEY 하나에 전부 저장)
- *   exercises = [{ id, name, muscle, type }]        type: wr(무게×횟수) r(횟수) t(시간) dt(거리+시간)
+ *   exercises = [{ id, name, muscle, type, uni }]   type: wr(무게×횟수) r(횟수) t(시간) dt(거리+시간), uni: 한쪽씩 하는 종목(볼륨 ×2, 있을 때만)
  *   routines  = [{ id, name, fav, exercises: [Block] }]   fav: 즐겨찾기(운동 탭 맨 위에 표시)
  *   workouts  = [{ id, name, routineId, start, end, note, exercises: [Block] }]   start/end = ms
  *   Block     = { exId, note, rest, ss, sets: [Set] }   ss: 슈퍼세트 묶음 id (바로 붙어 있는 같은 ss 종목끼리 한 묶음, 없으면 '')
- *   Set       = { t, w, r, s, d }   t: n(일반) w(워밍업) d(드롭) f(실패)
+ *   Set       = { t, w, r, s, d, m }   t: n(일반) w(워밍업) d(드롭) f(실패), m: 세트 메모(있을 때만)
  *               w=kg, r=횟수, s=초, d=km — 종목 type에 맞는 값만 채움 (맨몸(r) 종목의 w는 추가 중량)
  *   settings  = { rest, sound, vibrate, theme, prefillPrev, gymMoves: ['YYYY-MM-DD'], setTargets: { 부위: 주간 목표 세트 } }   gymMoves: 헬스장 이동일(그래프 구간 나눔)
  *   진행 중인 운동은 ACTIVE_KEY(이 기기 로컬)에만 두고, 완료할 때 workouts에 들어간다.
@@ -482,7 +499,7 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 13;
+var APP_VERSION = 14;
 var APP_BUILD_DATE = '2026-11-27';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -580,9 +597,16 @@ function exType(id) { var e = exById(id); return e ? e.type : 'wr'; }
 function e1rm(w, r) { return (w > 0 && r > 0) ? (r === 1 ? w : w * (1 + r / 30)) : 0; }
 function isWork(s) { return s.t !== 'w'; }
 function setVolume(s) { return isWork(s) ? (s.w || 0) * (s.r || 0) : 0; }
+// 한쪽씩 하는 종목(원암 로우 등)은 입력한 한쪽 무게 × 2로 볼륨을 센다
+function volFactor(exId) { var e = exById(exId); return e && e.uni ? 2 : 1; }
+function blockVolume(b, filter) {
+  var v = 0;
+  b.sets.forEach(function (s) { if (!filter || filter(s)) v += setVolume(s); });
+  return v * volFactor(b.exId);
+}
 function workoutVolume(w) {
   var v = 0;
-  w.exercises.forEach(function (b) { b.sets.forEach(function (s) { v += setVolume(s); }); });
+  w.exercises.forEach(function (b) { v += blockVolume(b); });
   return v;
 }
 function workoutSetCount(w) {
@@ -650,6 +674,57 @@ function bestBefore(exId, beforeMs, excludeId) {
   });
   return { score: score, w: w };
 }
+// ---------- 성장 / 과부하 타이밍 ----------
+// 같은 종목의 두 날(세트 묶음)을 비교: 'up'(성장) 'same'(유지) 'down'(감소). 워밍업은 뺀다.
+// 무게·횟수·세트 수 중 하나라도 늘어 '더 많이/더 무겁게' 했으면 성장 — 점진적 과부하를 어떤 방식으로 했든 잡히게.
+//  wr: 최고 예상 1RM · 최고 무게 · 총 볼륨(무게×횟수) / r: 최고 횟수 · 총 횟수 · 추가 중량 / t: 최장·총 시간 / dt: 거리·시간
+function growthKeys(sets, type) {
+  var ws = sets.filter(isWork), k = [];
+  function mx(f) { return ws.reduce(function (a, x) { return Math.max(a, f(x)); }, 0); }
+  function sm(f) { return ws.reduce(function (a, x) { return a + f(x); }, 0); }
+  if (type === 'wr') k = [mx(function (x) { return e1rm(x.w || 0, x.r || 0); }), mx(function (x) { return x.w || 0; }), sm(function (x) { return (x.w || 0) * (x.r || 0); })];
+  else if (type === 'r') k = [mx(function (x) { return x.r || 0; }), sm(function (x) { return x.r || 0; }), mx(function (x) { return x.w || 0; }), sm(function (x) { return (x.w || 0) * (x.r || 0); })];
+  else if (type === 't') k = [mx(function (x) { return x.s || 0; }), sm(function (x) { return x.s || 0; })];
+  else k = [sm(function (x) { return x.d || 0; }), mx(function (x) { return x.d || 0; }), sm(function (x) { return x.s || 0; })];
+  return k;
+}
+function compareDays(cur, prev, type) {
+  if (!cur || !prev || !cur.some(isWork) || !prev.some(isWork)) return null;
+  var a = growthKeys(cur, type), b = growthKeys(prev, type), up = false, down = false;
+  a.forEach(function (v, i) { if (v > b[i] + 1e-6) up = true; else if (v < b[i] - 1e-6) down = true; });
+  return up ? 'up' : down ? 'down' : 'same';
+}
+// 이 시각 이전, 같은 헬스장 구간에서 이 종목을 한 날들 (오래된 순) — [{ t, sets }]
+function sessionsBefore(exId, beforeMs, excludeId) {
+  var moves = moveTimes(), seg = segOf(beforeMs === Infinity ? Date.now() : beforeMs, moves), out = [];
+  data.workouts.forEach(function (w) {
+    if (w.id === excludeId || w.start >= beforeMs || segOf(w.start, moves) !== seg) return;
+    var sets = [];
+    w.exercises.forEach(function (b) { if (b.exId === exId) sets = sets.concat(b.sets); });
+    if (sets.some(isWork)) out.push({ t: w.start, sets: sets });
+  });
+  return out.sort(function (x, y) { return x.t - y.t; });
+}
+// 과부하 타이밍: 최근 연속으로 '성장'이 없었던 횟수가 STALL_N 이상이면 — 무게·횟수·휴식 중 하나를 바꿀 때
+var STALL_N = 2;
+function stallCount(exId, beforeMs, excludeId) {
+  var ss = sessionsBefore(exId, beforeMs, excludeId), type = exType(exId), n = 0;
+  for (var i = ss.length - 1; i > 0; i--) {
+    if (compareDays(ss[i].sets, ss[i - 1].sets, type) === 'up') break;
+    n++;
+  }
+  return n;
+}
+// 그날 이 종목이 지난번(같은 헬스장)보다 어땠는지
+function dayGrowth(exId, sets, atMs, excludeId) {
+  var ss = sessionsBefore(exId, atMs, excludeId);
+  return ss.length ? compareDays(sets, ss[ss.length - 1].sets, exType(exId)) : null;
+}
+var GROWTH_LABEL = { up: '성장', same: '유지', down: '감소' };
+function growthChip(g) { return g ? '<span class="gchip ' + g + '">' + (g === 'up' ? '▲ ' : g === 'down' ? '▼ ' : '') + GROWTH_LABEL[g] + '</span>' : ''; }
+function overloadChip(attr, n) { return '<button class="gchip stall" ' + attr + ' data-n="' + n + '" type="button">' + icon('up', 12) + '과부하 타이밍</button>'; }
+function stallMsg(n) { return '최근 ' + n + '번 연속 지난번보다 늘지 않았어요. 횟수·무게·세트를 늘리거나 휴식을 줄여 보세요.'; }
+
 // '이전' 값 짝짓기 — 워밍업은 지난 워밍업과, 나머지(일반·드롭·실패)는 지난 본세트와 각각 순서대로 맞춘다.
 // 순번만으로 맞추면 이번에 워밍업을 하나 더 넣었을 때 워밍업 줄에 지난 본세트 무게가 보이는 문제가 있었다.
 function prevFor(prev, sets, j) {
@@ -686,6 +761,7 @@ function cleanSet(s) {
   s = s || {};
   var out = { t: ['n', 'w', 'd', 'f'].indexOf(s.t) >= 0 ? s.t : 'n' };
   ['w', 'r', 's', 'd'].forEach(function (k) { var n = num(s[k]); if (n != null && n >= 0) out[k] = n; });
+  if (typeof s.m === 'string' && s.m.trim()) out.m = s.m.trim().slice(0, 100);
   return out;
 }
 function cleanBlock(b) {
@@ -720,11 +796,13 @@ function normalize(o) {
   var d = emptyData();
   if (!o || typeof o !== 'object') return d;
   d.exercises = (Array.isArray(o.exercises) ? o.exercises : []).filter(function (e) { return e && e.id && e.name; }).map(function (e) {
-    return {
+    var x = {
       id: String(e.id), name: String(e.name).trim().slice(0, 40),
       muscle: MUSCLES.indexOf(e.muscle) >= 0 ? e.muscle : '기타',
       type: TYPES[e.type] ? e.type : 'wr', u: num(e.u) || 0
     };
+    if (e.uni) x.uni = true;   // 있을 때만 — 기존 종목 모양이 바뀌면 동기화가 전부 '수정됨'으로 봄
+    return x;
   });
   d.routines = (Array.isArray(o.routines) ? o.routines : []).filter(Boolean).map(function (r) {
     return { id: String(r.id || uid()), name: String(r.name || '루틴').slice(0, 40), fav: !!r.fav, exercises: (r.exercises || []).map(cleanBlock), u: num(r.u) || 0 };
@@ -1590,7 +1668,9 @@ function blockHtml(b, i, ed) {
   var ss = ssInfo(o.exercises, i);
   var h = '<section class="block' + (ss.on ? ' ss' + (ss.first ? ' ss-first' : '') + (ss.last ? ' ss-last' : '') : '') + '" data-b="' + i + '">' +
     (ss.on && ss.first ? '<div class="ss-label">' + icon('link', 13) + '슈퍼세트 ' + ss.label + '<small>번갈아 하기 · 마지막 종목 뒤에만 휴식</small></div>' : '') +
-    '<div class="block-head"><button class="block-name" data-e="ex-detail">' + (ss.on ? '<span class="ss-tag">' + ss.label + '</span>' : '') + esc(ex ? ex.name : '(삭제된 종목)') + '</button>' +
+    '<div class="block-head"><button class="block-name" data-e="ex-detail">' + (ss.on ? '<span class="ss-tag">' + ss.label + '</span>' : '') + esc(ex ? ex.name : '(삭제된 종목)') +
+    (ex && ex.uni ? '<span class="uni-tag">한쪽씩</span>' : '') + '</button>' +
+    '<span class="js-gchip">' + blockChips(b, ed) + '</span>' +
     '<button class="icon-btn" data-e="block-menu" aria-label="종목 메뉴">' + icon('more', 20) + '</button></div>' +
     '<input class="block-note" data-bn maxlength="200" value="' + esc(b.note || '') + '" placeholder="' + esc(notePlaceholder(b.exId, ed)) + '">';
   if (ed.mode !== 'edit' && ss.on && !ss.last) {
@@ -1614,12 +1694,25 @@ function blockHtml(b, i, ed) {
         return '<input class="set-input" data-k="' + c.k + '" type="number" inputmode="' + c.im + '" step="any" min="0" value="' + valOf(s, c.k) + '" placeholder="' + (p ? valOf(p, c.k) : '') + '">';
       }).join('') +
       (live ? '<button class="check' + (s.done ? ' on' : '') + '" data-e="check" aria-label="세트 완료">' + icon('check', 16) + '</button>' : '') +
-      '</div>';
+      '</div>' + (s.m ? '<button class="set-memo" data-s="' + j + '" data-e="set-memo">' + icon('note', 12) + esc(s.m) + '</button>' : '');
   });
   h += '</div><button class="add-set" data-e="add-set">' + icon('plus', 15) + '세트 추가</button></section>';
   return h;
 }
 
+// 종목 머리의 작은 표시: 그날 지난번보다 늘었으면 '성장', 아니고 최근 정체 중이면 '과부하 타이밍'
+// 진행 중 운동은 체크한 세트만, 지난 기록 편집은 입력한 세트로 비교. 진행 중엔 '감소'는 아직 덜 한 것일 수 있어 표시 안 함
+function blockChips(b, ed) {
+  if (!exById(b.exId)) return '';
+  var o = ed.obj, at = ed.mode === 'routine' ? Infinity : o.start;
+  if (ed.mode !== 'routine') {
+    var cur = ed.mode === 'live' ? b.sets.filter(function (x) { return x.done; }) : b.sets.filter(hasValue);
+    var g = dayGrowth(b.exId, cur, at, o.id);
+    if (g === 'up' || (ed.mode === 'edit' && g)) return growthChip(g);
+  }
+  var n = stallCount(b.exId, at, o.id);
+  return n >= STALL_N ? overloadChip('data-e="stall-info"', n) : '';
+}
 function autosize(ta) {
   if (!ta) return;
   ta.style.height = 'auto';
@@ -1628,7 +1721,8 @@ function autosize(ta) {
 function liveTotals(o) {
   var vol = 0, sets = 0;
   o.exercises.forEach(function (b) {
-    b.sets.forEach(function (s) { if (s.done) { sets++; vol += setVolume(s); } });
+    b.sets.forEach(function (s) { if (s.done) sets++; });
+    vol += blockVolume(b, function (s) { return s.done; });
   });
   return { vol: vol, sets: sets };
 }
@@ -1777,7 +1871,10 @@ function bindEditor(el, ed, page) {
         var s0 = c.b.sets[c.j];
         actionSheet(c.j + 1 + '번째 세트', SET_TYPES.map(function (t) {
           return { label: t.label + (t.badge ? ' (' + t.badge + ')' : ''), active: s0.t === t.key, onClick: function () { s0.t = t.key; changed(); rerender(); } };
-        }).concat([{ label: '세트 삭제', icon: 'trash', danger: true, onClick: function () { c.b.sets.splice(c.j, 1); changed(); rerender(); } }]));
+        }).concat([
+          { label: s0.m ? '세트 메모 수정' : '세트 메모', icon: 'note', onClick: function () { editSetMemo(s0, changed, rerender); } },
+          { label: '세트 삭제', icon: 'trash', danger: true, onClick: function () { c.b.sets.splice(c.j, 1); changed(); rerender(); } }
+        ]));
         break;
       case 'fill-prev':
         var prev = previousSets(c.b.exId, ed.mode === 'routine' ? Infinity : o.start, o.id);
@@ -1797,6 +1894,8 @@ function bindEditor(el, ed, page) {
         changed(); rerender();
         break;
       case 'check': toggleCheck(c, ed, el, changed); break;
+      case 'stall-info': toast(stallMsg(btn.getAttribute('data-n')), 3500); break;
+      case 'set-memo': editSetMemo(c.b.sets[c.j], changed, rerender); break;
       case 'rest-minus': adjustRest(-15); break;
       case 'rest-plus': adjustRest(15); break;
       case 'rest-skip': stopRest(); break;
@@ -1804,6 +1903,52 @@ function bindEditor(el, ed, page) {
   });
 }
 
+// 세트 메모 (예: 그립 바꿈, 보조 받음) — 비우고 저장하면 지운다
+function editSetMemo(st, changed, rerender) {
+  showSheet('<div class="sheet-title">세트 메모</div>' +
+    '<label class="field"><input class="input" id="sm-text" maxlength="100" placeholder="예: 그립 넓게, 마지막 2회 보조" value="' + esc(st.m || '') + '"></label>' +
+    '<div class="sheet-row"><button class="btn btn-secondary" data-c="0">취소</button><button class="btn btn-primary" data-c="1">저장</button></div>',
+  function (box) {
+    var inp = box.querySelector('#sm-text');
+    setTimeout(function () { inp.focus(); }, 250);
+    function done(ok) {
+      hideSheet();
+      if (!ok) return;
+      var v = inp.value.trim();
+      if (v) st.m = v.slice(0, 100); else delete st.m;
+      changed(); rerender();
+    }
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') done(true); });
+    box.addEventListener('click', function (e) { var b = e.target.closest('[data-c]'); if (b) done(b.getAttribute('data-c') === '1'); });
+  });
+}
+// 워밍업 세트 자동 계산 — 첫 본세트 무게(없으면 지난 기록) 기준. 무거울수록 단계를 늘린다. 2.5kg 단위(가벼우면 1kg)
+function warmupPlan(base) {
+  var plan = base >= 40 ? [[0.5, 8], [0.7, 5], [0.85, 3]] : base >= 20 ? [[0.5, 8], [0.75, 4]] : [[0.6, 8]];
+  var step = base >= 20 ? 2.5 : 1, seen = {};
+  return plan.map(function (p) { return { t: 'w', w: Math.round(base * p[0] / step) * step, r: p[1] }; })
+    .filter(function (x) { if (x.w <= 0 || x.w >= base || seen[x.w]) return false; seen[x.w] = 1; return true; });
+}
+function addWarmups(b, ed, changed, rerender) {
+  var prev = previousSets(b.exId, ed.mode === 'routine' ? Infinity : ed.obj.start, ed.obj.id);
+  var base = 0;
+  for (var j = 0; j < b.sets.length && !base; j++) {
+    if (b.sets[j].t === 'w') continue;
+    var p = prevFor(prev, b.sets, j);
+    base = b.sets[j].w || (p && p.w) || 0;
+  }
+  if (!base) { toast('본세트 무게를 먼저 입력하세요'); return; }
+  var ws = warmupPlan(base);
+  if (!ws.length) { toast('무게가 가벼워 워밍업 세트가 필요 없어요'); return; }
+  // 아직 안 한(체크 안 된) 워밍업은 새로 계산한 것으로 바꾼다
+  var kept = b.sets.filter(function (x) { return x.t !== 'w' || x.done; });
+  var at = 0;
+  kept.forEach(function (x, i) { if (x.t === 'w') at = i + 1; });
+  if (ed.mode === 'live') ws.forEach(function (x) { x.done = false; });
+  b.sets = kept.slice(0, at).concat(ws, kept.slice(at));
+  changed(); rerender();
+  toast('워밍업 ' + ws.length + '세트를 넣었어요 (본세트 ' + fmtNum(base) + 'kg 기준: ' + ws.map(function (x) { return fmtNum(x.w); }).join(' → ') + ')', 3500);
+}
 function newBlock(exId, ed) {
   var prev = previousSets(exId, ed.mode === 'routine' ? Infinity : ed.obj.start, ed.obj.id);
   var n = prev ? prev.length : (ed.mode === 'routine' ? 3 : 1);
@@ -1827,6 +1972,7 @@ function blockMenu(bi, ed, changed, rerender) {
       changed(); rerender();
     } });
   }
+  if (exType(list[bi].exId) === 'wr') items.push({ label: '워밍업 세트 자동 추가', icon: 'flame', onClick: function () { addWarmups(list[bi], ed, changed, rerender); } });
   items.push(
     { label: '종목 교체', icon: 'swap', onClick: function () {
       openPicker({ multi: false, title: '종목 교체', onPick: function (ids) { list[bi].exId = ids[0]; changed(); } });
@@ -1937,6 +2083,25 @@ function toggleCheck(c, ed, el, changed) {
   var pv = row.querySelector('.prev');
   var prevS = previousSets(c.b.exId, o.start, o.id);
   pv.innerHTML = (s.pr ? icon('trophy', 13) : '') + esc(fmtSetShort(prevFor(prevS, c.b.sets, c.j), type));
+  var chipBox = row.closest('.block') && row.closest('.block').querySelector('.js-gchip');
+  if (chipBox) {
+    var before = chipBox.innerHTML;
+    chipBox.innerHTML = blockChips(c.b, ed);
+    if (s.done && before.indexOf('gchip up') < 0 && chipBox.innerHTML.indexOf('gchip up') >= 0) toast('▲ ' + exName(c.b.exId) + ' — 지난번보다 성장했어요', 2500);
+  }
+  if (s.done) scrollToNextSet(el, row);
+}
+// 세트를 체크하면 다음에 할 세트(아직 체크 안 한 첫 줄)가 화면 안에 오도록 내려준다 — 키보드가 뜨지 않게 포커스는 주지 않음
+function scrollToNextSet(el, row) {
+  var rows = Array.prototype.slice.call(el.querySelectorAll('.set-row[data-s]'));
+  var i = rows.indexOf(row), next = null;
+  for (var k = i + 1; k < rows.length; k++) if (!rows[k].classList.contains('done')) { next = rows[k]; break; }
+  if (!next) return;
+  next.classList.add('next-up');
+  setTimeout(function () { next.classList.remove('next-up'); }, 1200);
+  var r = next.getBoundingClientRect(), bar = el.querySelector('.js-restbar'), head = el.querySelector('.page-head');
+  var bottom = window.innerHeight - (bar && !bar.hidden ? bar.offsetHeight : 0) - 16, top = (head ? head.getBoundingClientRect().bottom : 0) + 8;
+  if (r.bottom > bottom || r.top < top) next.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
 // ---------- 휴식 타이머 ----------
@@ -2078,6 +2243,10 @@ function finishLive(el, ed) {
     '<div class="field-row"><label class="field"><span>운동 이름</span><input class="input" id="fin-name" maxlength="40" value="' + esc(o.name) + '"></label>' +
     '<label class="field narrow"><span>소요(분)</span><input class="input" id="fin-dur" type="number" inputmode="numeric" min="0" max="1440" value="' + elapsedMin + '"></label></div>' +
     (elapsedMin > 180 ? '<p class="warn-note">시작한 지 3시간이 넘었어요. 운동을 마친 시간에 맞게 소요 시간을 고쳐 주세요.</p>' : '') +
+    (function () {
+      var up = blocks.filter(function (b) { return dayGrowth(b.exId, b.sets, o.start, o.id) === 'up'; }).length;
+      return up ? '<p class="growth-sum center"><span class="up">▲ 지난번보다 성장한 종목 ' + up + '개</span> / ' + blocks.length + '개</p>' : '';
+    })() +
     (skipped ? '<p class="sheet-note">완료 체크하지 않은 세트 ' + skipped + '개는 저장되지 않아요.</p>' : '') +
     (routine
       ? '<label class="check-line"><input type="checkbox" id="fin-routine"' + (structureChanged(routine, o.exercises) ? ' checked' : '') + '><span>루틴 ‘' + esc(routine.name) + '’에 이번 구성·무게 반영</span></label>'
@@ -2244,7 +2413,7 @@ function renderPickerList(el, st, opts) {
     var on = st.sel.indexOf(e.id) >= 0;
     return '<button class="list-row' + (on ? ' on' : '') + '" data-p="row" data-id="' + e.id + '">' +
       '<span class="ex-avatar">' + esc(e.name.charAt(0)) + '</span>' +
-      '<span class="list-main"><b>' + esc(e.name) + '</b><small>' + e.muscle + ' · ' + TYPES[e.type] + '</small></span>' +
+      '<span class="list-main"><b>' + esc(e.name) + '</b><small>' + e.muscle + ' · ' + TYPES[e.type] + (e.uni ? ' · 한쪽씩' : '') + '</small></span>' +
       (opts.multi ? '<span class="tick">' + (on ? icon('check', 16) : '') + '</span>' : '') + '</button>';
   }).join('') + '</div>';
   if (!opts.noCreate) h += '<button class="btn btn-secondary btn-block" data-p="create">' + icon('plus', 17) +
@@ -2315,6 +2484,7 @@ function openExerciseForm(ex, presetName, onSaved, presetMuscle) {
     '<div class="field"><span>부위</span><div class="chips wrap js-muscle">' + chips(MUSCLES, 'muscle') + '</div></div>' +
     '<div class="field"><span>기록 방식</span><div class="chips wrap js-type">' + chips(Object.keys(TYPES), 'type', TYPES) + '</div>' +
     (used ? '<small class="field-note">기록이 있는 종목이라 기록 방식은 바꿀 수 없어요.</small>' : '') + '</div>' +
+    '<label class="check-line"><input type="checkbox" id="exf-uni"' + (ex && ex.uni ? ' checked' : '') + '><span>한쪽씩 하는 종목 <small class="muted">— 한쪽 무게를 적으면 볼륨은 ×2로 계산</small></span></label>' +
     '<p class="sheet-note js-exf-err" hidden></p>' +
     '<div class="sheet-row"><button class="btn btn-secondary" data-x="cancel">취소</button><button class="btn btn-primary" data-x="save">' + (ex ? '저장' : '만들기') + '</button></div>' +
     (ex ? '<button class="btn btn-text-danger btn-block" data-x="delete">종목 삭제</button>' : '');
@@ -2342,6 +2512,7 @@ function openExerciseForm(ex, presetName, onSaved, presetMuscle) {
       var target = ex;
       if (target) { target.name = name; target.muscle = cur.muscle; target.type = cur.type; }
       else { target = { id: uid(), name: name, muscle: cur.muscle, type: cur.type }; data.exercises.push(target); }
+      if (box.querySelector('#exf-uni').checked) target.uni = true; else delete target.uni;
       save();
       hideSheet();
       if (onSaved) onSaved(target);
@@ -2895,9 +3066,14 @@ function openWorkoutDetail(id) {
       '<div class="stat"><small>세트</small><b>' + workoutSetCount(w) + '</b></div>' +
       '<div class="stat"><small>PR</small><b>' + prs.count + '</b></div></div>' +
       (w.note ? '<p class="note-box">' + esc(w.note) + '</p>' : '');
+    var gs = w.exercises.map(function (b) { return dayGrowth(b.exId, b.sets, w.start, w.id); });
+    var gc = { up: 0, same: 0, down: 0 };
+    gs.forEach(function (g) { if (g) gc[g]++; });
+    if (gc.up + gc.same + gc.down) h += '<p class="growth-sum">지난번 대비 · ' + ['up', 'same', 'down'].filter(function (k) { return gc[k]; }).map(function (k) {
+      return '<span class="' + k + '">' + GROWTH_LABEL[k] + ' ' + gc[k] + '</span>'; }).join(' · ') + '</p>';
     w.exercises.forEach(function (b, bi) {
       var type = exType(b.exId);
-      h += '<div class="card' + (ssInfo(w.exercises, bi).on ? ' ss' : '') + '"><button class="block-name" data-w="ex" data-ex="' + b.exId + '">' + ssTag(w.exercises, bi) + esc(exName(b.exId)) + '</button>' +
+      h += '<div class="card' + (ssInfo(w.exercises, bi).on ? ' ss' : '') + '"><div class="card-head"><button class="block-name" data-w="ex" data-ex="' + b.exId + '">' + ssTag(w.exercises, bi) + esc(exName(b.exId)) + '</button>' + growthChip(gs[bi]) + '</div>' +
         (b.note ? '<p class="meta">' + esc(b.note) + '</p>' : '') + '<div class="set-list">' +
         setLinesHtml(b.sets, type, function (s, si) {
           return (prs.marks[bi + ':' + si] ? '<span class="pr">' + icon('trophy', 14) + 'PR</span>' : '') +
@@ -2936,7 +3112,7 @@ function setLinesHtml(sets, type, extra) {
   return sets.map(function (s, i) {
     if (s.t !== 'w') no++;
     return '<div class="set-line"><span class="set-badge t-' + s.t + '">' + setBadge(s.t, no) + '</span><span>' + esc(fmtSet(s, type)) + '</span>' +
-      (extra ? extra(s, i) : '') + '</div>';
+      (extra ? extra(s, i) : '') + '</div>' + (s.m ? '<div class="set-line-memo">' + icon('note', 12) + esc(s.m) + '</div>' : '');
   }).join('');
 }
 
@@ -2963,7 +3139,7 @@ function renderExList() {
     if (!g.length) return;
     h += '<h3 class="month-head">' + m + ' <span class="count">' + g.length + '</span></h3><div class="list card flush">' + g.map(function (e) {
       return '<button class="list-row" data-a="open-ex" data-id="' + e.id + '"><span class="ex-avatar">' + esc(e.name.charAt(0)) + '</span>' +
-        '<span class="list-main"><b>' + esc(e.name) + '</b><small>' + TYPES[e.type] + ' · ' + (counts[e.id] || 0) + '회 운동</small></span>' + icon('right', 16) + '</button>';
+        '<span class="list-main"><b>' + esc(e.name) + '</b><small>' + TYPES[e.type] + (e.uni ? ' · 한쪽씩' : '') + ' · ' + (counts[e.id] || 0) + '회 운동</small></span>' + icon('right', 16) + '</button>';
     }).join('') + '</div>';
   });
   box.innerHTML = h;
@@ -2986,12 +3162,14 @@ function openExerciseDetail(exId) {
     if (!ex) { el.innerHTML = pageHeader({ title: '종목' }) + '<div class="page-body"><p class="hint">삭제된 종목입니다.</p></div>'; return; }
     var hist = exerciseHistory(exId), type = ex.type;
     var h = pageHeader({ title: ex.name, right: '<button class="icon-btn" data-x="menu" aria-label="메뉴">' + icon('more', 20) + '</button>' }) +
-      '<div class="page-body"><p class="meta">' + ex.muscle + ' · ' + TYPES[type] + '</p>';
+      '<div class="page-body"><p class="meta">' + ex.muscle + ' · ' + TYPES[type] + (ex.uni ? ' · 한쪽씩 (볼륨 ×2)' : '') + '</p>';
+    var stl = stallCount(exId, Infinity, '');
+    if (stl >= STALL_N) h += '<p class="stall-line">' + overloadChip('data-x="stall"', stl) + '<span>' + esc(stallMsg(stl)) + '</span></p>';
     var all = [];
     hist.forEach(function (x) { x.sets.forEach(function (s) { if (isWork(s)) all.push(s); }); });
     var mx = function (f) { return all.reduce(function (a, s) { return Math.max(a, f(s)); }, 0); };
     var stats;
-    if (type === 'wr') stats = [['최고 무게', fmtNum(mx(function (s) { return s.w || 0; })) + 'kg'], ['예상 1RM', fmtNum(hist.reduce(function (a, x) { return Math.max(a, dayValue(x.sets, 'wr', 'e1rm').v); }, 0)) + 'kg'], ['최고 볼륨', fmtNum(mx(setVolume)) + 'kg'], ['운동 횟수', hist.length + '회']];
+    if (type === 'wr') stats = [['최고 무게', fmtNum(mx(function (s) { return s.w || 0; })) + 'kg'], ['예상 1RM', fmtNum(hist.reduce(function (a, x) { return Math.max(a, dayValue(x.sets, 'wr', 'e1rm').v); }, 0)) + 'kg'], ['최고 볼륨', fmtNum(mx(setVolume) * volFactor(exId)) + 'kg'], ['운동 횟수', hist.length + '회']];
     else if (type === 'r') {
       stats = [['최고 횟수', mx(function (s) { return s.r || 0; }) + '회'], ['총 횟수', all.reduce(function (a, s) { return a + (s.r || 0); }, 0) + '회'], ['운동 횟수', hist.length + '회']];
       var maxAdd = mx(function (s) { return s.w || 0; });
@@ -3015,7 +3193,7 @@ function openExerciseDetail(exId) {
       if (type === 'wr') h += repRecordsHtml(hist);
       h += '<h3 class="month-head">기록</h3>';
       hist.slice().reverse().forEach(function (x) {
-        h += '<button class="card hist-item" data-x="workout" data-wid="' + x.w.id + '"><div class="card-head"><b>' + esc(x.w.name) + '</b><small class="muted">' + fmtKoDate(x.w.start) + '</small></div>' +
+        h += '<button class="card hist-item" data-x="workout" data-wid="' + x.w.id + '"><div class="card-head"><b>' + esc(x.w.name) + growthChip(dayGrowth(exId, x.sets, x.w.start, x.w.id)) + '</b><small class="muted">' + fmtKoDate(x.w.start) + '</small></div>' +
           '<div class="set-list">' + setLinesHtml(x.sets, type) + '</div></button>';
       });
     } else {
@@ -3028,6 +3206,7 @@ function openExerciseDetail(exId) {
     if (!b) return;
     var act = b.getAttribute('data-x');
     if (act === 'metric') { st.metric = b.getAttribute('data-m'); page.render(); }
+    else if (act === 'stall') toast(stallMsg(b.getAttribute('data-n')), 3500);
     else if (act === 'pt' && st.series) {
       var pt = st.series.pts[Number(b.getAttribute('data-i'))];
       if (pt) toast(fmtKoDate(pt.t) + ' · ' + (pt.pos + 1) + '번째 종목' + (pt.best ? ' · ' + fmtSetShort(pt.best, st.series.type) : '') + ' → ' + fmtMetric(pt.v, st.series.type, st.metric), 3000);
