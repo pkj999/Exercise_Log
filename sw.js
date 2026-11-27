@@ -1,7 +1,7 @@
 // 운동일지 — 간단한 앱 쉘 캐싱 서비스워커
 // 로컬 파일(index.html, manifest, 아이콘)만 캐시하고,
 // 외부 CDN(폰트 등)은 그대로 네트워크로 통과시킵니다.
-const CACHE_NAME = 'exercise-log-shell-r1-11';
+const CACHE_NAME = 'exercise-log-shell-r1-12';
 const APP_SHELL = [
   './',
   './index.html',
@@ -20,8 +20,27 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
+// 휴식 끝 알림: 앱 화면의 타이머는 앱을 나가면 멈추므로, 화면이 "몇 시에 알려줘"(rest-schedule)를 보내면
+// 서비스워커가 그 시각까지 기다렸다가 알림을 띄운다. 기다리는 동안 waitUntil로 서비스워커가 꺼지지 않게 붙잡는데,
+// 브라우저가 이를 최대 약 5분까지만 허용하므로 그보다 긴 휴식은 알림을 보장하지 못한다.
+// 새 예약이나 취소(rest-cancel)가 오면 이전 예약은 무효(token)가 되고, 앱을 보고 있으면 알림을 건너뛴다(앱 안 알림이 울림).
+let restToken = 0;
+const REST_MAX_WAIT_MS = 295000;
 self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+  const d = event.data || {};
+  if (d.type === 'SKIP_WAITING') { self.skipWaiting(); return; }
+  if (d.type === 'rest-cancel') { restToken++; return; }
+  if (d.type === 'rest-schedule') {
+    const token = ++restToken;
+    const delay = Math.max(0, Number(d.at) - Date.now());
+    if (delay > REST_MAX_WAIT_MS) return;
+    event.waitUntil(new Promise(resolve => setTimeout(resolve, delay)).then(async () => {
+      if (token !== restToken) return;
+      const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      if (list.some(c => c.visibilityState === 'visible' && c.focused)) return;
+      await self.registration.showNotification(d.title || '휴식 끝!', d.options || {});
+    }).catch(() => {}));
+  }
 });
 
 self.addEventListener('activate', event => {
