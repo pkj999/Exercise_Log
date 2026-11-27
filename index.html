@@ -499,7 +499,7 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 14;
+var APP_VERSION = 15;
 var APP_BUILD_DATE = '2026-11-27';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -934,8 +934,15 @@ async function persist() {
   catch (e) {
     syncState.error = e.message || '알 수 없는 오류';
     toast('GitHub에 올리지 못했어요 — 이 기기에 보관했다가 다시 시도할게요 (' + syncState.error + ')', 4000);
+    scheduleRetry();
     throw e;
   } finally { refreshSyncChip(); }
+}
+// 못 올린 변경은 앱으로 돌아오거나 인터넷이 다시 연결될 때도 올라가지만, 앱을 켜 둔 채면 그런 계기가 없으므로 40초 뒤 한 번 더 시도
+var retryTimer = null;
+function scheduleRetry() {
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(function () { if (store.hasPending()) syncNow(false); }, 40000);
 }
 // GitHub의 최신 내용을 받아 합친다 — 앱으로 돌아왔을 때·인터넷이 다시 연결됐을 때·직접 누를 때
 var lastPull = 0, pulling = false;
@@ -1238,11 +1245,14 @@ if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTh
         Accept: opts.accept || 'application/vnd.github+json'
       };
       if (opts.method === 'PUT') headers['Content-Type'] = 'application/json';
+      // cache: 'no-store' — GitHub 응답은 브라우저가 60초까지 캐시해도 된다고 돼 있어서(max-age=60),
+      // 그대로 두면 방금 저장한 뒤 다시 읽을 때 예전 sha를 받아 다음 저장이 충돌(409)로 실패했다(실제 기기에서 발생)
       var res = await fetch(url, {
         method: opts.method || 'GET',
         headers: headers,
         body: opts.body ? JSON.stringify(opts.body) : undefined,
-        signal: controller.signal
+        signal: controller.signal,
+        cache: 'no-store'
       });
       if (res.status === 401) throw new Error('GitHub 토큰이 만료됐거나 유효하지 않습니다. 설정에서 다시 연결해주세요.');
       // GitHub는 만료일이 있는 토큰으로 요청하면 응답 헤더에 만료 시각을 실어준다 — 연결된
@@ -1297,7 +1307,7 @@ if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTh
     }
     if (!res.ok) {
       var body = await res.json().catch(function () { return {}; });
-      throw new Error(body.message || 'GitHub 읽기 실패 (' + res.status + ')');
+      throw new Error(res.status >= 500 ? 'GitHub 서버가 잠시 응답하지 않아요' : (body.message || 'GitHub 읽기 실패') + ' (' + res.status + ')');
     }
     var json = await res.json();
     var text;
@@ -1335,7 +1345,11 @@ if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTh
     var res = await ghFetch(cfg, { method: 'PUT', body: body });
     if (!res.ok) {
       var err = await res.json().catch(function () { return {}; });
-      var e = new Error(err.message || 'GitHub 저장 실패 (' + res.status + ')');
+      var msg = res.status === 409 || res.status === 422 ? '다른 저장과 겹쳤어요'
+        : res.status === 403 ? '저장 권한이 없어요. 토큰 권한(Contents: Read and write)을 확인해 주세요'
+        : res.status >= 500 ? 'GitHub 서버가 잠시 응답하지 않아요'
+        : (err.message || 'GitHub 저장 실패') + ' (' + res.status + ')';
+      var e = new Error(msg);
       e.status = res.status;
       throw e;
     }
@@ -1453,8 +1467,9 @@ if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', applyTh
               markWritten(cur);
               return { key: k, value: cur };
             }).catch(function (err) {
-              if ((err.status === 409 || err.status === 422) && n < 3) {
-                return new Promise(function (res) { setTimeout(res, 400 * n); }).then(fetchAndMerge).then(function () { return attempt(n + 1); });
+              // 충돌(409/422)은 최신 내용을 받아 합친 뒤, 서버 오류(5xx)는 잠시 뒤 다시 — 최대 4번, 간격을 늘려가며
+              if ((err.status === 409 || err.status === 422 || err.status >= 500) && n < 4) {
+                return new Promise(function (res) { setTimeout(res, [0, 500, 1500, 3000][n]); }).then(fetchAndMerge).then(function () { return attempt(n + 1); });
               }
               throw err;
             });
