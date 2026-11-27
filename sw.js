@@ -1,7 +1,7 @@
 // 운동일지 — 간단한 앱 쉘 캐싱 서비스워커
 // 로컬 파일(index.html, manifest, 아이콘)만 캐시하고,
 // 외부 CDN(폰트 등)은 그대로 네트워크로 통과시킵니다.
-const CACHE_NAME = 'exercise-log-shell-r1-10';
+const CACHE_NAME = 'exercise-log-shell-r1-11';
 const APP_SHELL = [
   './',
   './index.html',
@@ -57,4 +57,15 @@ self.addEventListener('fetch', event => {
     );
   }
   // 외부 CDN(폰트) 및 GitHub API 요청은 그대로 네트워크로
+});
+
+// 휴식 끝 알림을 누르면 열려 있는 앱 창으로 돌아가고, 없으면 새로 연다
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) { if ('focus' in c) return c.focus(); }
+      return self.clients.openWindow ? self.clients.openWindow('./') : undefined;
+    })
+  );
 });
