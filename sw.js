@@ -1,11 +1,12 @@
 // 운동일지 — 간단한 앱 쉘 캐싱 서비스워커
 // 로컬 파일(index.html, manifest, 아이콘)만 캐시하고,
 // 외부 CDN(폰트 등)은 그대로 네트워크로 통과시킵니다.
-const CACHE_NAME = 'exercise-log-shell-r1-1';
+const CACHE_NAME = 'exercise-log-shell-r1-10';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './icon-180.png',
   './icon-192.png',
   './icon-192-maskable.png',
   './icon-512.png',
