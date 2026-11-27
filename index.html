@@ -36,6 +36,8 @@
   --gold: #9A6200;
   --gold-soft: #FFF3D6;
   --warm: #A85A00;
+  --ss: #7A3FD1;
+  --ss-soft: #F1EAFC;
   --shadow: 0 1px 2px rgba(17, 19, 24, .05);
   --radius: 14px;
   --tabbar-h: 62px;
@@ -60,6 +62,8 @@
   --gold: #F2B53A;
   --warm: #F59E0B;
   --gold-soft: #3A2E12;
+  --ss: #B794F6;
+  --ss-soft: #2A2140;
   --shadow: none;
   color-scheme: dark;
 }
@@ -181,6 +185,10 @@ svg { flex-shrink: 0; }
 .fav-mark { color: var(--gold); margin-right: 6px; vertical-align: 1px; }
 .seg.wide { display: flex; margin-bottom: 14px; }
 .seg.wide button { flex: 1; min-height: 38px; font-size: 15px; }
+.streak { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px 3px 7px; margin-right: 8px; border-radius: 999px; background: var(--gold-soft); color: var(--warm); font-size: 12.5px; font-weight: 750; vertical-align: 1px; white-space: nowrap; }
+.streak.wait { background: var(--card-2); color: var(--muted); }
+.sec-head .streak { margin-right: 0; }
+.streak-hint { margin: -6px 2px 10px; }
 .hist-sum { font-size: 13px; color: var(--muted); margin: -4px 2px 10px; font-variant-numeric: tabular-nums; }
 .seg.sm { padding: 2px; } .seg.sm button { padding: 4px 11px; min-height: 32px; font-size: 12px; }
 .gr-sum { font-size: 13px; margin: 0 0 4px; }
@@ -321,12 +329,28 @@ svg { flex-shrink: 0; }
 .block-name { color: var(--accent); font-weight: 750; font-size: 16px; text-align: left; padding: 4px 0; min-height: 36px; }
 .block-note { width: 100%; min-height: 34px; border: 0; background: none; outline: none; font-size: 14px; color: var(--muted); padding: 4px 4px 6px; }
 .rest-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; font-size: 13px; font-weight: 600; color: var(--accent); padding: 2px 4px 8px; }
-.set-table { margin: 0 -4px; }
+.set-table { margin: 0 -4px; overflow: hidden; }
+/* 슈퍼세트: 묶인 종목 카드를 왼쪽 색 막대로 잇는다 */
+.block.ss { border-left: 4px solid var(--ss); }
+.block.ss:not(.ss-last) { margin-bottom: 4px; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+.block.ss:not(.ss-first) { border-top-left-radius: 6px; border-top-right-radius: 6px; }
+.ss-label { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 12px; font-weight: 750; color: var(--ss); padding: 0 4px 2px; }
+.ss-label small { font-weight: 600; color: var(--muted); }
+.ss-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; margin-right: 6px; border-radius: 6px; background: var(--ss-soft); color: var(--ss); font-size: 12px; font-weight: 800; vertical-align: 2px; }
+.rest-chip.ss-next { color: var(--ss); margin: 0; }
+.card.ss { border-left: 4px solid var(--ss); }
+/* 세트 줄을 왼쪽으로 밀어서 삭제 */
+.set-row[data-s] { position: relative; touch-action: pan-y; }
+.set-row.swiping { transition: none; background: var(--card); }
+.set-row.swiping::after { content: '삭제'; position: absolute; left: 100%; top: 0; bottom: 0; width: 400px; display: flex; align-items: center; padding-left: 16px; background: var(--card-2); color: var(--muted); font-weight: 750; font-size: 14px; }
+.set-row.swiping.swipe-del::after { background: var(--danger-fill); color: #fff; }
+.set-row.snap { transition: transform .18s; }
 .set-row { display: grid; align-items: center; gap: 6px; padding: 4px; border-radius: 8px; }
 .set-row.head { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; padding-top: 0; padding-bottom: 2px; }
 .set-row.head span { text-align: center; display: flex; justify-content: center; }
 .set-row.head span:nth-child(2) { justify-content: flex-start; padding-left: 4px; }
 .set-row.done { background: var(--good-soft); }
+.set-row.head .old-gym { color: var(--warm); text-transform: none; white-space: nowrap; }
 .set-badge { position: relative; width: 30px; height: 30px; border-radius: 8px; background: var(--card-2); font-weight: 750; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .set-row.done .set-badge { background: transparent; }
 .set-badge.t-w { color: var(--warm); }
@@ -388,6 +412,9 @@ svg { flex-shrink: 0; }
 .toast { position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 24px); transform: translate(-50%, 20px); z-index: 60; max-width: calc(100% - 32px); padding: 11px 16px; border-radius: 12px; background: #111318; color: #fff; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; text-align: center; }
 [data-theme="dark"] .toast { background: #F2F3F5; color: #111318; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.show.has-act { pointer-events: auto; display: flex; align-items: center; gap: 14px; text-align: left; padding: 6px 6px 6px 16px; }
+.toast-act { min-height: 36px; padding: 0 12px; border-radius: 8px; font-weight: 750; color: #8AB4FF; background: rgba(255,255,255,.08); white-space: nowrap; }
+[data-theme="dark"] .toast-act { color: #1A68DB; background: rgba(0,0,0,.06); }
 
 @media (max-width: 360px) {
   .stat-grid.four { grid-template-columns: repeat(2, 1fr); }
@@ -445,9 +472,9 @@ svg { flex-shrink: 0; }
  *   exercises = [{ id, name, muscle, type }]        type: wr(무게×횟수) r(횟수) t(시간) dt(거리+시간)
  *   routines  = [{ id, name, fav, exercises: [Block] }]   fav: 즐겨찾기(운동 탭 맨 위에 표시)
  *   workouts  = [{ id, name, routineId, start, end, note, exercises: [Block] }]   start/end = ms
- *   Block     = { exId, note, rest, sets: [Set] }
+ *   Block     = { exId, note, rest, ss, sets: [Set] }   ss: 슈퍼세트 묶음 id (바로 붙어 있는 같은 ss 종목끼리 한 묶음, 없으면 '')
  *   Set       = { t, w, r, s, d }   t: n(일반) w(워밍업) d(드롭) f(실패)
- *               w=kg, r=횟수, s=초, d=km — 종목 type에 맞는 값만 채움
+ *               w=kg, r=횟수, s=초, d=km — 종목 type에 맞는 값만 채움 (맨몸(r) 종목의 w는 추가 중량)
  *   settings  = { rest, sound, vibrate, theme, prefillPrev, gymMoves: ['YYYY-MM-DD'], setTargets: { 부위: 주간 목표 세트 } }   gymMoves: 헬스장 이동일(그래프 구간 나눔)
  *   진행 중인 운동은 ACTIVE_KEY(이 기기 로컬)에만 두고, 완료할 때 workouts에 들어간다.
  *   동기화용: 운동·루틴·종목·settings에 u(마지막 수정 시각 ms, 저장 때 자동 기록), deleted = { id: 삭제 시각 }.
@@ -455,7 +482,7 @@ svg { flex-shrink: 0; }
  * ========================================================================= */
 
 // 수정할 때마다 버전 +1, 날짜는 수정 반영일로 갱신 (설정 탭 하단에 표시). 2026-11-24 재설계 완료 시점부터 ver.1로 새로 시작
-var APP_VERSION = 12;
+var APP_VERSION = 13;
 var APP_BUILD_DATE = '2026-11-27';
 
 var STORAGE_KEY = 'exercise-log-v1';
@@ -469,7 +496,7 @@ var DEFAULT_SET_TARGETS = { '가슴': 10, '등': 10, '어깨': 10, '하체': 10,
 var MUSCLES = ['가슴', '등', '어깨', '하체', '팔', '코어', '유산소', '전신', '기타'];
 var TYPES = {
   wr: '무게 × 횟수',
-  r: '횟수 (맨몸)',
+  r: '횟수 (맨몸·추가 중량)',
   t: '시간',
   dt: '거리 + 시간'
 };
@@ -585,16 +612,26 @@ function bestSet(sets, type) {
 }
 function sortedWorkouts() { return data.workouts.slice().sort(function (a, b) { return b.start - a.start; }); }
 // 해당 시각 이전, 이 종목을 마지막으로 한 운동의 세트 (이전 기록 칸에 표시)
+// 헬스장을 옮긴 뒤에는 지금 헬스장(같은 구간)의 기록을 먼저 찾고, 없을 때만 예전 헬스장 기록을 쓴다 — 기구가 달라 무게가 다르므로
+function sameGymFirst(beforeMs, pick) {
+  var moves = moveTimes(), seg = segOf(beforeMs === Infinity ? Date.now() : beforeMs, moves);
+  return (moves.length && pick(function (t) { return segOf(t, moves) === seg; })) || pick(function () { return true; });
+}
+// 지금 헬스장 기록이 없어 예전 헬스장 기록을 돌려줄 때는 sets.oldGym = true — 화면에 '예전 헬스장' 표시, 루틴 시작 때 자동 채움은 안 함
 function previousSets(exId, beforeMs, excludeId) {
-  var best = null;
+  var moves = moveTimes(), seg = segOf(beforeMs === Infinity ? Date.now() : beforeMs, moves);
+  var best = null, bestSame = null;
   data.workouts.forEach(function (w) {
     if (w.id === excludeId || w.start >= beforeMs) return;
-    if (best && w.start <= best.start) return;
-    if (w.exercises.some(function (b) { return b.exId === exId; })) best = w;
+    if (!w.exercises.some(function (b) { return b.exId === exId; })) return;
+    if (!best || w.start > best.start) best = w;
+    if (segOf(w.start, moves) === seg && (!bestSame || w.start > bestSame.start)) bestSame = w;
   });
-  if (!best) return null;
+  var pick = bestSame || best;
+  if (!pick) return null;
   var sets = [];
-  best.exercises.forEach(function (b) { if (b.exId === exId) sets = sets.concat(b.sets); });
+  pick.exercises.forEach(function (b) { if (b.exId === exId) sets = sets.concat(b.sets); });
+  if (moves.length && !bestSame) sets.oldGym = true;
   return sets;
 }
 // 이 시각 이전의 이 종목 최고 기록 { score, w } — PR 판정용
@@ -607,7 +644,7 @@ function bestBefore(exId, beforeMs, excludeId) {
       b.sets.forEach(function (s) {
         if (!isWork(s)) return;
         score = Math.max(score, setScore(s, type));
-        if (type === 'wr') w = Math.max(w, s.w || 0);
+        if (type === 'wr' || type === 'r') w = Math.max(w, s.w || 0);
       });
     });
   });
@@ -626,12 +663,14 @@ function prevFor(prev, sets, j) {
 function fmtWorkoutDur(w) { var d = workoutDuration(w); return d > 0 ? fmtDur(d) : '—'; }
 // 이 종목에 마지막으로 남긴 메모 (기구 세팅·그립 같은 반복 메모를 다시 보여주기용)
 function lastNote(exId, beforeMs, excludeId) {
-  var best = null, note = '';
-  data.workouts.forEach(function (w) {
-    if (w.id === excludeId || w.start >= beforeMs || (best && w.start <= best)) return;
-    w.exercises.forEach(function (b) { if (b.exId === exId && b.note) { best = w.start; note = b.note; } });
+  return sameGymFirst(beforeMs, function (ok) {
+    var best = null, note = '';
+    data.workouts.forEach(function (w) {
+      if (w.id === excludeId || w.start >= beforeMs || !ok(w.start) || (best && w.start <= best)) return;
+      w.exercises.forEach(function (b) { if (b.exId === exId && b.note) { best = w.start; note = b.note; } });
+    });
+    return note;
   });
-  return note;
 }
 function exerciseUseCount(exId) {
   var n = 0;
@@ -650,12 +689,32 @@ function cleanSet(s) {
   return out;
 }
 function cleanBlock(b) {
-  return {
+  var out = {
     exId: String((b && b.exId) || ''),
     note: typeof (b && b.note) === 'string' ? b.note.slice(0, 200) : '',
     rest: num(b && b.rest) != null ? Math.min(600, Math.max(0, num(b.rest))) : null,
     sets: Array.isArray(b && b.sets) ? b.sets.map(cleanSet) : []
   };
+  // 슈퍼세트일 때만 ss를 둔다 — 기존 기록 모양이 바뀌면 동기화가 전부 '수정됨'으로 보기 때문
+  if (b && b.ss) out.ss = String(b.ss).slice(0, 12);
+  return out;
+}
+// 슈퍼세트 정보: 바로 붙어 있는 같은 ss 종목끼리 한 묶음 (혼자 남은 ss는 묶음 아님)
+//  → { on, first, last, label('A','B'…) }
+function ssInfo(blocks, i) {
+  var b = blocks[i];
+  if (!b || !b.ss) return { on: false };
+  var same = function (k) { return blocks[k] && blocks[k].ss === b.ss; };
+  if (!same(i - 1) && !same(i + 1)) return { on: false };
+  var n = 0;
+  for (var k = 0; k <= i; k++) if (blocks[k].ss && (!blocks[k - 1] || blocks[k - 1].ss !== blocks[k].ss) && (blocks[k + 1] && blocks[k + 1].ss === blocks[k].ss)) n++;
+  return { on: true, first: !same(i - 1), last: !same(i + 1), label: String.fromCharCode(64 + Math.min(n, 26)) };
+}
+// 블록 복사(저장용) — ss는 있을 때만
+function blockCopy(b, sets) {
+  var o = { exId: b.exId, note: (b.note || '').trim(), rest: b.rest, sets: sets };
+  if (b.ss) o.ss = b.ss;
+  return o;
 }
 function normalize(o) {
   var d = emptyData();
@@ -865,6 +924,10 @@ var ICONS = {
   note: '<path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/>',
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
   starf: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="currentColor"/>',
+  link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
+  unlink: '<path d="M15.5 12.5l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M8.5 11.5l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1M4 4l16 16"/>',
+  flame: '<path d="M12 21c-3.9 0-7-2.8-7-6.6 0-3 2-5.1 3.6-6.8.4 1.7 1.3 2.8 2.4 3.3C11 7.2 12.8 4.6 15 3c-.3 2.6.7 4.4 2 6 1.2 1.4 2 3 2 5.2C19 18.1 15.9 21 12 21z"/>',
+  merge: '<path d="M6 4v5a6 6 0 0 0 6 6h0a6 6 0 0 1 6 6M18 4v5a6 6 0 0 1-3 5.2"/><path d="M3 7l3-3 3 3M15 7l3-3 3 3"/>',
   refresh: '<path d="M21 4v6h-6"/><path d="M3 20v-6h6"/><path d="M5.5 9a8 8 0 0 1 13.2-3L21 10M3 14l2.3 4A8 8 0 0 0 18.5 15"/>'
 };
 function icon(name, size) {
@@ -873,10 +936,14 @@ function icon(name, size) {
 }
 
 // ---------- 토스트 ----------
-var toastTimer = null;
-function toast(msg, ms) {
+var toastTimer = null, toastAction = null;
+// action: { label, fn } — 토스트 오른쪽에 버튼(예: 되돌리기)을 단다
+function toast(msg, ms, action) {
   var el = $('toast');
-  el.textContent = msg;
+  toastAction = action || null;
+  if (action) el.innerHTML = '<span>' + esc(msg) + '</span><button class="toast-act" type="button">' + esc(action.label) + '</button>';
+  else el.textContent = msg;
+  el.classList.toggle('has-act', !!action);
   // 화면 아래쪽에 고정된 요소 중 가장 위에 있는 것의 바로 위에 띄운다 — 이어하기 바·시트 등을 가리지 않게
   var minTop = window.innerHeight;
   var cands = sheetOpen ? [$('sheet-box')] : pages.length
@@ -890,8 +957,14 @@ function toast(msg, ms) {
   el.style.bottom = (window.innerHeight - minTop + 12) + 'px';
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function () { el.classList.remove('show'); }, ms || 2200);
+  toastTimer = setTimeout(function () { el.classList.remove('show'); toastAction = null; }, ms || (action ? 4500 : 2200));
 }
+$('toast').addEventListener('click', function (e) {
+  if (!e.target.closest('.toast-act') || !toastAction) return;
+  var fn = toastAction.fn; toastAction = null;
+  clearTimeout(toastTimer); $('toast').classList.remove('show');
+  fn();
+});
 
 // ---------- 페이지 스택 (전체 화면으로 올라오는 화면들) ----------
 // 각 페이지는 history 항목 하나와 짝을 이룬다 — 안드로이드/브라우저 뒤로가기로 닫을 수 있게.
@@ -1365,8 +1438,9 @@ function liveBlocksFrom(blocks, usePrev) {
   return (blocks || []).map(function (b) {
     var sets = b.sets.length ? b.sets : [{ t: 'n' }];
     var prev = usePrev ? previousSets(b.exId, Date.now(), '') : null;
+    if (prev && prev.oldGym) prev = null;   // 예전 헬스장 무게로 채우면 기구가 달라 맞지 않으므로 루틴 값 그대로
     return {
-      exId: b.exId, note: b.note || '', rest: b.rest,
+      exId: b.exId, note: b.note || '', rest: b.rest, ss: b.ss || '',
       sets: sets.map(function (s, i) {
         var c = cleanSet(s);
         var p = prevFor(prev, sets, i);
@@ -1400,7 +1474,7 @@ function startWorkout(routine, blocks, name) {
 // ---------- 열 정의 (종목 type별 입력 칸) ----------
 var COLS = {
   wr: [{ k: 'w', h: 'kg', im: 'decimal' }, { k: 'r', h: '횟수', im: 'numeric' }],
-  r: [{ k: 'r', h: '횟수', im: 'numeric' }],
+  r: [{ k: 'w', h: '+kg', im: 'decimal' }, { k: 'r', h: '횟수', im: 'numeric' }],   // +kg: 추가 중량(선택) — 비워 두면 맨몸
   t: [{ k: 's', h: '초', im: 'numeric' }],
   dt: [{ k: 'd', h: 'km', im: 'decimal' }, { k: 'm', h: '분', im: 'decimal' }]
 };
@@ -1419,7 +1493,7 @@ function setVal(s, k, v) {
 }
 function fmtSetShort(s, type) {
   if (!s) return '—';
-  if (type === 'r') return '×' + (s.r || 0);
+  if (type === 'r') return (s.w ? '+' + fmtNum(s.w) : '') + '×' + (s.r || 0);
   if (type === 't') return fmtDur(s.s);
   if (type === 'dt') return (s.d ? fmtNum(s.d) + 'km ' : '') + (s.s ? Math.round(s.s / 60) + '분' : '');
   return fmtNum(s.w || 0) + '×' + (s.r || 0);
@@ -1513,16 +1587,20 @@ function blockHtml(b, i, ed) {
   var prev = previousSets(b.exId, ed.mode === 'routine' ? Infinity : o.start, o.id);
   // 좁은 화면에서는 입력칸을 줄여 '이전' 칸 자리를 확보 (min(64px, 17vw))
   var grid = '34px minmax(0,1fr) ' + cols.map(function () { return 'min(64px, 17vw)'; }).join(' ') + (live ? ' 40px' : '');
-  var h = '<section class="block" data-b="' + i + '">' +
-    '<div class="block-head"><button class="block-name" data-e="ex-detail">' + esc(ex ? ex.name : '(삭제된 종목)') + '</button>' +
+  var ss = ssInfo(o.exercises, i);
+  var h = '<section class="block' + (ss.on ? ' ss' + (ss.first ? ' ss-first' : '') + (ss.last ? ' ss-last' : '') : '') + '" data-b="' + i + '">' +
+    (ss.on && ss.first ? '<div class="ss-label">' + icon('link', 13) + '슈퍼세트 ' + ss.label + '<small>번갈아 하기 · 마지막 종목 뒤에만 휴식</small></div>' : '') +
+    '<div class="block-head"><button class="block-name" data-e="ex-detail">' + (ss.on ? '<span class="ss-tag">' + ss.label + '</span>' : '') + esc(ex ? ex.name : '(삭제된 종목)') + '</button>' +
     '<button class="icon-btn" data-e="block-menu" aria-label="종목 메뉴">' + icon('more', 20) + '</button></div>' +
     '<input class="block-note" data-bn maxlength="200" value="' + esc(b.note || '') + '" placeholder="' + esc(notePlaceholder(b.exId, ed)) + '">';
-  if (ed.mode !== 'edit') {
+  if (ed.mode !== 'edit' && ss.on && !ss.last) {
+    h += '<p class="rest-chip ss-next">' + icon('dn', 14) + '휴식 없이 다음 종목으로</p>';
+  } else if (ed.mode !== 'edit') {
     var rest = b.rest != null ? b.rest : data.settings.rest;
     h += '<button class="rest-chip" data-e="rest">' + icon('clock', 14) + '휴식 ' + fmtRest(rest) + (b.rest == null ? ' (기본)' : '') + '</button>';
   }
   h += '<div class="set-table">' +
-    '<div class="set-row head" style="grid-template-columns:' + grid + '"><span>세트</span><span>이전</span>' +
+    '<div class="set-row head" style="grid-template-columns:' + grid + '"><span>세트</span><span' + (prev && prev.oldGym ? ' class="old-gym" title="지금 헬스장에서는 아직 기록이 없어 예전 헬스장 기록을 보여줘요">옛 헬스장' : '>이전') + '</span>' +
     cols.map(function (c) { return '<span>' + c.h + '</span>'; }).join('') + (live ? '<span>' + icon('check', 14) + '</span>' : '') + '</div>';
   var workNo = 0;
   b.sets.forEach(function (s, j) {
@@ -1610,7 +1688,50 @@ function bindEditor(el, ed, page) {
     }
   });
 
+  // 세트 줄을 왼쪽으로 밀어서 삭제 (줄 너비의 35% 넘게 밀면 삭제, 토스트에서 되돌리기)
+  var sw = null;
+  el.addEventListener('pointerdown', function (e) {
+    var row = e.target.closest('.set-row[data-s]');
+    sw = row && e.isPrimary && e.button === 0 ? { row: row, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId } : null;
+  });
+  el.addEventListener('pointermove', function (e) {
+    if (!sw || e.pointerId !== sw.id) return;
+    var dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+    if (!sw.on) {
+      if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }
+      if (dx < -12 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        sw.on = true; sw.row.classList.add('swiping');
+        try { sw.row.setPointerCapture(e.pointerId); } catch (er) {}
+        if (document.activeElement && sw.row.contains(document.activeElement)) document.activeElement.blur();
+      } else return;
+    }
+    sw.dx = Math.min(0, dx);
+    sw.row.style.transform = 'translateX(' + sw.dx + 'px)';
+    sw.row.classList.toggle('swipe-del', -sw.dx > sw.row.offsetWidth * 0.35);
+  });
+  function endSwipe(cancel) {
+    if (!sw) return;
+    var s0 = sw; sw = null;
+    if (!s0.on) return;
+    suppressClick = true; setTimeout(function () { suppressClick = false; }, 50);
+    if (!cancel && -s0.dx > s0.row.offsetWidth * 0.35) {
+      var c = ctx(s0.row), removed = c.b.sets.splice(c.j, 1)[0], blk = c.b, at = c.j;
+      changed(); rerender();
+      toast('세트를 삭제했어요', 4500, { label: '되돌리기', fn: function () {
+        if (o.exercises.indexOf(blk) < 0) return;
+        blk.sets.splice(Math.min(at, blk.sets.length), 0, removed); changed(); rerender();
+      } });
+      return;
+    }
+    s0.row.classList.add('snap'); s0.row.style.transform = '';
+    setTimeout(function () { s0.row.classList.remove('snap', 'swiping', 'swipe-del'); }, 200);
+  }
+  var suppressClick = false;
+  el.addEventListener('pointerup', function () { endSwipe(false); });
+  el.addEventListener('pointercancel', function () { endSwipe(true); });
+
   el.addEventListener('click', function (e) {
+    if (suppressClick) { e.preventDefault(); e.stopPropagation(); return; }
     var btn = e.target.closest('[data-e]');
     if (!btn || btn.disabled) return;
     var act = btn.getAttribute('data-e');
@@ -1711,10 +1832,53 @@ function blockMenu(bi, ed, changed, rerender) {
       openPicker({ multi: false, title: '종목 교체', onPick: function (ids) { list[bi].exId = ids[0]; changed(); } });
     } }
   );
-  if (bi > 0) items.push({ label: '위로 이동', icon: 'up', onClick: function () { list.splice(bi - 1, 0, list.splice(bi, 1)[0]); changed(); rerender(); } });
-  if (bi < list.length - 1) items.push({ label: '아래로 이동', icon: 'dn', onClick: function () { list.splice(bi + 1, 0, list.splice(bi, 1)[0]); changed(); rerender(); } });
-  items.push({ label: '종목 삭제', icon: 'trash', danger: true, onClick: function () { list.splice(bi, 1); changed(); rerender(); } });
+  var nx = list[bi + 1];
+  if (nx && !(list[bi].ss && list[bi].ss === nx.ss)) {
+    items.push({ label: '아래 종목(' + exName(nx.exId) + ')과 슈퍼세트로 묶기', icon: 'link', onClick: function () {
+      linkSS(list, bi); changed(); rerender();
+    } });
+  }
+  if (ssInfo(list, bi).on) {
+    items.push({ label: '슈퍼세트에서 빼기', icon: 'unlink', onClick: function () { unlinkSS(list, bi); changed(); rerender(); } });
+  }
+  if (bi > 0) items.push({ label: '위로 이동', icon: 'up', onClick: function () { list.splice(bi - 1, 0, list.splice(bi, 1)[0]); tidySS(list); changed(); rerender(); } });
+  if (bi < list.length - 1) items.push({ label: '아래로 이동', icon: 'dn', onClick: function () { list.splice(bi + 1, 0, list.splice(bi, 1)[0]); tidySS(list); changed(); rerender(); } });
+  items.push({ label: '종목 삭제', icon: 'trash', danger: true, onClick: function () { list.splice(bi, 1); tidySS(list); changed(); rerender(); } });
   actionSheet(exName(list[bi].exId), items);
+}
+
+// ---------- 슈퍼세트 묶기/풀기 ----------
+// bi 종목과 바로 아래 종목을 한 묶음으로 (어느 한쪽이 이미 묶음이면 그 묶음에 합류)
+function linkSS(list, bi) {
+  var a = list[bi], b = list[bi + 1];
+  var id = a.ss || b.ss || uid().slice(-6), old = b.ss;
+  a.ss = id;
+  for (var k = bi + 1; k < list.length && (k === bi + 1 || (old && list[k].ss === old)); k++) list[k].ss = id;
+  tidySS(list);
+}
+// bi 종목만 묶음에서 뺀다 — 가운데서 빼면 아래쪽은 새 묶음이 된다
+function unlinkSS(list, bi) {
+  var old = list[bi].ss, nid = uid().slice(-6);
+  delete list[bi].ss;
+  for (var k = bi + 1; k < list.length && list[k].ss === old; k++) list[k].ss = nid;
+  tidySS(list);
+}
+// 혼자 남은 ss(이동·삭제 뒤)는 지운다. 떨어져 있는 같은 id는 따로 묶음이 되도록 새 id를 준다
+function tidySS(list) {
+  var seen = {};
+  for (var i = 0; i < list.length; i++) {
+    var b = list[i];
+    if (!b.ss) { delete b.ss; continue; }
+    var j = i; while (j + 1 < list.length && list[j + 1].ss === b.ss) j++;
+    if (j === i) delete b.ss;
+    else {
+      var id = b.ss;
+      if (seen[id]) { id = uid().slice(-6); for (var k = i; k <= j; k++) list[k].ss = id; }
+      seen[id] = 1;
+    }
+    i = j;
+  }
+  return list;
 }
 
 // 지난 기록과 세트 수를 맞추고(모자라면 추가), 비어 있는 칸만 지난 값으로 채운다 — 직접 입력한 값은 그대로 둔다
@@ -1755,11 +1919,14 @@ function toggleCheck(c, ed, el, changed) {
         b.sets.forEach(function (x) { if (x !== s && x.done && isWork(x)) { cur = Math.max(cur, setScore(x, type)); curW = Math.max(curW, x.w || 0); } });
       });
       var sc = setScore(s, type);
-      var isPr = hist.score > 0 && (sc > Math.max(hist.score, cur) || (type === 'wr' && (s.w || 0) > Math.max(hist.w, curW)));
+      var isPr = hist.score > 0 && (sc > Math.max(hist.score, cur) || ((type === 'wr' || type === 'r') && (s.w || 0) > Math.max(hist.w, curW)));
       if (isPr) { s.pr = true; toast('🏆 개인 기록! ' + exName(c.b.exId) + ' ' + fmtSet(s, type), 3000); }
     }
+    // 슈퍼세트 중간 종목은 쉬지 않고 다음 종목으로 — 묶음의 마지막 종목을 마쳤을 때만 휴식
+    var ssi = ssInfo(o.exercises, c.bi);
     var rest = c.b.rest != null ? c.b.rest : data.settings.rest;
-    if (rest > 0) startRest(rest);
+    if (ssi.on && !ssi.last) toast('슈퍼세트 — 쉬지 말고 ' + exName(o.exercises[c.bi + 1].exId) + '로');
+    else if (rest > 0) startRest(rest);
   }
   changed();
   // 행만 다시 그리기 (포커스/스크롤 유지)
@@ -1899,9 +2066,9 @@ function finishLive(el, ed) {
     toast('완료(✓) 체크한 세트가 없습니다');
     return;
   }
-  var blocks = o.exercises.map(function (b) {
-    return { exId: b.exId, note: (b.note || '').trim(), rest: b.rest, sets: b.sets.filter(function (s) { return s.done; }).map(cleanSet) };
-  }).filter(function (b) { return b.sets.length && exById(b.exId); });
+  var blocks = tidySS(o.exercises.map(function (b) {
+    return blockCopy(b, b.sets.filter(function (s) { return s.done; }).map(cleanSet));
+  }).filter(function (b) { return b.sets.length && exById(b.exId); }));
   var routine = o.routineId ? data.routines.find(function (r) { return r.id === o.routineId; }) : null;
   var t = liveTotals(o);
   var elapsedMin = Math.max(1, Math.round((Date.now() - o.start) / 60000));
@@ -1929,9 +2096,9 @@ function finishLive(el, ed) {
       data.workouts.push(w);
       if (toRoutine) {
         // 루틴에는 편집기에 보이는 구성 그대로(이번에 건너뛴 종목·세트 포함) 반영한다 — 하루 빼먹었다고 루틴에서 사라지지 않게
-        var tpl = o.exercises.filter(function (b) { return exById(b.exId); }).map(function (b) {
-          return { exId: b.exId, note: (b.note || '').trim(), rest: b.rest, sets: b.sets.map(cleanSet) };
-        });
+        var tpl = tidySS(o.exercises.filter(function (b) { return exById(b.exId); }).map(function (b) {
+          return blockCopy(b, b.sets.map(cleanSet));
+        }));
         if (routine) routine.exercises = tpl;
         else { var nr = { id: uid(), name: name, exercises: tpl }; data.routines.push(nr); w.routineId = nr.id; }
       }
@@ -1969,9 +2136,9 @@ function saveEdited(ed, page, ghost) {
       if (!hasValue(st) && p) ['w', 'r', 's', 'd'].forEach(function (k) { if (p[k] != null) st[k] = p[k]; });
     });
   });
-  var blocks = o.exercises.map(function (b) {
-    return { exId: b.exId, note: (b.note || '').trim(), rest: b.rest, sets: b.sets.filter(hasValue).map(cleanSet) };
-  }).filter(function (b) { return b.sets.length && exById(b.exId); });
+  var blocks = tidySS(o.exercises.map(function (b) {
+    return blockCopy(b, b.sets.filter(hasValue).map(cleanSet));
+  }).filter(function (b) { return b.sets.length && exById(b.exId); }));
   if (!blocks.length) { toast('세트를 하나 이상 입력하세요'); return; }
   var w = { id: o.id, name: (o.name || '').trim() || defaultWorkoutName(o.start), routineId: o.routineId || '', start: o.start, end: Math.max(o.start, o.end), note: (o.note || '').trim(), exercises: blocks };
   var idx = data.workouts.findIndex(function (x) { return x.id === w.id; });
@@ -1985,9 +2152,9 @@ function saveRoutine(ed, page) {
   var name = (o.name || '').trim();
   if (!name) { toast('루틴 이름을 입력하세요'); var inp = page.el.querySelector('[data-f="name"]'); if (inp) inp.focus(); return; }
   if (!o.exercises.length) { toast('종목을 하나 이상 추가하세요'); return; }
-  var r = { id: o.id, name: name, fav: !!o.fav, exercises: o.exercises.filter(function (b) { return exById(b.exId); }).map(function (b) {
-    return { exId: b.exId, note: (b.note || '').trim(), rest: b.rest, sets: b.sets.map(cleanSet) };
-  }) };
+  var r = { id: o.id, name: name, fav: !!o.fav, exercises: tidySS(o.exercises.filter(function (b) { return exById(b.exId); }).map(function (b) {
+    return blockCopy(b, b.sets.map(cleanSet));
+  })) };
   var idx = data.routines.findIndex(function (x) { return x.id === r.id; });
   if (idx >= 0) data.routines[idx] = r; else data.routines.push(r);
   save();
@@ -2068,7 +2235,7 @@ function renderPickerList(el, st, opts) {
     ? ['<button class="chip' + (!st.muscle ? ' on' : '') + '" data-p="muscle" data-m="">전체</button>'].concat(ms.map(function (m) {
       return '<button class="chip' + (st.muscle === m ? ' on' : '') + '" data-p="muscle" data-m="' + m + '">' + m + '</button>';
     })).join('') : '';
-  var list = filterExercises(st.q, st.muscle);
+  var list = filterExercises(st.q, st.muscle).filter(function (e) { return !opts.exclude || opts.exclude.indexOf(e.id) < 0; });
   var exact = data.exercises.some(function (e) { return normName(e.name) === normName(st.q); });
   var h = '';
   if (!data.exercises.length) h += '<p class="hint">아직 만든 종목이 없어요. 아래에서 첫 종목을 만들어 보세요.</p>';
@@ -2080,8 +2247,9 @@ function renderPickerList(el, st, opts) {
       '<span class="list-main"><b>' + esc(e.name) + '</b><small>' + e.muscle + ' · ' + TYPES[e.type] + '</small></span>' +
       (opts.multi ? '<span class="tick">' + (on ? icon('check', 16) : '') + '</span>' : '') + '</button>';
   }).join('') + '</div>';
-  h += '<button class="btn btn-secondary btn-block" data-p="create">' + icon('plus', 17) +
+  if (!opts.noCreate) h += '<button class="btn btn-secondary btn-block" data-p="create">' + icon('plus', 17) +
     (st.q.trim() && !exact ? '‘' + esc(st.q.trim()) + '’ 새 종목으로 만들기' : '새 종목 만들기') + '</button>';
+  if (opts.hint) h = '<p class="hint left">' + esc(opts.hint) + '</p>' + h;
   el.querySelector('.js-list').innerHTML = h;
   var addBtn = el.querySelector('.js-pick-add');
   if (addBtn) { addBtn.disabled = !st.sel.length; addBtn.textContent = st.sel.length ? '추가 (' + st.sel.length + ')' : '추가'; }
@@ -2096,6 +2264,39 @@ function deleteExercise(ex, onDone) {
     data.exercises = data.exercises.filter(function (e2) { return e2.id !== ex.id; });
     save();
     if (onDone) onDone();
+  });
+}
+// 종목 합치기 — src의 모든 기록·루틴(진행 중 운동 포함)을 dst로 옮기고 src는 지운다.
+// 같은 운동인데 이름을 다르게 만들어 둔 경우(예: 랫풀다운 / 랫풀다운(클로즈그립)) 정리용
+function mergeExerciseInto(src, dst) {
+  function moveBlocks(list) { list.forEach(function (b) { if (b.exId === src.id) b.exId = dst.id; }); }
+  var nw = 0;
+  data.workouts.forEach(function (w) { if (w.exercises.some(function (b) { return b.exId === src.id; })) { nw++; moveBlocks(w.exercises); } });
+  data.routines.forEach(function (r) { moveBlocks(r.exercises); });
+  if (active) { moveBlocks(active.exercises); saveActive(); }
+  data.exercises = data.exercises.filter(function (e) { return e.id !== src.id; });
+  save();
+  return nw;
+}
+function startMergeExercise(ex, onDone) {
+  var others = data.exercises.filter(function (e) { return e.id !== ex.id && e.type === ex.type; });
+  if (!others.length) { toast('기록 방식(' + TYPES[ex.type] + ')이 같은 다른 종목이 없어요', 3000); return; }
+  openPicker({
+    multi: false, title: '합칠 종목 선택', noCreate: true,
+    exclude: data.exercises.filter(function (e) { return e.id === ex.id || e.type !== ex.type; }).map(function (e) { return e.id; }),
+    hint: '‘' + ex.name + '’의 기록을 옮겨 받을 종목을 고르세요. 기록 방식이 같은 종목만 보여요.',
+    onPick: function (ids) {
+      var dst = exById(ids[0]); if (!dst) return;
+      var n = exerciseUseCount(ex.id), rn = routineUseCount(ex.id);
+      setTimeout(function () {
+        confirmSheet('‘' + ex.name + '’을 ‘' + dst.name + '’로 합칠까요? 운동 기록 ' + n + '개' + (rn ? '와 루틴 ' + rn + '개' : '') +
+          '가 ‘' + dst.name + '’로 옮겨지고 ‘' + ex.name + '’은 지워져요. 되돌릴 수 없어요.', '합치기', function () {
+          var moved = mergeExerciseInto(ex, dst);
+          if (onDone) onDone(dst);
+          toast('‘' + dst.name + '’로 합쳤어요 (기록 ' + moved + '개)', 3000);
+        });
+      }, 260);
+    }
   });
 }
 // 종목 만들기/수정 시트. ex가 있으면 수정, 없으면 새로 만들기
@@ -2214,7 +2415,10 @@ function routineSummary(b) {
   if (type === 'wr') {
     var wv = range(ws.map(function (x) { return x.w; }), fmtNum), rv = range(ws.map(function (x) { return x.r; }), String);
     val = wv && rv ? wv + 'kg × ' + rv : wv ? wv + 'kg' : rv ? rv + '회' : '';
-  } else if (type === 'r') val = range(ws.map(function (x) { return x.r; }), function (v) { return v + '회'; });
+  } else if (type === 'r') {
+    var addW = range(ws.map(function (x) { return x.w || null; }), fmtNum);
+    val = (addW ? '+' + addW + 'kg × ' : '') + range(ws.map(function (x) { return x.r; }), function (v) { return v + '회'; });
+  }
   else if (type === 't') val = range(ws.map(function (x) { return x.s; }), fmtDur);
   else val = range(ws.map(function (x) { return x.d; }), function (v) { return fmtNum(v) + 'km'; }) || range(ws.map(function (x) { return x.s; }), fmtDur);
   return val ? head + ' · ' + val : head;
@@ -2381,19 +2585,19 @@ function openRoutineDetail(id) {
       '<p class="meta">종목 ' + r.exercises.length + '개' + (last ? ' · 마지막 ' + fmtKoDate(last) : '') + '</p>' +
       routineGrowthHtml(r) +
       (data.settings.prefillPrev ? '<p class="hint left">시작하면 각 세트가 아래 \u2018지난번\u2019 값으로 채워져요. 설정에서 루틴 값으로 바꿀 수 있어요.</p>' : '');
-    r.exercises.forEach(function (b) {
-      var type = exType(b.exId), no = 0;
+    r.exercises.forEach(function (b, bi) {
+      var type = exType(b.exId), no = 0, ss = ssInfo(r.exercises, bi);
       var rest = b.rest != null ? b.rest : data.settings.rest;
       var prev = previousSets(b.exId, Infinity, '');
       var memo = b.note || lastNote(b.exId, Infinity, '');
-      h += '<div class="card"><div class="card-head"><button class="block-name" data-r="ex" data-ex="' + b.exId + '">' + esc(exName(b.exId)) + '</button>' +
-        '<small class="muted">' + icon('clock', 13) + ' 휴식 ' + fmtRest(rest) + '</small></div>' +
+      h += '<div class="card' + (ss.on ? ' ss' : '') + '"><div class="card-head"><button class="block-name" data-r="ex" data-ex="' + b.exId + '">' + ssTag(r.exercises, bi) + esc(exName(b.exId)) + '</button>' +
+        '<small class="muted">' + (ss.on && !ss.last ? '휴식 없이 다음 종목' : icon('clock', 13) + ' 휴식 ' + fmtRest(rest)) + '</small></div>' +
         (memo ? '<p class="meta">' + (b.note ? '' : '지난 메모: ') + esc(memo) + '</p>' : '') +
         '<div class="set-list">' + b.sets.map(function (st) {
           if (st.t !== 'w') no++;
           return '<div class="set-line"><span class="set-badge t-' + st.t + '">' + setBadge(st.t, no) + '</span><span>' + (hasValue(st) ? esc(fmtSet(st, type)) : '<span class="muted">값 없음</span>') + '</span></div>';
         }).join('') + '</div>' +
-        (prev ? '<p class="prev-line">지난번 · ' + esc(prev.map(function (x) { return (x.t === 'w' ? 'W ' : '') + fmtSetShort(x, type); }).join(' / ')) + '</p>' : '') +
+        (prev ? '<p class="prev-line">' + (prev.oldGym ? '예전 헬스장' : '지난번') + ' · ' + esc(prev.map(function (x) { return (x.t === 'w' ? 'W ' : '') + fmtSetShort(x, type); }).join(' / ')) + '</p>' : '') +
         '</div>';
     });
     if (!r.exercises.length) h += '<div class="empty"><p>종목이 없어요. ⋯ 메뉴의 수정에서 추가하세요.</p></div>';
@@ -2413,8 +2617,30 @@ function openRoutineDetail(id) {
     else if (act === 'g-period') { growthState.period = b.getAttribute('data-v'); page.render(); }
   });
 }
+function ssTag(blocks, i) { var x = ssInfo(blocks, i); return x.on ? '<span class="ss-tag" title="슈퍼세트">' + x.label + '</span>' : ''; }
+// 주 단위 연속 운동 (월요일 시작 주에 1회 이상이면 그 주는 채움). 이번 주에 아직 안 했으면 지난주까지로 센다 — 주 중간에 끊긴 걸로 보이지 않게
+function weekStreak() {
+  var has = {};
+  data.workouts.forEach(function (w) { has[weekStart(w.start)] = 1; });
+  function prevWeek(t) { var d = new Date(t); d.setDate(d.getDate() - 7); return weekStart(d.getTime()); }
+  var now = weekStart(Date.now()), t = has[now] ? now : prevWeek(now), cur = 0;
+  while (has[t]) { cur++; t = prevWeek(t); }
+  var weeks = Object.keys(has).map(Number).sort(function (a, b) { return a - b; }), best = 0, run = 0, last = null;
+  weeks.forEach(function (wk) {
+    if (wk > now) return;
+    run = last != null && prevWeek(wk) === last ? run + 1 : 1; last = wk; best = Math.max(best, run);
+  });
+  return { cur: cur, best: best, thisWeek: !!has[now] };
+}
+function streakChip() {
+  var st = weekStreak();
+  if (!st.cur) return '';
+  return '<span class="streak' + (st.thisWeek ? '' : ' wait') + '" title="' + (st.thisWeek ? '이번 주 포함' : '이번 주에 운동하면 이어져요') + '">' + icon('flame', 14) + '연속 ' + st.cur + '주' + '</span>';
+}
 function workoutTabHtml() {
-  var h = '<h2 class="sec-title">빠른 시작</h2>';
+  var sk = streakChip(), st0 = weekStreak();
+  var h = '<div class="sec-head"><h2 class="sec-title">빠른 시작</h2>' + sk + '</div>' +
+    (st0.cur && !st0.thisWeek ? '<p class="hint left streak-hint">이번 주에 한 번 운동하면 ' + (st0.cur + 1) + '주 연속이 돼요.</p>' : '');
   if (active) {
     h += '<button class="card resume" data-a="resume"><span class="pulse"></span><span class="list-main"><b>' + esc(active.name) + '</b>' +
       '<small>진행 중 · <span class="js-elapsed"></span></small></span>' + icon('right', 18) + '</button>';
@@ -2440,8 +2666,8 @@ function workoutTabHtml() {
       '<button class="icon-btn fav' + (r.fav ? ' on' : '') + '" data-a="routine-fav" aria-pressed="' + !!r.fav + '" aria-label="' + (r.fav ? '즐겨찾기 해제' : '즐겨찾기') + '">' + icon(r.fav ? 'starf' : 'star', 19) + '</button>' +
       '<button class="icon-btn" data-a="routine-menu" aria-label="루틴 메뉴">' + icon('more', 20) + '</button></span></div>' +
       '<button class="routine-body" data-a="open-routine" aria-label="' + esc(r.name) + ' 루틴 자세히 보기"><div class="wk-lines">' +
-      (r.exercises.length ? r.exercises.map(function (b) {
-        return '<div class="wk-line"><span>' + esc(exName(b.exId)) + '</span><span class="muted">' + esc(routineSummary(b)) + '</span></div>';
+      (r.exercises.length ? r.exercises.map(function (b, bi) {
+        return '<div class="wk-line"><span>' + ssTag(r.exercises, bi) + esc(exName(b.exId)) + '</span><span class="muted">' + esc(routineSummary(b)) + '</span></div>';
       }).join('') : '<div class="wk-line muted">종목 없음</div>') +
       '</div><p class="meta">종목 ' + r.exercises.length + '개' + (last ? ' · 마지막 ' + fmtKoDate(last) : '') + '<span class="more-link">자세히' + icon('right', 13) + '</span></p></button>' +
       '<button class="btn btn-primary btn-block" data-a="start-routine">' + icon('play', 14) + '루틴 시작</button></div>';
@@ -2467,16 +2693,18 @@ function historyTabHtml() {
     '<button role="tab" aria-selected="' + (histView === 'list') + '" class="' + (histView === 'list' ? 'on' : '') + '" data-a="hist-view" data-v="list">기록</button>' +
     '<button role="tab" aria-selected="' + (histView === 'stats') + '" class="' + (histView === 'stats' ? 'on' : '') + '" data-a="hist-view" data-v="stats">통계</button></div>';
   if (histView === 'stats') {
-    h += '<div class="stat-grid">' +
+    var sk = weekStreak();
+    h += '<div class="stat-grid four">' +
       '<div class="stat"><small>이번 주</small><b>' + thisWeek.length + '회</b></div>' +
       '<div class="stat"><small>이번 주 볼륨</small><b>' + fmtVolBig(weekVol) + '</b></div>' +
-      '<div class="stat"><small>이번 주 시간</small><b>' + (weekDur > 0 ? fmtDur(weekDur) : '—') + '</b></div></div>';
+      '<div class="stat"><small>이번 주 시간</small><b>' + (weekDur > 0 ? fmtDur(weekDur) : '—') + '</b></div>' +
+      '<div class="stat"><small>연속</small><b>' + sk.cur + '주</b><small>최장 ' + sk.best + '주</small></div></div>';
     h += dayChartHtml();
     h += muscleSetsHtml();
     h += '<div class="card"><div class="card-head"><b>주간 볼륨</b><small class="muted">최근 12주 · 막대를 누르면 그 주로</small></div>' + weeklyChart() + '</div>';
     return h;
   }
-  h += '<p class="hist-sum">이번 주 ' + thisWeek.length + '회 · ' + fmtNum(Math.round(weekVol)) + 'kg' + (weekDur > 0 ? ' · ' + fmtDur(weekDur) : '') + '</p>';
+  h += '<p class="hist-sum">' + streakChip() + '이번 주 ' + thisWeek.length + '회 · ' + fmtNum(Math.round(weekVol)) + 'kg' + (weekDur > 0 ? ' · ' + fmtDur(weekDur) : '') + '</p>';
   h += calendarHtml();
   h += '<button class="btn btn-secondary btn-block" data-a="add-past">' + icon('plus', 17) + (histDay ? fmtKoDate(new Date(histDay + 'T12:00').getTime()) + ' 운동 추가' : '지난 운동 기록 추가') + '</button>';
   var list = sortedWorkouts().filter(function (w) { return !histDay || fmtDate(w.start) === histDay; });
@@ -2504,9 +2732,9 @@ function workoutCardHtml(w) {
     '<div class="wk-stats"><span>' + icon('clock', 14) + fmtWorkoutDur(w) + '</span><span>' + fmtNum(workoutVolume(w)) + 'kg</span>' +
     '<span>' + workoutSetCount(w) + '세트</span>' + (prs.count ? '<span class="pr">' + icon('trophy', 14) + 'PR ' + prs.count + '</span>' : '') + '</div>' +
     '<div class="wk-lines">';
-  w.exercises.slice(0, 4).forEach(function (b) {
+  w.exercises.slice(0, 4).forEach(function (b, bi) {
     var type = exType(b.exId), best = bestSet(b.sets, type);
-    h += '<div class="wk-line"><span>' + b.sets.length + ' × ' + esc(exName(b.exId)) + '</span><span class="muted">' + (best ? esc(fmtSet(best, type)) : '') + '</span></div>';
+    h += '<div class="wk-line"><span>' + ssTag(w.exercises, bi) + b.sets.length + ' × ' + esc(exName(b.exId)) + '</span><span class="muted">' + (best ? esc(fmtSet(best, type)) : '') + '</span></div>';
   });
   if (w.exercises.length > 4) h += '<div class="wk-line muted">외 ' + (w.exercises.length - 4) + '개 종목</div>';
   return h + '</div></button>';
@@ -2521,8 +2749,8 @@ function workoutPRs(w) {
     b.sets.forEach(function (s, si) {
       if (!isWork(s)) return;
       var sc = setScore(s, type);
-      if (sc > bs || (type === 'wr' && (s.w || 0) > bw)) { marks[bi + ':' + si] = true; count++; }
-      bs = Math.max(bs, sc); if (type === 'wr') bw = Math.max(bw, s.w || 0);
+      if (sc > bs || ((type === 'wr' || type === 'r') && (s.w || 0) > bw)) { marks[bi + ':' + si] = true; count++; }
+      bs = Math.max(bs, sc); if (type === 'wr' || type === 'r') bw = Math.max(bw, s.w || 0);
     });
   });
   return { marks: marks, count: count };
@@ -2669,7 +2897,7 @@ function openWorkoutDetail(id) {
       (w.note ? '<p class="note-box">' + esc(w.note) + '</p>' : '');
     w.exercises.forEach(function (b, bi) {
       var type = exType(b.exId);
-      h += '<div class="card"><button class="block-name" data-w="ex" data-ex="' + b.exId + '">' + esc(exName(b.exId)) + '</button>' +
+      h += '<div class="card' + (ssInfo(w.exercises, bi).on ? ' ss' : '') + '"><button class="block-name" data-w="ex" data-ex="' + b.exId + '">' + ssTag(w.exercises, bi) + esc(exName(b.exId)) + '</button>' +
         (b.note ? '<p class="meta">' + esc(b.note) + '</p>' : '') + '<div class="set-list">' +
         setLinesHtml(b.sets, type, function (s, si) {
           return (prs.marks[bi + ':' + si] ? '<span class="pr">' + icon('trophy', 14) + 'PR</span>' : '') +
@@ -2764,7 +2992,11 @@ function openExerciseDetail(exId) {
     var mx = function (f) { return all.reduce(function (a, s) { return Math.max(a, f(s)); }, 0); };
     var stats;
     if (type === 'wr') stats = [['최고 무게', fmtNum(mx(function (s) { return s.w || 0; })) + 'kg'], ['예상 1RM', fmtNum(hist.reduce(function (a, x) { return Math.max(a, dayValue(x.sets, 'wr', 'e1rm').v); }, 0)) + 'kg'], ['최고 볼륨', fmtNum(mx(setVolume)) + 'kg'], ['운동 횟수', hist.length + '회']];
-    else if (type === 'r') stats = [['최고 횟수', mx(function (s) { return s.r || 0; }) + '회'], ['총 횟수', all.reduce(function (a, s) { return a + (s.r || 0); }, 0) + '회'], ['운동 횟수', hist.length + '회']];
+    else if (type === 'r') {
+      stats = [['최고 횟수', mx(function (s) { return s.r || 0; }) + '회'], ['총 횟수', all.reduce(function (a, s) { return a + (s.r || 0); }, 0) + '회'], ['운동 횟수', hist.length + '회']];
+      var maxAdd = mx(function (s) { return s.w || 0; });
+      if (maxAdd) stats.splice(1, 0, ['최고 추가 중량', '+' + fmtNum(maxAdd) + 'kg']);
+    }
     else if (type === 't') stats = [['최장 시간', fmtDur(mx(function (s) { return s.s || 0; }))], ['운동 횟수', hist.length + '회']];
     else stats = [['최장 거리', fmtNum(mx(function (s) { return s.d || 0; })) + 'km'], ['최장 시간', fmtDur(mx(function (s) { return s.s || 0; }))], ['운동 횟수', hist.length + '회']];
     h += '<div class="stat-grid' + (stats.length === 4 ? ' four' : '') + '">' + stats.map(function (s) { return '<div class="stat"><small>' + s[0] + '</small><b>' + s[1] + '</b></div>'; }).join('') + '</div>';
@@ -2806,6 +3038,9 @@ function openExerciseDetail(exId) {
       if (!ex) return;
       actionSheet(ex.name, [
         { label: '수정', icon: 'edit', onClick: function () { openExerciseForm(ex, '', function (res) { if (res === null) closePage(); else page.render(); }); } },
+        { label: '다른 종목으로 합치기', icon: 'merge', onClick: function () {
+          startMergeExercise(ex, function (dst) { closePage(1, function () { refreshTab(); openExerciseDetail(dst.id); }); });
+        } },
         { label: '삭제', icon: 'trash', danger: true, onClick: function () { deleteExercise(ex, function () { closePage(); }); } }
       ]);
     }
